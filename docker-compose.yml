@@ -3,6 +3,7 @@
 #
 # Инварианты:
 #   - ports: только у nginx (и Gateway — по желанию в разработке)    ADR-010, ADR-037
+#     исключение: инфраструктура — только на 127.0.0.1 для make run  ADR-040
 #   - сервис видит только свою БД — отдельная сеть на каждую          ADR-001, I-02
 #   - Management UI RabbitMQ наружу не публикуется                    ADR-012
 
@@ -163,6 +164,8 @@ services:
       POSTGRES_DB: users
       POSTGRES_USER: ${USERS_DB_USER}
       POSTGRES_PASSWORD: ${USERS_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"   # ADR-040
     volumes:
       - users-db:/var/lib/postgresql
     networks: [users-db]
@@ -173,6 +176,8 @@ services:
       POSTGRES_DB: orders
       POSTGRES_USER: ${ORDERS_DB_USER}
       POSTGRES_PASSWORD: ${ORDERS_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5434:5432"   # ADR-040
     volumes:
       - orders-db:/var/lib/postgresql
     networks: [orders-db]
@@ -183,6 +188,8 @@ services:
       POSTGRES_DB: inventory
       POSTGRES_USER: ${INVENTORY_DB_USER}
       POSTGRES_PASSWORD: ${INVENTORY_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5435:5432"   # ADR-040
     volumes:
       - inventory-db:/var/lib/postgresql
     networks: [inventory-db]
@@ -211,6 +218,8 @@ services:
   rabbitmq:
     image: rabbitmq:4.3-management
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5672:5672"   # ADR-040; 15672 (UI) не публикуется — ADR-012
     configs:
       - source: rabbit_conf
         target: /etc/rabbitmq/conf.d/10-definitions.conf
@@ -227,6 +236,8 @@ services:
   gotenberg:
     image: gotenberg/gotenberg:8
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"   # ADR-040
     networks: [backend]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
@@ -238,7 +249,7 @@ services:
 # при импорте definitions RABBITMQ_DEFAULT_USER игнорируется.
 # Routing key = имя очереди. x-delivery-limit 10 — страховка брокера;
 # сервис выбрасывает сообщение после 5 доставок сам.
-# Формат сверить с документацией RabbitMQ 4.3 (TODO.md §8).
+# Формат проверен запуском на 4.3 (01.11.2026, TODO.md §8).
 configs:
   rabbit_conf:
     content: |

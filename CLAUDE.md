@@ -34,12 +34,14 @@
 - Раздел «Сквозные правила» в `decisions/pattern-decisions-v1.md` — действует во всех сервисах.
 
 ## Команды (цели корневого Makefile, ADR-014 / ADR-036)
-Makefile появится на этапе «Каркас». Пока его нет — команды не угадывать.
+Полный список с примерами — шапка `Makefile`.
 - Генерация (sqlc + oapi-codegen): `make generate`
 - Тесты: `make test` (по модулю: `make test MODULE=orders`)
 - Линт: `make lint`
 - Сборка: `make build`
-- Запуск окружения: `make up` / `make down` (Docker Compose)
+- Запуск окружения: `make up` / `make down` (Docker Compose); по сервису — `make up SVC=orders`;
+  только инфраструктура — `make infra`; `make stop SVC=…`, `make logs SVC=…`, `make ps`
+- Сервис на хосте (ADR-040): `make infra`, затем `make run SVC=users`
 
 ## Раскладка репозитория (ADR-036, Решение А-10 (принято 30.10.2026))
 ```

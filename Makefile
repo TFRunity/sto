@@ -11,6 +11,9 @@
 #   make infra                    только БД, RabbitMQ, Gotenberg
 #   make stop SVC=inventory       остановить, не удаляя (сценарий дедлайна)
 #   make logs SVC=orders · make ps · make down
+#
+# Сервис на хосте (ADR-040): сначала make infra, потом
+#   make run SVC=users            go run с переменными из .env и хостовыми адресами
 
 MODULES  := chassis gateway users orders vehicle inventory services
 MODULE   ?=
@@ -28,7 +31,22 @@ GOLANGCI     ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2
 SVC   ?=
 INFRA := users-db orders-db inventory-db rabbitmq gotenberg
 
-.PHONY: generate build test lint up infra stop logs ps down
+# Хостовые адреса для make run (ADR-040). Остальное (JWT_SECRET, LOG_LEVEL, …) — из .env.
+# Сервис слушает только 127.0.0.1; соседи — тоже на хосте. $$VAR раскрывает шелл после .env.
+DB_URL = postgres://$$$(1)_DB_USER:$$$(1)_DB_PASSWORD@127.0.0.1:$(2)/$(3)?sslmode=disable
+AMQP_URL := amqp://$$RABBITMQ_USER:$$RABBITMQ_PASSWORD@127.0.0.1:5672/
+
+RUN_ENV_gateway   := HTTP_ADDR=127.0.0.1:8080 \
+	USERS_URL=http://127.0.0.1:8081 ORDERS_URL=http://127.0.0.1:8082 INVENTORY_URL=http://127.0.0.1:8083
+RUN_ENV_users     := HTTP_ADDR=127.0.0.1:8081 \
+	DATABASE_URL="$(call DB_URL,USERS,5433,users)"
+RUN_ENV_orders    := HTTP_ADDR=127.0.0.1:8082 \
+	DATABASE_URL="$(call DB_URL,ORDERS,5434,orders)" RABBITMQ_URL="$(AMQP_URL)" \
+	INVENTORY_URL=http://127.0.0.1:8083 USERS_URL=http://127.0.0.1:8081 GOTENBERG_URL=http://127.0.0.1:3000
+RUN_ENV_inventory := HTTP_ADDR=127.0.0.1:8083 \
+	DATABASE_URL="$(call DB_URL,INVENTORY,5435,inventory)" RABBITMQ_URL="$(AMQP_URL)"
+
+.PHONY: generate build test lint up infra stop logs ps down run
 
 # sqlc — модули с sqlc.yaml; oapi-codegen — модули с oapi-codegen.yaml
 # (конфиг генерации по своей части api/openapi.yaml, ADR-028).
@@ -73,6 +91,10 @@ logs:
 
 ps:
 	docker compose ps -a
+
+run:
+	$(if $(RUN_ENV_$(SVC)),,$(error make run SVC=<gateway|users|orders|inventory>))
+	set -a; . ./.env; set +a; cd $(SVC) && env $(RUN_ENV_$(SVC)) go run ./cmd/$(SVC)
 
 down:
 	docker compose down

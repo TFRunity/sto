@@ -3,6 +3,14 @@
 #
 # Один модуль:  make test MODULE=orders
 # Все модули:   make test
+#
+# Окружение (SVC — сервисы docker-compose.yml, можно несколько):
+#   make up                       всё
+#   make up SVC=users             users + то, от чего он зависит (users-db)
+#   make up SVC="users gateway"
+#   make infra                    только БД, RabbitMQ, Gotenberg
+#   make stop SVC=inventory       остановить, не удаляя (сценарий дедлайна)
+#   make logs SVC=orders · make ps · make down
 
 MODULES  := chassis gateway users orders vehicle inventory services
 MODULE   ?=
@@ -17,7 +25,10 @@ SQLC         ?= go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
 OAPI_CODEGEN ?= go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.0
 GOLANGCI     ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
 
-.PHONY: generate build test lint up down
+SVC   ?=
+INFRA := users-db orders-db inventory-db rabbitmq gotenberg
+
+.PHONY: generate build test lint up infra stop logs ps down
 
 # sqlc — модули с sqlc.yaml; oapi-codegen — модули с oapi-codegen.yaml
 # (конфиг генерации по своей части api/openapi.yaml, ADR-028).
@@ -47,8 +58,21 @@ lint:
 		echo "lint: $$m"; (cd $$m && $(GOLANGCI) run ./...); \
 	done
 
+# Зависимости из depends_on compose поднимает сам.
 up:
-	docker compose up -d --build
+	docker compose up -d --build $(SVC)
+
+infra:
+	docker compose up -d $(INFRA)
+
+stop:
+	docker compose stop $(SVC)
+
+logs:
+	docker compose logs -f --tail=100 $(SVC)
+
+ps:
+	docker compose ps -a
 
 down:
 	docker compose down

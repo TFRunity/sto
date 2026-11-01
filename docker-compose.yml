@@ -54,6 +54,14 @@ services:
       ORDERS_URL: http://orders:8080
       INVENTORY_URL: http://inventory:8080
     networks: [edge, backend]
+    # Зависимости в рантайме (см. orders). Неделя 2: + vehicle, services.
+    depends_on:
+      users:
+        condition: service_started
+      orders:
+        condition: service_started
+      inventory:
+        condition: service_started
     # ports:
     #   - "8080:8080"   # прямой доступ к Gateway в разработке (ADR-038)
 
@@ -88,11 +96,19 @@ services:
       USERS_URL: http://users:8080
       GOTENBERG_URL: http://gotenberg:3000
     networks: [backend, orders-db]
+    # service_started — зависимости в рантайме, не для старта: Orders стартует
+    # и без них, но `make up SVC=orders` поднимает всё, что ему нужно.
     depends_on:
       orders-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      inventory:
+        condition: service_started
+      users:
+        condition: service_started
+      gotenberg:
+        condition: service_started
 
   inventory:
     <<: *service

@@ -1,0 +1,11 @@
+go 1.27
+
+use (
+	./chassis
+	./gateway
+	./users
+	./orders
+	./vehicle
+	./inventory
+	./services
+)

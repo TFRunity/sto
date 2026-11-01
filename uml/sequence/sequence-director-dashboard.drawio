@@ -1,0 +1,127 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Дашборд директора" id="seq-dashboard">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="640" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_director" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" value="Директор (веб)" vertex="1">
+          <mxGeometry x="30" y="40" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=13;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry x="290" y="40" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_orders" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Orders service" vertex="1">
+          <mxGeometry x="550" y="40" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_users" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" value="Users service" vertex="1">
+          <mxGeometry x="810" y="40" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="frame1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="par: два параллельных запроса" vertex="1">
+          <mxGeometry x="300" y="170" width="660" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="frame2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="alt: итог — всё или ничего (ADR-032)" vertex="1">
+          <mxGeometry x="40" y="330" width="920" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel3" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[оба ответа 200]" vertex="1">
+          <mxGeometry x="46" y="350" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel4" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[ошибка или недоступен — соседний запрос отменён]" vertex="1">
+          <mxGeometry x="46" y="410" width="294" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel5" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[дедлайн 3 с истёк]" vertex="1">
+          <mxGeometry x="46" y="470" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="fsep6" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="401" as="sourcePoint" />
+            <mxPoint x="960" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fsep7" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="461" as="sourcePoint" />
+            <mxPoint x="960" y="461" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_director" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="80" as="sourcePoint" />
+            <mxPoint x="100" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_gateway" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="80" as="sourcePoint" />
+            <mxPoint x="360" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_orders" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="80" as="sourcePoint" />
+            <mxPoint x="620" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll4" edge="1" parent="1" source="p_users" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="80" as="sourcePoint" />
+            <mxPoint x="880" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="1. GET /dashboard">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="120" as="sourcePoint" />
+            <mxPoint x="360" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a9" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="2. errgroup.WithContext, общий дедлайн 3 с" vertex="1">
+          <mxGeometry x="368" y="130" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. GET /orders/stats (сегодня, в работе, ожидают оплаты)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="215" as="sourcePoint" />
+            <mxPoint x="620" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. GET /users/engineers-load">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="250" as="sourcePoint" />
+            <mxPoint x="880" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m12" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="5. 200 OK (метрики заказов)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="278" as="sourcePoint" />
+            <mxPoint x="360" y="278" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="6. 200 OK (загрузка инженеров)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="305" as="sourcePoint" />
+            <mxPoint x="360" y="305" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="7. 200 OK (объединённый ответ)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="385" as="sourcePoint" />
+            <mxPoint x="100" y="385" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m15" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="7'. 502 {error: {code: upstream_error}}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="445" as="sourcePoint" />
+            <mxPoint x="100" y="445" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m16" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="7''. 504 {error: {code: upstream_timeout}}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="505" as="sourcePoint" />
+            <mxPoint x="100" y="505" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note17" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="API Composition: Gateway склеивает два ответа. Частичного ответа нет — при отказе&lt;br&gt;одного сервиса директор не видит дашборд целиком (осознанно, ADR-032)" vertex="1">
+          <mxGeometry x="40" y="560" width="600" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

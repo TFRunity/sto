@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Директор — экраны СТО</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<style>
+:root {
+  --surface-2: #ffffff; --surface-1: #f5f4f0; --surface-0: #ececea;
+  --text-primary: #1a1a18; --text-secondary: #5f5e5a; --text-muted: #888780;
+  --border: #d3d1c7; --border-strong: #b4b2a9; --radius: 8px;
+  --bg-accent: #e6f1fb; --text-accent: #185fa5;
+  --bg-warning: #faeeda; --text-warning: #854f0b;
+  --bg-success: #eaf3de; --text-success: #3b6d11;
+  --bg-danger: #fcebeb; --text-danger: #a32d2d;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { background: var(--surface-0); margin: 0; padding: 40px 20px; color: var(--text-primary); }
+h1 { font-size: 22px; font-weight: 500; text-align: center; margin-bottom: 40px; }
+.entry { max-width: 1100px; margin: 0 auto 64px; }
+.entry-title { font-size: 16px; font-weight: 500; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border-strong); }
+.layout { display: grid; grid-template-columns: 1fr 420px; gap: 24px; align-items: start; }
+.render-frame { background: var(--surface-1); border-radius: 20px; padding: 20px; }
+pre { background: #1e1e1c; color: #d4d4d2; padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 11px; line-height: 1.5; max-height: 500px; }
+button { font-size: 14px; height: 32px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: transparent; color: var(--text-primary); cursor: pointer; padding: 0 12px; }
+input { height: 32px; border-radius: var(--radius); border: 0.5px solid var(--border); padding: 0 12px; background: #fff; color: var(--text-primary); }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Наметки экранов — директор (веб)</h1>
+
+<div class="entry"><div class="entry-title">1. Дашборд</div><div class="layout"><div class="render-frame" id="render-1"></div><pre id="code-1"></pre></div></div>
+<div class="entry"><div class="entry-title">1b. Дашборд — ошибка (всё или ничего, 502 / 504)</div><div class="layout"><div class="render-frame" id="render-1b"></div><pre id="code-1b"></pre></div></div>
+<div class="entry"><div class="entry-title">2. Все заказы (таблица)</div><div class="layout"><div class="render-frame" id="render-2"></div><pre id="code-2"></pre></div></div>
+<div class="entry"><div class="entry-title">2b. Все заказы — слишком широкий поиск (422 search_too_broad)</div><div class="layout"><div class="render-frame" id="render-2b"></div><pre id="code-2b"></pre></div></div>
+<div class="entry"><div class="entry-title">5. Каталог — Товары (склад)</div><div class="layout"><div class="render-frame" id="render-5"></div><pre id="code-5"></pre></div></div>
+<div class="entry"><div class="entry-title">5b. Каталог — Услуги</div><div class="layout"><div class="render-frame" id="render-5b"></div><pre id="code-5b"></pre></div></div>
+<div class="entry"><div class="entry-title">6. Детали заказа (директор, read-only)</div><div class="layout"><div class="render-frame" id="render-6"></div><pre id="code-6"></pre></div></div>
+<div class="entry"><div class="entry-title">8. Настройки профиля директора</div><div class="layout"><div class="render-frame" id="render-8"></div><pre id="code-8"></pre></div></div>
+<script>
+const screens = {};
+const nav = (active) => {
+  const items = ['Дашборд','Заказы','Каталог'];
+  return items.map(i => i === active
+    ? `<span style="font-size:14px;font-weight:500;padding:8px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)">${i}</span>`
+    : `<span style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary)">${i}</span>`
+  ).join('') + `<div style="flex:1"></div><div style="width:32px;height:32px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">Д</div>`;
+};
+const wrap = (active, body) => `<div style="max-width:700px;margin:0 auto"><div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:0.75rem 1rem;display:flex;align-items:center;gap:8px;margin-bottom:20px">${nav(active)}</div>${body}</div>`;
+
+screens['1'] = wrap('Дашборд', `
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+<div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem"><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Выручка сегодня</p><p style="font-size:24px;font-weight:500;margin:0">42 300 ₽</p></div>
+<div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem"><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Заказов сегодня</p><p style="font-size:24px;font-weight:500;margin:0">7</p></div>
+<div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem"><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">В работе</p><p style="font-size:24px;font-weight:500;margin:0">3</p></div>
+<div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem"><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Ожидают оплаты</p><p style="font-size:24px;font-weight:500;margin:0;color:var(--text-danger)">2</p></div>
+</div>
+<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:20px">
+<p style="font-size:15px;font-weight:500;margin:0 0 14px">Последние заказы</p>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border)"><span style="font-size:14px">Toyota Camry · А123ВС</span><span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning)">в работе</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border)"><span style="font-size:14px">Hyundai Solaris · Е789КХ</span><span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-danger);color:var(--text-danger)">ожидает оплаты</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0"><span style="font-size:14px">Kia Rio · В456ОР</span><span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success)">выдан</span></div>
+</div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:20px">
+<p style="font-size:15px;font-weight:500;margin:0 0 14px">Загрузка инженеров</p>
+<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:14px">Петров С.А.</span><span style="font-size:13px;color:var(--text-secondary)">4 заказа</span></div>
+<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:14px">Сидоров К.М.</span><span style="font-size:13px;color:var(--text-secondary)">2 заказа</span></div>
+<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:14px">Кузьмина О.А.</span><span style="font-size:13px;color:var(--text-secondary)">1 заказ</span></div>
+</div></div>`);
+
+screens['1b'] = wrap('Дашборд', `
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:40px 20px;text-align:center">
+<div style="width:48px;height:48px;border-radius:12px;background:var(--bg-danger);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="ti ti-cloud-off" style="font-size:22px;color:var(--text-danger)"></i></div>
+<p style="font-weight:500;font-size:16px;margin:0">Не удалось загрузить дашборд</p>
+<p style="font-size:13px;color:var(--text-muted);margin:6px 0 16px">Один из сервисов не ответил. Частичных данных не показываем</p>
+<button style="padding:0 18px">Повторить</button></div>`);
+
+screens['2'] = wrap('Заказы', `
+<p style="font-weight:500;font-size:20px;margin:0 0 16px">Все заказы</p>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+<span style="font-size:13px;padding:6px 12px;white-space:nowrap;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">Все</span>
+<span style="font-size:13px;padding:6px 12px;white-space:nowrap;border-radius:var(--radius);color:var(--text-secondary)">В работе</span>
+<span style="font-size:13px;padding:6px 12px;white-space:nowrap;border-radius:var(--radius);color:var(--text-secondary)">Ожидают оплаты</span>
+<span style="font-size:13px;padding:6px 12px;white-space:nowrap;border-radius:var(--radius);color:var(--text-secondary)">Оплачены</span>
+<span style="font-size:13px;padding:6px 12px;white-space:nowrap;border-radius:var(--radius);color:var(--text-secondary)">Отменены</span>
+<div style="flex:1"></div><input placeholder="Номер, клиент, телефон" style="width:200px;height:32px;font-size:13px"/></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);overflow:hidden">
+<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 0.8fr 0.8fr;padding:10px 16px;background:var(--surface-1);font-size:12px;color:var(--text-muted)"><span>ТС / номер</span><span>Клиент</span><span>Инженер</span><span>Сумма</span><span>Статус</span><span>Этап</span></div>
+<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 0.8fr 0.8fr;padding:12px 16px;border-top:0.5px solid var(--border);align-items:center;font-size:14px"><span>Toyota Camry · А123ВС</span><span>Иванов И.И.</span><span>Петров С.А.</span><span>4 550 ₽</span><span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);white-space:nowrap;justify-self:start">в работе</span><span style="font-size:13px;color:var(--text-secondary)">в работе</span></div>
+<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 0.8fr 0.8fr;padding:12px 16px;border-top:0.5px solid var(--border);align-items:center;font-size:14px"><span>Hyundai Solaris · Е789КХ</span><span>Кузнецова В.П.</span><span>Сидоров К.М.</span><span>2 100 ₽</span><span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);white-space:nowrap;justify-self:start">в работе</span><span style="font-size:13px;color:var(--text-danger);font-weight:500">готов · ждёт оплаты</span></div>
+<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 0.7fr 0.8fr 0.8fr;padding:12px 16px;border-top:0.5px solid var(--border);align-items:center;font-size:14px"><span>Kia Rio · В456ОР</span><span>Смирнов А.П.</span><span>Петров С.А.</span><span>5 000 ₽</span><span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);white-space:nowrap;justify-self:start">оплачен</span><span style="font-size:13px;color:var(--text-secondary)">выдан</span></div>
+</div>
+<p style="font-size:12px;color:var(--text-muted);margin:8px 0 0">Поиск — от 2 символов: имя, телефон клиента или госномер (ADR-039). Удалённые клиенты тоже находятся</p>`);
+
+screens['2b'] = wrap('Заказы', `
+<p style="font-weight:500;font-size:20px;margin:0 0 16px">Все заказы</p>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">Все</span>
+<div style="flex:1"></div><input value="ов" style="width:220px;height:32px;font-size:13px;border-color:var(--text-warning)"/></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:32px 20px;text-align:center">
+<i class="ti ti-search" style="font-size:22px;color:var(--text-warning)"></i>
+<p style="font-weight:500;font-size:15px;margin:8px 0 4px">Слишком много совпадений</p>
+<p style="font-size:13px;color:var(--text-muted);margin:0">Уточните запрос: добавьте букв фамилии, цифры номера или телефона</p></div>`);
+
+screens['5'] = wrap('Каталог', `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+<div style="display:flex;gap:8px">
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">Товары (склад)</span>
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);color:var(--text-secondary)">Услуги</span></div>
+<button style="display:flex;align-items:center;gap:6px"><i class="ti ti-plus" style="font-size:16px"></i>Добавить товар</button></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);overflow:hidden">
+<div style="display:grid;grid-template-columns:2fr 1fr 1fr 0.8fr;padding:10px 16px;background:var(--surface-1);font-size:12px;color:var(--text-muted)"><span>Товар</span><span>Цена</span><span>Остаток</span><span></span></div>
+<div style="display:grid;grid-template-columns:2fr 1fr 1fr 0.8fr;padding:12px 16px;border-top:0.5px solid var(--border);align-items:center;font-size:14px"><span>Масло моторное 5W40</span><span>2 400 ₽</span><span style="color:var(--text-success)">24 шт</span><span style="display:flex;gap:12px"><i class="ti ti-edit" style="color:var(--text-secondary)"></i><i class="ti ti-trash" style="color:var(--text-danger)"></i></span></div>
+<div style="display:grid;grid-template-columns:2fr 1fr 1fr 0.8fr;padding:12px 16px;border-top:0.5px solid var(--border);align-items:center;font-size:14px"><span>Колодки тормозные</span><span>3 200 ₽</span><span style="color:var(--text-danger)">2 шт</span><span style="display:flex;gap:12px"><i class="ti ti-edit" style="color:var(--text-secondary)"></i><i class="ti ti-trash" style="color:var(--text-danger)"></i></span></div>
+</div>
+<p style="font-size:12px;color:var(--text-muted);margin:8px 0 0">Удаление скрывает товар из каталога, старые заказы его сохраняют. Новая цена не меняет суммы прошлых заказов</p>`);
+
+screens['5b'] = wrap('Каталог', `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+<div style="display:flex;gap:8px">
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);color:var(--text-secondary)">Товары (склад)</span>
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">Услуги</span></div>
+<button style="display:flex;align-items:center;gap:6px"><i class="ti ti-plus" style="font-size:16px"></i>Добавить услугу</button></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);overflow:hidden">
+<div style="display:grid;grid-template-columns:2.5fr 1fr 0.8fr;padding:10px 16px;background:var(--surface-1);font-size:12px;color:var(--text-muted)"><span>Услуга</span><span>Цена</span><span></span></div>
+<div style="display:grid;grid-template-columns:2.5fr 1fr 0.8fr;padding:12px 16px;border-top:0.5px solid var(--border);align-items:center;font-size:14px"><span>Замена масла</span><span>1 500 ₽</span><span style="display:flex;gap:12px"><i class="ti ti-edit" style="color:var(--text-secondary)"></i><i class="ti ti-trash" style="color:var(--text-danger)"></i></span></div>
+<div style="display:grid;grid-template-columns:2.5fr 1fr 0.8fr;padding:12px 16px;border-top:0.5px solid var(--border);align-items:center;font-size:14px"><span>Замена тормозных колодок</span><span>1 800 ₽</span><span style="display:flex;gap:12px"><i class="ti ti-edit" style="color:var(--text-secondary)"></i><i class="ti ti-trash" style="color:var(--text-danger)"></i></span></div>
+</div>`);
+
+screens['6'] = wrap('Заказы', `
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+<i class="ti ti-arrow-left" style="color:var(--text-secondary)"></i>
+<p style="font-weight:500;font-size:20px;margin:0">Заказ #4521</p>
+<span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success)">оплачен</span>
+<span style="font-size:12px;padding:3px 8px;border-radius:var(--radius);background:var(--surface-1);color:var(--text-secondary)">этап: выдан</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px">
+<p style="font-size:12px;color:var(--text-muted);margin:0 0 6px">ТС</p>
+<p style="font-size:14px;margin:0;display:flex;align-items:center;gap:6px">Toyota Camry · А123ВС <i class="ti ti-chevron-right" style="font-size:14px;color:var(--text-muted)"></i></p></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px">
+<p style="font-size:12px;color:var(--text-muted);margin:0 0 6px">Клиент</p>
+<p style="font-size:14px;margin:0;display:flex;align-items:center;gap:6px">Иванов И.И. <i class="ti ti-chevron-right" style="font-size:14px;color:var(--text-muted)"></i></p></div></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;margin-bottom:16px">
+<p style="font-size:15px;font-weight:500;margin:0 0 12px">Товары</p>
+<div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0"><span>Масло моторное 5W40</span><span>2 400 ₽</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-top:0.5px solid var(--border)"><span>Фильтр масляный</span><span>650 ₽</span></div>
+<p style="font-size:15px;font-weight:500;margin:16px 0 12px">Услуги</p>
+<div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0"><span>Замена масла</span><span>1 500 ₽</span></div>
+<p style="font-size:15px;font-weight:500;margin:16px 0 12px">Инженеры</p>
+<div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0"><span>Петров С.А.</span></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px">
+<span style="font-size:15px;font-weight:500">Итого</span>
+<span style="font-size:15px;font-weight:500">4 550 ₽</span></div>
+<div style="text-align:right;margin-top:12px"><span style="font-size:14px;color:var(--text-accent);display:inline-flex;align-items:center;gap:6px"><i class="ti ti-file-text"></i>Открыть справку</span></div>
+<p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;text-align:right">Пока справка формируется — «Справка формируется…»; после 3 неудач — «Не сформирована»</p>`);
+
+screens['8'] = wrap('Профиль', `
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:20px;max-width:420px;margin:0 auto">
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+<div style="width:52px;height:52px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;color:var(--text-accent)">АД</div>
+<div><p style="font-weight:500;font-size:16px;margin:0">Алексеев Д.В.</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Директор · с марта 2021</p></div></div>
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-top:0.5px solid var(--border)"><span style="font-size:14px;color:var(--text-secondary)">Телефон</span><span style="font-size:14px">+7 999 123-45-67</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:0.5px solid var(--border)"><span style="font-size:14px;color:var(--text-secondary)">Уведомления</span>
+<div style="width:36px;height:20px;border-radius:10px;background:var(--text-accent);position:relative"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px"></div></div></div>
+<button style="width:100%;margin-top:16px;color:var(--text-danger);border-color:var(--text-danger)">Выйти</button></div>`);
+
+for (const key in screens) {
+  document.getElementById('render-' + key).innerHTML = screens[key];
+  document.getElementById('code-' + key).textContent = screens[key];
+}
+</script>
+</body>
+</html>

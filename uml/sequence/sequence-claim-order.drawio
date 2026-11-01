@@ -1,0 +1,78 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Взять в работу" id="seq-claim-order">
+    <mxGraphModel dx="975" dy="580" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="420" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_engineer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Инженер (RN)" vertex="1">
+          <mxGeometry height="40" width="140" x="60" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=13;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry height="40" width="140" x="330" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_orders" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Orders service" vertex="1">
+          <mxGeometry height="40" width="140" x="600" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_engineer" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="80" as="sourcePoint" />
+            <mxPoint x="130" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_gateway" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="80" as="sourcePoint" />
+            <mxPoint x="400" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_orders" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="80" as="sourcePoint" />
+            <mxPoint x="670" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="html=1;endArrow=none;fontSize=10;align=center;verticalAlign=bottom;" value="1. «Взять в работу» → подтверждение в модалке">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="120" as="sourcePoint" />
+            <mxPoint x="130" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="2. PATCH /orders/{id}/claim">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="169.99571428571434" as="sourcePoint" />
+            <mxPoint x="400" y="169.99571428571434" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="3. Проксирует">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="219.99571428571434" as="sourcePoint" />
+            <mxPoint x="670" y="219.99571428571434" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=none;fontSize=10;align=center;verticalAlign=bottom;" value="4. BEGIN; UPDATE orders SET status='active', engineer_id=? WHERE id=?">
+          <mxGeometry relative="1" x="NaN" y="40" as="geometry">
+            <mxPoint y="40" as="offset" />
+            <mxPoint x="670" y="240" as="sourcePoint" />
+            <mxPoint x="670" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4b" edge="1" parent="1" style="html=1;endArrow=none;fontSize=10;align=center;verticalAlign=bottom;" value="4a. INSERT order_engineers (order_id, engineer_id) ON CONFLICT DO NOTHING — в той же транзакции (ADR-020)">
+          <mxGeometry relative="1" x="NaN" y="40" as="geometry">
+            <mxPoint y="40" as="offset" />
+            <mxPoint x="670" y="262" as="sourcePoint" />
+            <mxPoint x="670" y="262" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note1" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Без условия WHERE status='requested' — при гонке&#10;двух инженеров побеждает последний UPDATE,&#10;без ошибки (осознанно, ADR-017).&#10;В order_engineers при этом остаются&#10;оба инженера — допустимо (ADR-020)" vertex="1">
+          <mxGeometry height="110" width="230" x="700" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="5. 200 OK">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="329.9957142857143" as="sourcePoint" />
+            <mxPoint x="400" y="329.9957142857143" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

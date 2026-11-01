@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Веб — экраны СТО</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<style>
+:root {
+  --surface-2: #ffffff; --surface-1: #f5f4f0; --surface-0: #ececea;
+  --text-primary: #1a1a18; --text-secondary: #5f5e5a; --text-muted: #888780;
+  --border: #d3d1c7; --border-strong: #b4b2a9; --radius: 8px;
+  --bg-accent: #e6f1fb; --text-accent: #185fa5; --bg-accent-muted: rgba(55,138,221,0.12); --fill-accent: #378add;
+  --bg-warning: #faeeda; --text-warning: #854f0b;
+  --bg-success: #eaf3de; --text-success: #3b6d11;
+  --bg-danger: #fcebeb; --text-danger: #a32d2d;
+  --fill-primary: #1a1a18; --on-primary: #ffffff;
+  --shadow-popover: 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { background: var(--surface-0); margin: 0; padding: 40px 20px; color: var(--text-primary); }
+h1 { font-size: 22px; font-weight: 500; text-align: center; margin-bottom: 40px; }
+.entry { max-width: 1100px; margin: 0 auto 64px; }
+.entry-title { font-size: 16px; font-weight: 500; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border-strong); }
+.layout { display: grid; grid-template-columns: 1fr 420px; gap: 24px; align-items: start; }
+.render-frame { background: var(--surface-1); border-radius: 20px; padding: 20px; }
+pre { background: #1e1e1c; color: #d4d4d2; padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 11px; line-height: 1.5; max-height: 500px; }
+button { font-size: 14px; height: 36px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: transparent; color: var(--text-primary); cursor: pointer; padding: 0 12px; }
+input { height: 36px; border-radius: var(--radius); border: 0.5px solid var(--border); padding: 0 12px; background: #fff; color: var(--text-primary); }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Наметки экранов — веб (директор + клиент)</h1>
+
+<div class="entry"><div class="entry-title">1. Регистрация</div><div class="layout"><div class="render-frame" id="render-1"></div><pre id="code-1"></pre></div></div>
+<div class="entry"><div class="entry-title">1b. Регистрация — телефон уже занят (409 phone_taken)</div><div class="layout"><div class="render-frame" id="render-1b"></div><pre id="code-1b"></pre></div></div>
+<div class="entry"><div class="entry-title">2b. Навигация директора — Каталог открыт</div><div class="layout"><div class="render-frame" id="render-2b"></div><pre id="code-2b"></pre></div></div>
+<div class="entry"><div class="entry-title">2c. Навигация директора — Заказы открыт</div><div class="layout"><div class="render-frame" id="render-2c"></div><pre id="code-2c"></pre></div></div>
+<div class="entry"><div class="entry-title">3. Дашборд клиента ("Мои заказы")</div><div class="layout"><div class="render-frame" id="render-3"></div><pre id="code-3"></pre></div></div>
+<div class="entry"><div class="entry-title">3b. Мои заказы — состояния оплаты (ADR-030)</div><div class="layout"><div class="render-frame" id="render-3b"></div><pre id="code-3b"></pre></div></div>
+<div class="entry"><div class="entry-title">4. Карточка ТС (клиентский вид)</div><div class="layout"><div class="render-frame" id="render-4"></div><pre id="code-4"></pre></div></div>
+<div class="entry"><div class="entry-title">5. Справки (список)</div><div class="layout"><div class="render-frame" id="render-5"></div><pre id="code-5"></pre></div></div>
+<script>
+const screens = {};
+
+screens['1'] = `<div style="display:flex;justify-content:center"><div style="width:400px;background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:2rem">
+<p style="font-weight:500;font-size:20px;margin:0 0 4px;text-align:center">Регистрация</p>
+<p style="font-size:14px;color:var(--text-secondary);margin:0 0 24px;text-align:center">Создайте аккаунт, чтобы записаться на сервис</p>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Имя</p><input placeholder="Иван Иванов" style="width:100%"/></div>
+<div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Телефон</p><input placeholder="+7 (___) ___-__-__" style="width:100%"/></div>
+<div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Пароль</p><input placeholder="От 8 до 72 символов" type="password" style="width:100%"/></div>
+<button style="width:100%;background:var(--fill-primary);color:var(--on-primary);border:none;height:40px;margin-top:8px">Создать аккаунт</button>
+<p style="text-align:center;font-size:13px;color:var(--text-secondary);margin:8px 0 0">Уже есть аккаунт? <span style="color:var(--text-accent)">Войти</span></p>
+</div></div></div>`;
+
+screens['1b'] = `<div style="display:flex;justify-content:center"><div style="width:400px;background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:2rem">
+<p style="font-weight:500;font-size:20px;margin:0 0 24px;text-align:center">Регистрация</p>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Имя</p><input value="Иван Иванов" style="width:100%"/></div>
+<div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Телефон</p><input value="+7 900 123-45-67" style="width:100%;border-color:var(--text-danger)"/>
+<p style="font-size:12px;color:var(--text-danger);margin:6px 0 0">Этот телефон уже зарегистрирован. <span style="color:var(--text-accent)">Войти?</span></p></div>
+<div><p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Пароль</p><input type="password" value="12345678" style="width:100%"/></div>
+<button style="width:100%;background:var(--fill-primary);color:var(--on-primary);border:none;height:40px;margin-top:8px">Создать аккаунт</button>
+</div></div></div>`;
+
+screens['2b'] = `<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:0.75rem 1rem;display:flex;align-items:center;gap:8px;position:relative">
+<span style="font-size:14px;font-weight:500;padding:8px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)">Дашборд</span>
+<span style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary)">Заказы</span>
+<div style="position:relative">
+<div style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary);display:flex;align-items:center;gap:4px;background:var(--surface-1)">Каталог <i class="ti ti-chevron-down" style="font-size:14px"></i></div>
+<div style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-popover);min-width:180px;padding:4px;z-index:10">
+<div style="padding:8px 10px;font-size:13px;border-radius:6px;background:var(--surface-1)">Товары (склад)</div>
+<div style="padding:8px 10px;font-size:13px;border-radius:6px">Услуги</div>
+</div></div>
+<div style="flex:1"></div>
+<div style="width:32px;height:32px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">Д</div>
+</div>
+<div style="height:140px"></div>`;
+
+screens['2c'] = `<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:0.75rem 1rem;display:flex;align-items:center;gap:8px;position:relative">
+<span style="font-size:14px;font-weight:500;padding:8px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)">Дашборд</span>
+<div style="position:relative">
+<div style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary);display:flex;align-items:center;gap:4px;background:var(--surface-1)">Заказы <i class="ti ti-chevron-down" style="font-size:14px"></i></div>
+<div style="position:absolute;top:100%;left:0;margin-top:4px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-popover);min-width:180px;padding:4px;z-index:10">
+<div style="padding:8px 10px;font-size:13px;border-radius:6px;background:var(--surface-1)">Все заказы</div>
+<div style="padding:8px 10px;font-size:13px;border-radius:6px">Ожидают оплаты</div>
+</div></div>
+<span style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary)">Каталог</span>
+<div style="flex:1"></div>
+<div style="width:32px;height:32px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">Д</div>
+</div>
+<div style="height:140px"></div>`;
+
+screens['3'] = `<div style="max-width:600px;margin:0 auto">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:0.75rem 1rem;display:flex;align-items:center;gap:8px;margin-bottom:16px">
+<span style="font-size:14px;font-weight:500;padding:8px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)">Мои заказы</span>
+<span style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary)">Справки</span>
+<div style="flex:1"></div>
+<div style="width:32px;height:32px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">ИИ</div>
+</div>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+<div style="width:48px;height:48px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;color:var(--text-accent)">ИИ</div>
+<div><p style="font-weight:500;font-size:18px;margin:0">Иванов Иван Иванович</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Клиент с марта 2024</p></div></div>
+<p style="font-size:15px;font-weight:500;margin:0 0 10px">История заказов</p>
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;justify-content:space-between;align-items:center">
+<div><p style="font-weight:500;font-size:15px;margin:0">Toyota Camry · А123ВС</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4521 · создан сегодня</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);font-weight:500">в работе</span></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;justify-content:space-between;align-items:center;opacity:0.85">
+<div><p style="font-weight:500;font-size:15px;margin:0">Kia Rio · В456ОР</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4519 · вчера</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500">выдан</span></div>
+</div>
+<p style="font-size:15px;font-weight:500;margin:0 0 10px">Мои ТС</p>
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:14px;display:flex;align-items:center;gap:10px">
+<div style="width:36px;height:36px;border-radius:10px;background:var(--surface-1);display:flex;align-items:center;justify-content:center"><i class="ti ti-car" style="color:var(--text-secondary)"></i></div>
+<div><p style="font-weight:500;font-size:14px;margin:0">Toyota Camry</p><p style="font-size:12px;color:var(--text-muted);margin:1px 0 0">А123ВС</p></div></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:14px;display:flex;align-items:center;gap:10px">
+<div style="width:36px;height:36px;border-radius:10px;background:var(--surface-1);display:flex;align-items:center;justify-content:center"><i class="ti ti-car" style="color:var(--text-secondary)"></i></div>
+<div><p style="font-weight:500;font-size:14px;margin:0">Kia Rio</p><p style="font-size:12px;color:var(--text-muted);margin:1px 0 0">В456ОР</p></div></div>
+<div style="border-radius:12px;border:1px dashed var(--border-strong);padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text-secondary);font-size:14px"><i class="ti ti-plus"></i>Добавить ТС</div>
+</div>
+<p style="font-size:12px;color:var(--text-muted);margin:8px 0 0">Номер уже есть в системе → «Этот номер уже зарегистрирован в СТО — обратитесь к мастеру» (409 plate_taken)</p>
+</div>`;
+
+screens['3b'] = `<div style="max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div><p style="font-weight:500;font-size:15px;margin:0">Hyundai Solaris · Е789КХ</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4517 · готов к выдаче · 2 100 ₽</p></div>
+<button style="background:var(--fill-primary);color:var(--on-primary);border:none;padding:0 18px">Оплатить</button></div></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div><p style="font-weight:500;font-size:15px;margin:0">Hyundai Solaris · Е789КХ</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4517 · 2 100 ₽</p></div>
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);display:inline-flex;align-items:center;gap:6px"><i class="ti ti-loader-2"></i>Оплата подтверждается…</span></div>
+<p style="font-size:12px;color:var(--text-muted);margin:8px 0 0">После 202 Accepted страница перечитывает статус заказа, пока склад не ответит (до ~10 с)</p></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div><p style="font-weight:500;font-size:15px;margin:0">Hyundai Solaris · Е789КХ</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4517 · 2 100 ₽</p></div>
+<button style="background:var(--fill-primary);color:var(--on-primary);border:none;padding:0 18px">Оплатить</button></div>
+<div style="margin-top:10px;padding:10px 12px;border-radius:var(--radius);background:var(--bg-danger);color:var(--text-danger);font-size:13px;display:flex;gap:8px;align-items:center"><i class="ti ti-alert-circle"></i>Оплата не прошла: склад не подтвердил товары. Повторите позже или свяжитесь с СТО</div></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;justify-content:space-between;align-items:center">
+<div><p style="font-weight:500;font-size:15px;margin:0">Hyundai Solaris · Е789КХ</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4517 · 2 100 ₽</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500">оплачен</span></div>
+</div>`;
+
+screens['4'] = `<div style="max-width:600px;margin:0 auto">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:0.75rem 1rem;display:flex;align-items:center;gap:8px;margin-bottom:16px">
+<span style="font-size:14px;font-weight:500;padding:8px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)">Мои заказы</span>
+<span style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary)">Справки</span>
+<div style="flex:1"></div>
+<div style="width:32px;height:32px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">ИИ</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;color:var(--text-secondary);font-size:14px">
+<i class="ti ti-arrow-left" style="font-size:16px"></i> Назад</div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:24px;margin-bottom:16px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+<div style="display:flex;align-items:center;gap:14px">
+<div style="width:52px;height:52px;border-radius:12px;background:var(--surface-1);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+<i class="ti ti-car" style="font-size:24px;color:var(--text-secondary)"></i>
+<div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:var(--fill-primary);border-radius:50%;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--surface-2)"><i class="ti ti-camera" style="font-size:10px;color:var(--on-primary)"></i></div></div>
+<div><p style="font-weight:500;font-size:20px;margin:0">Toyota Camry</p><p style="font-size:14px;color:var(--text-muted);margin:2px 0 0">А123ВС · 77 регион</p></div></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);font-weight:500">в работе</span></div>
+<p style="font-size:13px;color:var(--text-muted);margin:0 0 12px">VIN: JT2BF22K1X0123456</p>
+<button style="font-size:13px;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-camera-plus" style="font-size:14px"></i>Заменить фото</button>
+<p style="font-size:12px;color:var(--text-muted);margin:8px 0 0">JPEG / PNG; перед отправкой уменьшается в браузере до 3 МБ</p></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:20px;margin-bottom:16px">
+<p style="font-size:15px;font-weight:500;margin:0 0 12px">Фотофиксация</p>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+<div style="aspect-ratio:1;background:var(--surface-1);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:20px;color:var(--text-muted)"></i></div>
+<div style="aspect-ratio:1;background:var(--surface-1);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:20px;color:var(--text-muted)"></i></div>
+</div></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:20px">
+<p style="font-size:15px;font-weight:500;margin:0 0 12px">История работ</p>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:0.5px solid var(--border)">
+<div><p style="font-size:15px;margin:0">Замена тормозных колодок</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4519 · вчера</p></div>
+<i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div></div></div>`;
+
+screens['5'] = `<div style="max-width:600px;margin:0 auto">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:0.75rem 1rem;display:flex;align-items:center;gap:8px;margin-bottom:16px">
+<span style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary)">Мои заказы</span>
+<span style="font-size:14px;font-weight:500;padding:8px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)">Справки</span>
+<div style="flex:1"></div>
+<div style="width:32px;height:32px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">ИИ</div></div>
+<p style="font-weight:500;font-size:20px;margin:0 0 16px">Справки</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px">
+<div style="width:40px;height:40px;border-radius:10px;background:var(--bg-success);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-file-text" style="font-size:18px;color:var(--text-success)"></i></div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Справка #4519</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Kia Rio · В456ОР · вчера</p></div>
+<i class="ti ti-download" style="color:var(--text-secondary)"></i></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px;opacity:0.6">
+<div style="width:40px;height:40px;border-radius:10px;background:var(--bg-danger);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-alert-triangle" style="font-size:18px;color:var(--text-danger)"></i></div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Справка #4501</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Toyota Camry · А123ВС · не удалось сформировать</p>
+<p style="font-size:13px;color:var(--text-danger);margin:4px 0 0">Обратитесь в поддержку: +7 999 123-45-67</p></div></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px">
+<div style="width:40px;height:40px;border-radius:10px;background:var(--surface-1);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-loader-2" style="font-size:18px;color:var(--text-muted)"></i></div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Справка #4522</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Lada Vesta · О555ОО · формируется…</p></div></div>
+</div></div>`;
+
+for (const key in screens) {
+  document.getElementById('render-' + key).innerHTML = screens[key];
+  document.getElementById('code-' + key).textContent = screens[key];
+}
+</script>
+</body>
+</html>

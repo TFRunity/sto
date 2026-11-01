@@ -1,0 +1,235 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Оплата (сага)" id="seq-pay">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1460" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_client" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" value="Клиент (веб)" vertex="1">
+          <mxGeometry x="25" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_orders" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Orders (оркестратор)" vertex="1">
+          <mxGeometry x="215" y="40" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_db" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=12;fontStyle=1;" value="orders_db&lt;br&gt;(saga_state + outbox)" vertex="1">
+          <mxGeometry x="445" y="40" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_rabbit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faeeda;strokeColor=#854f0b;fontSize=13;fontStyle=1;" value="RabbitMQ" vertex="1">
+          <mxGeometry x="695" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_inv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="Inventory service&lt;br&gt;(+ inventory_db)" vertex="1">
+          <mxGeometry x="905" y="40" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="frame1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="транзакция (репозиторий Orders)" vertex="1">
+          <mxGeometry x="215" y="140" width="420" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="frame2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="alt: попытка по saga_id (stock_attempts)" vertex="1">
+          <mxGeometry x="700" y="520" width="860" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel3" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[попытки нет]" vertex="1">
+          <mxGeometry x="706" y="540" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel4" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[deducted / rejected — дубль команды]" vertex="1">
+          <mxGeometry x="706" y="654" width="222" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel5" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[cancelled — tombstone]" vertex="1">
+          <mxGeometry x="706" y="716" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="fsep6" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="700" y="645" as="sourcePoint" />
+            <mxPoint x="1560" y="645" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fsep7" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="700" y="707" as="sourcePoint" />
+            <mxPoint x="1560" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="frame8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="alt: ответ (консьюмер ответов Orders)" vertex="1">
+          <mxGeometry x="40" y="885" width="930" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel9" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[StockDeducted]" vertex="1">
+          <mxGeometry x="46" y="905" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel10" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[StockRejected]" vertex="1">
+          <mxGeometry x="46" y="969" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel11" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[0 строк — сага уже завершена]" vertex="1">
+          <mxGeometry x="46" y="1044" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="fsep12" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="960" as="sourcePoint" />
+            <mxPoint x="970" y="960" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fsep13" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="1035" as="sourcePoint" />
+            <mxPoint x="970" y="1035" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="frame14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="loop: воркер дедлайнов Orders (тик ~1 с) — параллельно шагам 7–18" vertex="1">
+          <mxGeometry x="40" y="1115" width="1520" height="235" as="geometry" />
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_client" style="endArrow=none;dashed=1;html=1;strokeColor=#6c8ebf;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="80" as="sourcePoint" />
+            <mxPoint x="90" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_orders" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="80" as="sourcePoint" />
+            <mxPoint x="300" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_db" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="80" as="sourcePoint" />
+            <mxPoint x="530" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll4" edge="1" parent="1" source="p_rabbit" style="endArrow=none;dashed=1;html=1;strokeColor=#854f0b;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="80" as="sourcePoint" />
+            <mxPoint x="760" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll5" edge="1" parent="1" source="p_inv" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="990" y="80" as="sourcePoint" />
+            <mxPoint x="990" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m15" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="1. POST /orders/{id}/pay (через Gateway)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="120" as="sourcePoint" />
+            <mxPoint x="300" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a16" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="2. canStartPayment: active?" vertex="1">
+          <mxGeometry x="308" y="170" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m17" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. UPDATE orders SET status='paid'&lt;br&gt;WHERE id=? AND status='active'">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="228" as="sourcePoint" />
+            <mxPoint x="530" y="228" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m18" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. INSERT saga_state: 'verifying_stock',&lt;br&gt;deadline = now() + 10 s">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="276" as="sourcePoint" />
+            <mxPoint x="530" y="276" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m19" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="5. INSERT outbox: DeductStock&lt;br&gt;{saga_id, order_id, items[item_id, qty]}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="324" as="sourcePoint" />
+            <mxPoint x="530" y="324" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note20" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Шаги 3–5 — ОДНА транзакция (ADR-005, ADR-030).&lt;br&gt;0 строк на шаге 3 → 409 order_not_active&lt;br&gt;(уже оплачивается или отменён).&lt;br&gt;В payload — только id и количества (А-08)" vertex="1">
+          <mxGeometry x="660" y="150" width="310" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="m21" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="6. 202 Accepted — UI: «оплата подтверждается», опрос статуса">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="372" as="sourcePoint" />
+            <mxPoint x="90" y="372" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m22" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="7. outbox-воркер (тик ~1 с): publish,&lt;br&gt;MessageId = outbox.id, published — по confirm">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="424" as="sourcePoint" />
+            <mxPoint x="760" y="424" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m23" edge="1" parent="1" style="html=1;endArrow=open;endSize=10;fontSize=11;align=center;verticalAlign=bottom;" value="8. DeductStock (saga_id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="470" as="sourcePoint" />
+            <mxPoint x="990" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a24" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="9. decide(попытка по saga_id, DeductStock) — чистая функция (ADR-031)" vertex="1">
+          <mxGeometry x="998" y="485" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="a25" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="10. tx: по каждой позиции UPDATE inventory SET quantity = quantity − N&lt;br&gt;WHERE id=? AND quantity &gt;= N;&lt;br&gt;все прошли → INSERT stock_attempts 'deducted' + позиции + outbox StockDeducted;&lt;br&gt;иначе ROLLBACK → INSERT 'rejected' + outbox StockRejected" vertex="1">
+          <mxGeometry x="998" y="558" width="10" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="a26" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="11. outbox: тот же ответ ещё раз (не молчаливый ack)" vertex="1">
+          <mxGeometry x="998" y="668" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="a27" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="12. outbox: StockRejected — команда после отмены отклонена" vertex="1">
+          <mxGeometry x="998" y="730" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="a28" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="13. ack после коммита (ADR-025)" vertex="1">
+          <mxGeometry x="998" y="775" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m29" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="14. outbox-воркер Inventory:&lt;br&gt;StockDeducted | StockRejected (saga_id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="990" y="832" as="sourcePoint" />
+            <mxPoint x="760" y="832" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m30" edge="1" parent="1" style="html=1;endArrow=open;endSize=10;fontSize=10;align=center;verticalAlign=bottom;" value="15. очередь orders.saga_replies">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="868" as="sourcePoint" />
+            <mxPoint x="300" y="868" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m31" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="16. tx: UPDATE saga_state SET current_step='completed'&lt;br&gt;WHERE … 'verifying_stock' → + INSERT certificates (pending)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="945" as="sourcePoint" />
+            <mxPoint x="530" y="945" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m32" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="17. tx: сага → 'failed' (условно) + компенсация&lt;br&gt;UPDATE orders SET status='active' WHERE status='paid'">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="1018" as="sourcePoint" />
+            <mxPoint x="530" y="1018" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a33" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="18. ack + warn-лог, ничего не менять" vertex="1">
+          <mxGeometry x="308" y="1060" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="note34" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Успех после дедлайна: сага уже failed → ответ отброшен&lt;br&gt;на шаге 18, а списание отменит CancelStock&lt;br&gt;от воркера дедлайнов (шаги 20–23)" vertex="1">
+          <mxGeometry x="1000" y="890" width="470" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="m35" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="19. SELECT saga_state WHERE current_step='verifying_stock'&lt;br&gt;AND deadline &lt; now()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="1170" as="sourcePoint" />
+            <mxPoint x="530" y="1170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m36" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="20. tx: сага → 'failed' (условно), orders paid → active,&lt;br&gt;outbox CancelStock {saga_id}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="1225" as="sourcePoint" />
+            <mxPoint x="530" y="1225" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m37" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="21. publish CancelStock">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="1265" as="sourcePoint" />
+            <mxPoint x="760" y="1265" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m38" edge="1" parent="1" style="html=1;endArrow=open;endSize=10;fontSize=10;align=center;verticalAlign=bottom;" value="22. CancelStock (saga_id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="1295" as="sourcePoint" />
+            <mxPoint x="990" y="1295" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a39" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="23. deducted → вернуть позиции, 'cancelled'; попытки нет → tombstone 'cancelled';&lt;br&gt;rejected / cancelled → ничего. Ответ на отмену не нужен" vertex="1">
+          <mxGeometry x="998" y="1305" width="10" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="note40" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fcebeb;strokeColor=#a32d2d;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Возврат денег: TODO — «Доменный модуль коммерческих&lt;br&gt;операций», не спроектирован. Компенсация здесь&lt;br&gt;ограничена статусом заказа" vertex="1">
+          <mxGeometry x="40" y="1375" width="470" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="note41" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Автоматического повтора нет (ADR-016): клиент сам нажимает «Оплатить» —&lt;br&gt;новая сага, новый saga_id. Потерянная CancelStock (5 доставок) →&lt;br&gt;error-лог с saga_id и ручной разбор (ADR-030)" vertex="1">
+          <mxGeometry x="530" y="1375" width="600" height="62" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

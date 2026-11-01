@@ -1,0 +1,71 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Вход инженера" id="seq-engineer-login">
+    <mxGraphModel dx="975" dy="580" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="380" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_engineer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Инженер (RN)" vertex="1">
+          <mxGeometry height="40" width="140" x="60" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=13;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry height="40" width="140" x="330" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_users" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" value="Users service" vertex="1">
+          <mxGeometry height="40" width="140" x="600" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_engineer" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="80" as="sourcePoint" />
+            <mxPoint x="130" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_gateway" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="80" as="sourcePoint" />
+            <mxPoint x="400" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_users" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="80" as="sourcePoint" />
+            <mxPoint x="670" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="1. Вводит телефон + пароль">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="120" as="sourcePoint" />
+            <mxPoint x="130" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="2. POST /login (phone, password)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="160" as="sourcePoint" />
+            <mxPoint x="400" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" source="ll2" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" target="ll3" value="3. Проксирует">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="200" as="sourcePoint" />
+            <mxPoint x="670" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="4. bcrypt-проверка (нет пользователя — сравнение с фиктивным хешем), JWT HS256 на 7 дней (sub, role) — ADR-023">
+          <mxGeometry relative="1" x="NaN" y="20" as="geometry">
+            <mxPoint y="20" as="offset" />
+            <mxPoint x="670" y="240" as="sourcePoint" />
+            <mxPoint x="670" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note1" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#d79b00;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Только вход, без публичной регистрации —&#xa;инженера заводит администратор напрямую в БД" vertex="1">
+          <mxGeometry height="50" width="220" x="690" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="5. 200 OK (token)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="284.76" as="sourcePoint" />
+            <mxPoint x="400" y="284.76" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

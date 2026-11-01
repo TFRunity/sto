@@ -1,0 +1,124 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Добавить товары-услуги" id="seq-add-items">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1140" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_engineer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Инженер (RN)" vertex="1">
+          <mxGeometry x="35" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=13;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry x="265" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_inventory" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" value="Inventory/Services" vertex="1">
+          <mxGeometry x="485" y="40" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_orders" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Orders service" vertex="1">
+          <mxGeometry x="720" y="40" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="frame1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="alt: ответ Inventory/Services" vertex="1">
+          <mxGeometry x="40" y="355" width="1060" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel2" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[200 — позиция жива]" vertex="1">
+          <mxGeometry x="46" y="375" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel3" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[404 / сервис недоступен]" vertex="1">
+          <mxGeometry x="46" y="505" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="fsep4" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="40" y="496" as="sourcePoint" />
+            <mxPoint x="1100" y="496" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_engineer" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="80" as="sourcePoint" />
+            <mxPoint x="100" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_gateway" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="80" as="sourcePoint" />
+            <mxPoint x="330" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_inventory" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="80" as="sourcePoint" />
+            <mxPoint x="560" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll4" edge="1" parent="1" source="p_orders" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="80" as="sourcePoint" />
+            <mxPoint x="790" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="1. GET /inventory, /services (список для выбора)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="120" as="sourcePoint" />
+            <mxPoint x="330" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="2. Проксирует">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="160" as="sourcePoint" />
+            <mxPoint x="560" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="3. 200 OK (позиции + цены, только живые — deleted_at IS NULL)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="200" as="sourcePoint" />
+            <mxPoint x="100" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. Выбирает позицию → POST /orders/{id}/items (item_id, qty)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="250" as="sourcePoint" />
+            <mxPoint x="330" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="5. Проксирует">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="290" as="sourcePoint" />
+            <mxPoint x="790" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="6. GET /inventory/{id} | /services/{id} — цена (до транзакции)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="335" as="sourcePoint" />
+            <mxPoint x="560" y="335" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="7. 200 OK (price)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="400" as="sourcePoint" />
+            <mxPoint x="790" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a12" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="8. INSERT order_items / order_services&lt;br&gt;(order_id, item_id, qty, price) — цена фиксируется (ADR-034)" vertex="1">
+          <mxGeometry x="798" y="415" width="10" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="9. 201 Created">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="480" as="sourcePoint" />
+            <mxPoint x="100" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="7'. 404 item_not_found | 502 upstream_error (формат ADR-032)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="540" as="sourcePoint" />
+            <mxPoint x="100" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note15" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Остаток НЕ списывается здесь — только&lt;br&gt;при оплате (сага, ADR-030)" vertex="1">
+          <mxGeometry x="870" y="105" width="240" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="note16" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Цена фиксируется при добавлении позиции (позиций при создании заказа ещё нет).&lt;br&gt;Синхронный вызов Orders → Inventory/Services принят вопреки рассуждению ADR-015:&lt;br&gt;цена — обязательные данные сценария (разбор А-04: принято, 30.10.2026)" vertex="1">
+          <mxGeometry x="40" y="590" width="640" height="62" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

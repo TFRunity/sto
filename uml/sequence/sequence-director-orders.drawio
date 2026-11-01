@@ -1,0 +1,145 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Все заказы директора" id="seq-director-orders">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1140" pageHeight="860" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_director" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" value="Директор (веб)" vertex="1">
+          <mxGeometry x="25" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=13;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry x="235" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_users" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" value="Users service" vertex="1">
+          <mxGeometry x="455" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_vehicle" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Vehicle service" vertex="1">
+          <mxGeometry x="675" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_orders" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Orders service" vertex="1">
+          <mxGeometry x="895" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="frame1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="opt: [q задана] — строка поиска → id (ADR-039)" vertex="1">
+          <mxGeometry x="40" y="140" width="1060" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="frame2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="par: имена для страницы — пакетные запросы по id" vertex="1">
+          <mxGeometry x="40" y="530" width="1060" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_director" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="80" as="sourcePoint" />
+            <mxPoint x="90" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_gateway" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="80" as="sourcePoint" />
+            <mxPoint x="300" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_users" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="80" as="sourcePoint" />
+            <mxPoint x="520" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll4" edge="1" parent="1" source="p_vehicle" style="endArrow=none;dashed=1;html=1;strokeColor=#378add;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="740" y="80" as="sourcePoint" />
+            <mxPoint x="740" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll5" edge="1" parent="1" source="p_orders" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="80" as="sourcePoint" />
+            <mxPoint x="960" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="1. GET /director/orders?status=&amp;q=&amp;page=">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="120" as="sourcePoint" />
+            <mxPoint x="300" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="2. GET /users/search?q= (имя / телефон)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="190" as="sourcePoint" />
+            <mxPoint x="520" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. GET /vehicles/search?q= (номер, нормализованный)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="230" as="sourcePoint" />
+            <mxPoint x="740" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="4. client_ids (≤ 200)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="265" as="sourcePoint" />
+            <mxPoint x="300" y="265" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="5. vehicle_ids (≤ 200)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="740" y="300" as="sourcePoint" />
+            <mxPoint x="300" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a8" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="6. оба списка пусты → сразу 200 (пустая страница), в Orders не идём" vertex="1">
+          <mxGeometry x="308" y="320" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="7. GET /orders?status=&amp;client_ids=&amp;vehicle_ids=&amp;page=">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="410" as="sourcePoint" />
+            <mxPoint x="960" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a10" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="8. SELECT … фильтр status&lt;br&gt;AND (client_id = ANY($1)&lt;br&gt;OR vehicle_id = ANY($2))&lt;br&gt;ORDER BY created_at DESC&lt;br&gt;LIMIT / OFFSET" vertex="1">
+          <mxGeometry x="968" y="425" width="10" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="9. 200 OK (страница заказов: только id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="510" as="sourcePoint" />
+            <mxPoint x="300" y="510" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m12" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="10. GET /users?ids= (клиенты + инженеры)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="575" as="sourcePoint" />
+            <mxPoint x="520" y="575" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="11. GET /vehicles?ids= (номера ТС)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="610" as="sourcePoint" />
+            <mxPoint x="740" y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="12. имена (вкл. удалённых)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="640" as="sourcePoint" />
+            <mxPoint x="300" y="640" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m15" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="13. номера">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="740" y="660" as="sourcePoint" />
+            <mxPoint x="300" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m16" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="14. 200 OK — таблица (director-web-design.md)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="710" as="sourcePoint" />
+            <mxPoint x="90" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note17" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Gateway — оркестратор, без бизнес-правил: склеивает данные трёх сервисов.&lt;br&gt;Любой отказ или дедлайн 3 с → 502 / 504, частичного ответа нет —&lt;br&gt;как в дашборде (ADR-032). Пагинация — в Orders, после фильтра по id" vertex="1">
+          <mxGeometry x="40" y="740" width="560" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="note18" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Параметры (А-12, принято пока): q от 2 символов, ILIKE по подстроке;&lt;br&gt;до 200 id от каждого сервиса, больше — 422 «уточните запрос»;&lt;br&gt;поиск и пакет по id включают удалённых (-- include-deleted)" vertex="1">
+          <mxGeometry x="620" y="740" width="480" height="76" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

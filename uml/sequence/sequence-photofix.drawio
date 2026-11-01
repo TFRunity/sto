@@ -1,0 +1,102 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Фотофиксация" id="seq-photofix">
+    <mxGraphModel dx="1131" dy="673" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_engineer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Инженер (RN)" vertex="1">
+          <mxGeometry height="40" width="140" x="60" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=13;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry height="40" width="140" x="330" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_vehicle" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Vehicle service" vertex="1">
+          <mxGeometry height="40" width="140" x="600" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ll_engineer" edge="1" parent="1" source="p_engineer" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="80" as="sourcePoint" />
+            <mxPoint x="130" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll_gateway" edge="1" parent="1" source="p_gateway" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="80" as="sourcePoint" />
+            <mxPoint x="400" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll_vehicle" edge="1" parent="1" source="p_vehicle" style="endArrow=none;dashed=1;html=1;strokeColor=#378add;strokeWidth=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="80" as="sourcePoint" />
+            <mxPoint x="670" y="620" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="1. Открыть камеру (в контексте заказа/ТС)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="130" as="sourcePoint" />
+            <mxPoint x="130" y="130" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note1" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Локальное действие на устройстве —&#xa;без сети" vertex="1">
+          <mxGeometry height="50" width="180" x="40" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="2. Снимок, превью; на устройстве: уменьшение, EXIF-поворот, JPEG ≤ 3 МБ">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="220" as="sourcePoint" />
+            <mxPoint x="130" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="3. POST /vehicles/{id}/photos (photo, order_id?)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="250" as="sourcePoint" />
+            <mxPoint x="400" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="4. Проксирует запрос (perimeter trust, ADR-010)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="289.9957142857143" as="sourcePoint" />
+            <mxPoint x="670" y="289.9957142857143" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note2" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#378add;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Синхронный HTTP-вызов клиент → Gateway → Vehicle.&#xa;НЕ через RabbitMQ — брокер используется&#xa;только между Go-сервисами" vertex="1">
+          <mxGeometry height="100" width="230" x="720" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="5. Проверка (≤ 3,5 МБ, тип, DecodeConfig), JPEG без ресайза → том; в БД — ключ (ADR-029)">
+          <mxGeometry relative="1" x="NaN" y="70" as="geometry">
+            <mxPoint y="-70" as="offset" />
+            <mxPoint x="670" y="420" as="sourcePoint" />
+            <mxPoint x="670" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="self_loop" edge="1" parent="1" style="html=1;endArrow=block;rounded=0;fontSize=11;strokeColor=#378add;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="415" />
+              <mxPoint x="720" y="425" />
+            </Array>
+            <mxPoint x="670" y="415" as="sourcePoint" />
+            <mxPoint x="670" y="425" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="6. 201 Created (photo_id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="459.9957142857143" as="sourcePoint" />
+            <mxPoint x="400" y="459.9957142857143" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="7. 201 Created">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="510" as="sourcePoint" />
+            <mxPoint x="130" y="510" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;strokeColor=#333333;align=center;verticalAlign=bottom;" value="8. Фото появляется в галерее «Фотофиксация»">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="560" as="sourcePoint" />
+            <mxPoint x="130" y="560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

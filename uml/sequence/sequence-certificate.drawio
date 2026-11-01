@@ -1,0 +1,148 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Справка" id="seq-cert">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1080" pageHeight="910" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_orders" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Orders / certificate" vertex="1">
+          <mxGeometry x="75" y="40" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_db" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=12;fontStyle=1;" value="orders_db&lt;br&gt;(saga_state, certificates)" vertex="1">
+          <mxGeometry x="325" y="40" width="190" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_refs" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" value="Users / Inventory /&lt;br&gt;Services" vertex="1">
+          <mxGeometry x="600" y="40" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gotenberg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faeeda;strokeColor=#854f0b;fontSize=13;fontStyle=1;" value="Gotenberg" vertex="1">
+          <mxGeometry x="855" y="40" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="frame1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="транзакция завершения саги (ADR-030, ADR-035)" vertex="1">
+          <mxGeometry x="40" y="135" width="540" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="frame2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="loop: воркер справок Orders (тик ~1 с)" vertex="1">
+          <mxGeometry x="40" y="280" width="1000" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="frame3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="alt: результат сборки" vertex="1">
+          <mxGeometry x="100" y="550" width="920" height="235" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel4" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[PDF получен]" vertex="1">
+          <mxGeometry x="106" y="570" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="flabel5" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[ошибка / таймаут]" vertex="1">
+          <mxGeometry x="106" y="670" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="fsep6" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="661" as="sourcePoint" />
+            <mxPoint x="1020" y="661" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_orders" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="80" as="sourcePoint" />
+            <mxPoint x="160" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_db" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="80" as="sourcePoint" />
+            <mxPoint x="420" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_refs" style="endArrow=none;dashed=1;html=1;strokeColor=#d79b00;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="680" y="80" as="sourcePoint" />
+            <mxPoint x="680" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll4" edge="1" parent="1" source="p_gotenberg" style="endArrow=none;dashed=1;html=1;strokeColor=#854f0b;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="920" y="80" as="sourcePoint" />
+            <mxPoint x="920" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a7" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="1. Консьюмер ответов саги: StockDeducted (шаг 16 «Оплаты»)" vertex="1">
+          <mxGeometry x="168" y="102" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="2. UPDATE saga_state SET current_step='completed'&lt;br&gt;WHERE saga_id=? AND current_step='verifying_stock'">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="185" as="sourcePoint" />
+            <mxPoint x="420" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. 1 строка → INSERT certificates (status='pending',&lt;br&gt;attempts=0, next_attempt_at=now())">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="240" as="sourcePoint" />
+            <mxPoint x="420" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note10" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Справка создаётся автоматически: момент оплаты —&lt;br&gt;точка, когда со стороны СТО всё уже оформлено.&lt;br&gt;Нет завершённой саги — нет справки. Инженер&lt;br&gt;справку не запускает (разбор А-01, 30.10.2026)" vertex="1">
+          <mxGeometry x="600" y="135" width="400" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. SELECT certificates WHERE status IN ('pending','failed')&lt;br&gt;AND attempts &lt; 3 AND next_attempt_at &lt;= now()">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="330" as="sourcePoint" />
+            <mxPoint x="420" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m12" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="5. order_items / order_services (сохранённые цены),&lt;br&gt;order_engineers">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="375" as="sourcePoint" />
+            <mxPoint x="420" y="375" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="6. HTTP: имена исполнителей, товаров, услуг (вне транзакции)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="420" as="sourcePoint" />
+            <mxPoint x="680" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="7. данные">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="680" y="450" as="sourcePoint" />
+            <mxPoint x="160" y="450" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a15" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="8. маппинг → html/template (index.html)" vertex="1">
+          <mxGeometry x="168" y="465" width="10" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="m16" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="9. chassis/certificate: POST /forms/chromium/convert/html&lt;br&gt;(index.html + шрифт .ttf), http.Client с таймаутом">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="530" as="sourcePoint" />
+            <mxPoint x="920" y="530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m17" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="10. 200 OK (PDF)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="920" y="600" as="sourcePoint" />
+            <mxPoint x="160" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m18" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="11. UPDATE … status='completed', snapshot, pdf,&lt;br&gt;attempts+1 WHERE id=? AND status = прежний">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="645" as="sourcePoint" />
+            <mxPoint x="420" y="645" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m19" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="10'. 5xx / таймаут">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="920" y="700" as="sourcePoint" />
+            <mxPoint x="160" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m20" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="11'. UPDATE … status='failed', attempts+1,&lt;br&gt;next_attempt_at = now() + 10 с | 1 мин;&lt;br&gt;после 3-й попытки — NULL (финал)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="765" as="sourcePoint" />
+            <mxPoint x="420" y="765" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note21" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Снапшот фиксируется на шаге 11 — документ дальше неизменен.&lt;br&gt;Скачивание — только completed (sequence-download-certificate).&lt;br&gt;failed с attempts = 3 → «обратитесь в поддержку»" vertex="1">
+          <mxGeometry x="40" y="820" width="500" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="note22" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Сбой процесса посреди сборки: справка остаётся pending&lt;br&gt;и подхватывается на следующем тике — попытка не засчитывается&lt;br&gt;(А-02). Переходы — условный UPDATE. Всего 3 попытки" vertex="1">
+          <mxGeometry x="560" y="820" width="480" height="62" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

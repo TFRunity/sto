@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Директор — экраны СТО — v2</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<style>
+:root {
+  --surface-2: #ffffff; --surface-1: #f5f4f0; --surface-0: #ececea;
+  --text-primary: #1a1a18; --text-secondary: #5f5e5a; --text-muted: #888780;
+  --border: #d3d1c7; --border-strong: #b4b2a9; --radius: 8px;
+  --bg-accent: #e6f1fb; --text-accent: #185fa5;
+  --bg-warning: #faeeda; --text-warning: #854f0b;
+  --bg-success: #eaf3de; --text-success: #3b6d11;
+  --bg-danger: #fcebeb; --text-danger: #a32d2d;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { background: var(--surface-0); margin: 0; padding: 40px 20px; color: var(--text-primary); }
+h1 { font-size: 22px; font-weight: 500; text-align: center; margin-bottom: 40px; }
+.entry { max-width: 1100px; margin: 0 auto 64px; }
+.entry-title { font-size: 16px; font-weight: 500; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border-strong); }
+.layout { display: grid; grid-template-columns: 1fr 420px; gap: 24px; align-items: start; }
+.render-frame { background: var(--surface-1); border-radius: 20px; padding: 20px; }
+pre { background: #1e1e1c; color: #d4d4d2; padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 11px; line-height: 1.5; max-height: 500px; }
+button { font-size: 14px; height: 32px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: transparent; color: var(--text-primary); cursor: pointer; padding: 0 12px; }
+input { height: 32px; border-radius: var(--radius); border: 0.5px solid var(--border); padding: 0 12px; background: #fff; color: var(--text-primary); }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Наметки экранов — директор (веб) — v2</h1>
+
+<div class="entry"><div class="entry-title">3. Список сотрудников</div><div class="layout"><div class="render-frame" id="render-3"></div><pre id="code-3"></pre></div></div>
+<div class="entry"><div class="entry-title">3b. Список сотрудников — развёрнуто</div><div class="layout"><div class="render-frame" id="render-3b"></div><pre id="code-3b"></pre></div></div>
+<div class="entry"><div class="entry-title">4. Список отчётов</div><div class="layout"><div class="render-frame" id="render-4"></div><pre id="code-4"></pre></div></div>
+<div class="entry"><div class="entry-title">7. Детальный просмотр отчёта</div><div class="layout"><div class="render-frame" id="render-7"></div><pre id="code-7"></pre></div></div>
+<div class="entry"><div class="entry-title">9. Чат (веб, директор)</div><div class="layout"><div class="render-frame" id="render-9"></div><pre id="code-9"></pre></div></div>
+
+<script>
+const screens = {};
+const nav = (active) => {
+  const items = ['Дашборд','Заказы','Отчёты','Каталог','Чат'];
+  return items.map(i => i === active
+    ? `<span style="font-size:14px;font-weight:500;padding:8px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent)">${i}</span>`
+    : `<span style="font-size:14px;padding:8px 12px;border-radius:var(--radius);color:var(--text-primary)">${i}</span>`
+  ).join('') + `<div style="flex:1"></div><div style="width:32px;height:32px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">Д</div>`;
+};
+const wrap = (active, body) => `<div style="max-width:700px;margin:0 auto"><div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:0.75rem 1rem;display:flex;align-items:center;gap:8px;margin-bottom:20px">${nav(active)}</div>${body}</div>`;
+
+screens['3'] = wrap('Отчёты', `
+<p style="font-weight:500;font-size:20px;margin:0 0 16px">Сотрудники</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px">
+<div style="width:40px;height:40px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--text-accent)">ПС</div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Петров С.А.</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Инженер · с января 2023</p></div>
+<div style="text-align:right"><p style="font-size:13px;color:var(--text-secondary);margin:0">4 заказа за месяц</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">выручка 186 400 ₽</p></div>
+<i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px">
+<div style="width:40px;height:40px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--text-accent)">СК</div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Сидоров К.М.</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Инженер · с июня 2024</p></div>
+<div style="text-align:right"><p style="font-size:13px;color:var(--text-secondary);margin:0">2 заказа за месяц</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">выручка 94 100 ₽</p></div>
+<i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div>
+</div>`);
+
+screens['3b'] = wrap('Отчёты', `
+<p style="font-weight:500;font-size:20px;margin:0 0 16px">Сотрудники</p>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);overflow:hidden">
+<div style="padding:16px;display:flex;align-items:center;gap:14px">
+<div style="width:40px;height:40px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--text-accent)">ПС</div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Петров С.А.</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Инженер · с января 2023</p></div>
+<div style="text-align:right"><p style="font-size:13px;color:var(--text-secondary);margin:0">4 заказа за месяц</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">выручка 186 400 ₽</p></div>
+<i class="ti ti-chevron-down" style="color:var(--text-muted)"></i></div>
+<div style="border-top:0.5px solid var(--border);padding:14px 16px 16px 70px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;font-size:13px"><span>Toyota Camry · А123ВС · заказ #4521</span><span style="color:var(--text-warning)">в работе</span></div>
+<div style="display:flex;justify-content:space-between;font-size:13px"><span>Kia Rio · В456ОР · заказ #4519</span><span style="color:var(--text-success)">выдан</span></div>
+</div></div>`);
+
+screens['4'] = wrap('Отчёты', `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+<p style="font-weight:500;font-size:20px;margin:0">Отчёты</p>
+<button style="display:flex;align-items:center;gap:6px"><i class="ti ti-plus" style="font-size:16px"></i>Сформировать отчёт</button></div>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">Все</span>
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);color:var(--text-secondary)">Выручка</span>
+<span style="font-size:13px;padding:6px 12px;border-radius:var(--radius);color:var(--text-secondary)">По сотрудникам</span></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px">
+<div style="width:40px;height:40px;border-radius:10px;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-chart-bar" style="font-size:18px;color:var(--text-accent)"></i></div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Выручка · август 2026</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Сформирован 1 сентября</p></div>
+<i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px;opacity:0.6">
+<div style="width:40px;height:40px;border-radius:10px;background:var(--bg-danger);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-alert-triangle" style="font-size:18px;color:var(--text-danger)"></i></div>
+<div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">Выручка · июль 2026</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Ошибка формирования</p></div></div>
+</div>`);
+
+screens['7'] = wrap('Отчёты', `
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+<i class="ti ti-arrow-left" style="color:var(--text-secondary)"></i>
+<p style="font-weight:500;font-size:20px;margin:0">Выручка · август 2026</p></div>
+<p style="font-size:13px;color:var(--text-muted);margin:0 0 16px">Сформирован 1 сентября</p>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);padding:20px;margin-bottom:16px">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px">Выручка за период</p>
+<p style="font-size:28px;font-weight:500;margin:0">612 400 ₽</p></div>
+<div style="background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);overflow:hidden">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:10px 16px;background:var(--surface-1);font-size:12px;color:var(--text-muted)"><span>Дата</span><span>Сумма</span><span>Заказов</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:12px 16px;border-top:0.5px solid var(--border);font-size:14px"><span>1 августа</span><span>18 200 ₽</span><span>3</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:12px 16px;border-top:0.5px solid var(--border);font-size:14px"><span>2 августа</span><span>24 100 ₽</span><span>4</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:12px 16px;border-top:0.5px solid var(--border);font-size:14px"><span>3 августа</span><span>9 800 ₽</span><span>1</span></div>
+</div>`);
+
+screens['9'] = wrap('Чат', `
+<div style="display:grid;grid-template-columns:280px 1fr;gap:0;background:var(--surface-2);border-radius:12px;border:0.5px solid var(--border);overflow:hidden;height:420px">
+<div style="border-right:0.5px solid var(--border);overflow-y:auto">
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border);background:var(--bg-accent)">
+<p style="font-size:14px;font-weight:500;margin:0">Петров С.А.</p><p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">Готов взять ещё один заказ...</p></div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:14px;margin:0">Сидоров К.М.</p><p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">Понял, сделаю сегодня</p></div>
+<div style="padding:14px 16px">
+<p style="font-size:14px;margin:0">Кузьмина О.А.</p><p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">Спасибо!</p></div></div>
+<div style="display:flex;flex-direction:column;padding:16px">
+<p style="font-size:14px;font-weight:500;margin:0 0 12px;padding-bottom:12px;border-bottom:0.5px solid var(--border)">Петров С.А.</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<div style="align-self:flex-start;background:var(--surface-1);border-radius:10px;padding:8px 12px;max-width:70%;font-size:14px">Можно взять ещё Hyundai на завтра?</div>
+<div style="align-self:flex-end;background:var(--bg-accent);border-radius:10px;padding:8px 12px;max-width:70%;font-size:14px">Да, записывай <span style="font-size:11px;color:var(--text-muted);margin-left:6px">прочитано</span></div>
+<div style="align-self:flex-start;background:var(--surface-1);border-radius:10px;padding:8px 12px;max-width:70%;font-size:14px">Готов взять ещё один заказ...</div></div>
+<div style="display:flex;gap:8px;margin-top:12px"><input placeholder="Сообщение" style="flex:1"/><button>Отправить</button></div></div>`);
+
+for (const key in screens) {
+  document.getElementById('render-' + key).innerHTML = screens[key];
+  document.getElementById('code-' + key).textContent = screens[key];
+}
+</script>
+</body>
+</html>

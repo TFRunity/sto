@@ -1,0 +1,115 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Создать заказ" id="seq-create-order">
+    <mxGraphModel dx="1178" dy="701" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="750" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p_engineer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Инженер (RN)" vertex="1">
+          <mxGeometry height="40" width="130" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#888780;fontSize=13;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry height="40" width="130" x="240" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_orders" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Orders service" vertex="1">
+          <mxGeometry height="40" width="130" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p_vehicle" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Vehicle service" vertex="1">
+          <mxGeometry height="40" width="130" x="640" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ll1" edge="1" parent="1" source="p_engineer" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="105" y="80" as="sourcePoint" />
+            <mxPoint x="105" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll2" edge="1" parent="1" source="p_gateway" style="endArrow=none;dashed=1;html=1;strokeColor=#888780;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="305" y="80" as="sourcePoint" />
+            <mxPoint x="305" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll3" edge="1" parent="1" source="p_orders" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="505" y="80" as="sourcePoint" />
+            <mxPoint x="505" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ll4" edge="1" parent="1" source="p_vehicle" style="endArrow=none;dashed=1;html=1;strokeColor=#378add;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="705" y="80" as="sourcePoint" />
+            <mxPoint x="705" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="1. Ввод номера ТС">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="105" y="120" as="sourcePoint" />
+            <mxPoint x="105" y="120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="2. GET /vehicles?number=...">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="105" y="160" as="sourcePoint" />
+            <mxPoint x="305" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="3. Проксирует">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="305" y="200" as="sourcePoint" />
+            <mxPoint x="705" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="4. Найдено / не найдено">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="705" y="260" as="sourcePoint" />
+            <mxPoint x="105" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note1" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#378add;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Если ТС не найдено — инженер создаёт&#10;карточку ТС отдельным запросом к Vehicle&#10;с owner_id = клиент заказа (не показано)" vertex="1">
+          <mxGeometry height="60" width="230" x="740" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="5. Указать клиента">
+          <mxGeometry relative="1" x="NaN" y="20" as="geometry">
+            <mxPoint y="-20" as="offset" />
+            <mxPoint x="105" y="340" as="sourcePoint" />
+            <mxPoint x="105" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="6. POST /orders (vehicle_id, client_id, engineer_id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="360" as="sourcePoint" />
+            <mxPoint x="300" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="7. Проксирует">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="305" y="420" as="sourcePoint" />
+            <mxPoint x="505" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="8. Создаёт заказ, status = 'active' (client_id — как есть) + INSERT order_engineers (ответственный), 1 tx">
+          <mxGeometry relative="1" x="NaN" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="505" y="470" as="sourcePoint" />
+            <mxPoint x="505" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note2" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Orders НЕ проверяет существование клиента в Users —&#10;client_id выбран инженером из уже загруженного&#10;списка на UI, доверяется как есть (см. ADR-015)" vertex="1">
+          <mxGeometry height="60" width="330" x="610" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="9. 201 Created (order_id)">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="505" y="510.00000000000006" as="sourcePoint" />
+            <mxPoint x="305" y="510.00000000000006" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="10. 201 Created">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="305" y="560" as="sourcePoint" />
+            <mxPoint x="105" y="560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

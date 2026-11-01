@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>React Native — экраны СТО</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<style>
+:root {
+  --surface-2: #ffffff;
+  --surface-1: #f5f4f0;
+  --surface-0: #ececea;
+  --text-primary: #1a1a18;
+  --text-secondary: #5f5e5a;
+  --text-muted: #888780;
+  --border: #d3d1c7;
+  --border-strong: #b4b2a9;
+  --radius: 8px;
+  --bg-accent: #e6f1fb;
+  --text-accent: #185fa5;
+  --bg-accent-muted: rgba(55,138,221,0.12);
+  --fill-accent: #378add;
+  --bg-warning: #faeeda;
+  --text-warning: #854f0b;
+  --bg-success: #eaf3de;
+  --text-success: #3b6d11;
+  --bg-danger: #fcebeb;
+  --text-danger: #a32d2d;
+  --fill-primary: #1a1a18;
+  --on-primary: #ffffff;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { background: var(--surface-0); margin: 0; padding: 40px 20px; color: var(--text-primary); }
+h1 { font-size: 22px; font-weight: 500; text-align: center; margin-bottom: 40px; }
+.entry { max-width: 900px; margin: 0 auto 64px; }
+.entry-title { font-size: 16px; font-weight: 500; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border-strong); }
+.layout { display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start; }
+.render-frame { background: var(--surface-1); border-radius: 20px; padding: 16px; }
+pre { background: #1e1e1c; color: #d4d4d2; padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 12px; line-height: 1.5; max-height: 500px; }
+button { font-size: 14px; height: 36px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: transparent; color: var(--text-primary); cursor: pointer; }
+input { height: 36px; border-radius: var(--radius); border: 0.5px solid var(--border); padding: 0 12px; background: #fff; color: var(--text-primary); }
+@media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Наметки экранов — React Native (инженер СТО)</h1>
+
+<div class="entry">
+<div class="entry-title">1. Вход</div>
+<div class="layout">
+<div class="render-frame" id="render-1"></div>
+<pre id="code-1"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">2. Список заказов — активные</div>
+<div class="layout">
+<div class="render-frame" id="render-2"></div>
+<pre id="code-2"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">2b. Список заказов — завершённые</div>
+<div class="layout">
+<div class="render-frame" id="render-2b"></div>
+<pre id="code-2b"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">3. Детали заказа</div>
+<div class="layout">
+<div class="render-frame" id="render-3"></div>
+<pre id="code-3"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">3c. Детали заказа — оплата подтверждается (paid, сага ещё идёт, ≤ 10 с)</div>
+<div class="layout">
+<div class="render-frame" id="render-3c"></div>
+<pre id="code-3c"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">3b. Детали завершённого заказа (история работ)</div>
+<div class="layout">
+<div class="render-frame" id="render-3b"></div>
+<pre id="code-3b"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">4. Карточка ТС</div>
+<div class="layout">
+<div class="render-frame" id="render-4"></div>
+<pre id="code-4"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">5. Камера</div>
+<div class="layout">
+<div class="render-frame" id="render-5"></div>
+<pre id="code-5"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">7. Профиль</div>
+<div class="layout">
+<div class="render-frame" id="render-7"></div>
+<pre id="code-7"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">Push-уведомления (экран блокировки) — только Orders; чат-уведомление в v2</div>
+<div class="layout">
+<div class="render-frame" id="render-8"></div>
+<pre id="code-8"></pre>
+</div>
+</div>
+
+<script>
+const screens = {};
+
+screens['1'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);padding:32px 20px;display:flex;flex-direction:column;gap:14px;max-width:340px;margin:0 auto">
+<div style="text-align:center;margin-bottom:8px">
+<div style="width:56px;height:56px;border-radius:14px;background:var(--surface-1);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+<i class="ti ti-tool" style="font-size:26px;color:var(--text-secondary)"></i>
+</div>
+<p style="font-weight:500;font-size:18px;margin:0">Вход в приложение</p>
+<p style="font-size:13px;color:var(--text-muted);margin:4px 0 0">Для инженеров и мастеров СТО</p>
+</div>
+<div>
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px;font-weight:500">Телефон</p>
+<input placeholder="+7 (___) ___-__-__" style="width:100%;height:48px;font-size:16px"/>
+</div>
+<div>
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px;font-weight:500">Пароль</p>
+<input placeholder="Введите пароль" type="password" style="width:100%;height:48px;font-size:16px"/>
+</div>
+<button style="width:100%;background:var(--fill-primary);color:var(--on-primary);border:none;height:52px;font-size:16px;margin-top:8px">Войти</button>
+<p style="text-align:center;font-size:14px;color:var(--text-accent);margin:4px 0 0">Забыли пароль?</p>
+</div>`;
+
+screens['2'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:16px 16px 12px">
+<p style="font-weight:500;font-size:18px;margin:0 0 12px">Заказы</p>
+<div style="display:flex;gap:8px">
+<span style="font-size:14px;padding:8px 14px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">Активные</span>
+<span style="font-size:14px;padding:8px 14px;color:var(--text-secondary)">Завершённые</span>
+</div>
+</div>
+<div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="border:0.5px solid var(--border);border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><p style="font-weight:500;font-size:16px;margin:0">Toyota Camry · А123ВС</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4521 · сегодня, 10:24</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);font-weight:500;white-space:nowrap">в работе</span>
+</div></div>
+<div style="border:0.5px solid var(--border);border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><p style="font-weight:500;font-size:16px;margin:0">Kia Rio · В456ОР</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4519 · вчера, 16:02</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500;white-space:nowrap">готов</span>
+</div></div>
+<div style="border:0.5px solid var(--border);border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><p style="font-weight:500;font-size:16px;margin:0">Hyundai Solaris · Е789КХ</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4517 · вчера, 09:15</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-danger);color:var(--text-danger);font-weight:500;white-space:nowrap">ожидает оплаты</span>
+</div></div>
+</div></div>`;
+
+screens['2b'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:16px 16px 12px">
+<p style="font-weight:500;font-size:18px;margin:0 0 12px">Заказы</p>
+<div style="display:flex;gap:8px">
+<span style="font-size:14px;padding:8px 14px;color:var(--text-secondary)">Активные</span>
+<span style="font-size:14px;padding:8px 14px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">Завершённые</span>
+</div></div>
+<div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="border:0.5px solid var(--border);border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+<div><p style="font-weight:500;font-size:16px;margin:0">Kia Rio · В456ОР</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4519 · вчера, 16:02</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500;white-space:nowrap">выдан</span>
+</div>
+<div style="border-top:0.5px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:6px;color:var(--text-accent)">
+<i class="ti ti-file-text" style="font-size:16px"></i><span style="font-size:14px;font-weight:500">Справка #4519</span>
+</div></div>
+<div style="border:0.5px solid var(--border);border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+<div><p style="font-weight:500;font-size:16px;margin:0">Skoda Octavia · М321НТ</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">3 дня назад, 11:40</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500;white-space:nowrap">выдан</span>
+</div>
+<div style="border-top:0.5px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:6px;color:var(--text-accent)">
+<i class="ti ti-file-text" style="font-size:16px"></i><span style="font-size:14px;font-weight:500">Справка #4510</span>
+</div></div>
+<div style="border:0.5px solid var(--border);border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+<div><p style="font-weight:500;font-size:16px;margin:0">Lada Vesta · О555ОО</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4522 · только что</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500;white-space:nowrap">оплачен</span>
+</div>
+<div style="border-top:0.5px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:6px;color:var(--text-muted)">
+<i class="ti ti-loader-2" style="font-size:16px"></i><span style="font-size:14px">Справка формируется…</span>
+</div></div>
+<div style="border:0.5px solid var(--border);border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+<div><p style="font-weight:500;font-size:16px;margin:0">Ford Focus · Т777ТТ</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4502 · неделю назад</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500;white-space:nowrap">выдан</span>
+</div>
+<div style="border-top:0.5px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:6px;color:var(--text-danger)">
+<i class="ti ti-alert-triangle" style="font-size:16px"></i><span style="font-size:14px">Справка не сформирована — обратитесь в поддержку</span>
+</div></div>
+</div></div>`;
+
+screens['3'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px">
+<i class="ti ti-arrow-left" style="font-size:20px;color:var(--text-secondary)"></i>
+<div style="flex:1"><p style="font-weight:500;margin:0;font-size:15px">Заказ #4521</p><p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">Открыт сегодня, 10:24</p></div>
+<span style="font-size:12px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);font-weight:500">в работе</span>
+</div>
+<div style="padding:12px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500">Этап работ</p>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--surface-1);border-radius:var(--radius);padding:3px">
+<span style="font-size:13px;text-align:center;padding:10px 0;color:var(--text-secondary)">принят</span>
+<span style="font-size:13px;text-align:center;padding:10px 0;color:var(--text-secondary)">в работе</span>
+<span style="font-size:13px;text-align:center;padding:10px 0;border-radius:6px;background:var(--surface-2);font-weight:500">готов</span>
+<span style="font-size:13px;text-align:center;padding:10px 0;color:var(--text-muted);opacity:0.5" title="Доступно после подтверждения оплаты">выдан</span>
+</div></div>
+<div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:0.5px solid var(--border)">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="width:36px;height:36px;border-radius:10px;background:var(--surface-1);display:flex;align-items:center;justify-content:center"><i class="ti ti-car" style="color:var(--text-secondary)"></i></div>
+<div><p style="font-weight:500;margin:0;font-size:16px">Toyota Camry · А123ВС</p><p style="font-size:13px;color:var(--text-muted);margin:1px 0 0">Клиент: Иванов И.И.</p></div>
+</div><i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500"><i class="ti ti-package" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Товары</p>
+<div style="display:flex;justify-content:space-between;font-size:16px;padding:8px 0"><span>Масло моторное 5W40</span><span style="color:var(--text-secondary)">2 400 ₽</span></div>
+<div style="display:flex;justify-content:space-between;font-size:16px;padding:8px 0;border-top:0.5px solid var(--border)"><span>Фильтр масляный</span><span style="color:var(--text-secondary)">650 ₽</span></div>
+<button style="width:100%;margin-top:8px;font-size:16px;height:48px"><i class="ti ti-plus" style="font-size:16px;vertical-align:-3px"></i> Добавить товар</button>
+</div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500"><i class="ti ti-tools" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Услуги</p>
+<div style="display:flex;justify-content:space-between;font-size:16px;padding:8px 0"><span>Замена масла</span><span style="color:var(--text-secondary)">1 500 ₽</span></div>
+<button style="width:100%;margin-top:8px;font-size:16px;height:48px"><i class="ti ti-plus" style="font-size:16px;vertical-align:-3px"></i> Добавить услугу</button>
+</div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500"><i class="ti ti-users" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Инженеры</p>
+<div style="display:flex;align-items:center;gap:8px">
+<div style="width:26px;height:26px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--text-accent)">ПС</div>
+<span style="font-size:16px">Петров С.А.</span></div></div>
+<div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:var(--surface-1)">
+<span style="font-size:14px;color:var(--text-secondary)">Итого</span><span style="font-size:18px;font-weight:500">4 550 ₽</span></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<div style="width:100%;height:52px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);font-size:15px;font-weight:500"><i class="ti ti-clock" style="font-size:18px"></i>Ожидает оплаты клиентом</div>
+<button style="width:100%;height:48px;font-size:16px;color:var(--text-danger)">Отменить заказ</button>
+<p style="font-size:13px;color:var(--text-muted);margin:0;text-align:center">Справка сформируется автоматически после оплаты</p>
+</div></div>`;
+
+screens['3c'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px">
+<i class="ti ti-arrow-left" style="font-size:20px;color:var(--text-secondary)"></i>
+<div style="flex:1"><p style="font-weight:500;margin:0;font-size:15px">Заказ #4517</p><p style="font-size:12px;color:var(--text-muted);margin:2px 0 0">Hyundai Solaris · Е789КХ</p></div>
+<span style="font-size:12px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-weight:500">оплачен</span>
+</div>
+<div style="padding:12px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500">Этап работ</p>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--surface-1);border-radius:var(--radius);padding:3px">
+<span style="font-size:13px;text-align:center;padding:10px 0;color:var(--text-secondary)">принят</span>
+<span style="font-size:13px;text-align:center;padding:10px 0;color:var(--text-secondary)">в работе</span>
+<span style="font-size:13px;text-align:center;padding:10px 0;border-radius:6px;background:var(--surface-2);font-weight:500">готов</span>
+<span style="font-size:13px;text-align:center;padding:10px 0;color:var(--text-muted);opacity:0.5">выдан</span>
+</div>
+<p style="font-size:13px;color:var(--text-muted);margin:8px 0 0">«Выдан» станет доступен, когда склад подтвердит оплату</p>
+</div>
+<div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:var(--surface-1)">
+<span style="font-size:14px;color:var(--text-secondary)">Итого</span><span style="font-size:18px;font-weight:500">2 100 ₽</span></div>
+<div style="padding:14px 16px">
+<div style="width:100%;height:52px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-size:15px;font-weight:500"><i class="ti ti-loader-2" style="font-size:18px"></i>Оплата подтверждается…</div>
+<p style="font-size:13px;color:var(--text-muted);margin:10px 0 0;text-align:center">Кнопок «Добавить» и «Отменить» нет: заказ оплачен</p>
+</div></div>`;
+
+screens['3b'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px">
+<i class="ti ti-arrow-left" style="font-size:20px;color:var(--text-secondary)"></i>
+<div style="flex:1"><p style="font-weight:500;margin:0;font-size:17px">Заказ #4519</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">вчера, 16:02</p></div>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-success);color:var(--text-success);font-weight:500">выдан</span>
+</div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500"><i class="ti ti-package" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Товары</p>
+<div style="display:flex;justify-content:space-between;font-size:16px;padding:6px 0"><span>Колодки тормозные</span><span style="color:var(--text-secondary)">3 200 ₽</span></div>
+</div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500"><i class="ti ti-tools" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Услуги</p>
+<div style="display:flex;justify-content:space-between;font-size:16px;padding:6px 0"><span>Замена тормозных колодок</span><span style="color:var(--text-secondary)">1 800 ₽</span></div>
+</div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500"><i class="ti ti-users" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Инженеры</p>
+<div style="display:flex;align-items:center;gap:8px">
+<div style="width:26px;height:26px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--text-accent)">ПС</div>
+<span style="font-size:16px">Петров С.А.</span></div></div>
+<div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:var(--surface-1)">
+<span style="font-size:14px;color:var(--text-secondary)">Итого</span><span style="font-size:20px;font-weight:500">5 000 ₽</span></div>
+<div style="padding:14px 16px">
+<button style="width:100%;height:48px;font-size:16px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--text-accent)"><i class="ti ti-file-text" style="font-size:16px"></i>Открыть справку</button>
+</div></div>`;
+
+screens['4'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px">
+<i class="ti ti-arrow-left" style="font-size:20px;color:var(--text-secondary)"></i><p style="font-weight:500;margin:0;font-size:17px">Toyota Camry</p></div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<p style="font-size:16px;margin:0">А123ВС · 77 регион</p>
+<span style="font-size:13px;padding:4px 10px;border-radius:var(--radius);background:var(--bg-warning);color:var(--text-warning);font-weight:500">в работе</span></div>
+<p style="font-size:13px;color:var(--text-muted);margin:0">VIN: JT2BF22K1X0123456</p></div>
+<div style="padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px;font-weight:500"><i class="ti ti-camera" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Фотофиксация</p>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+<div style="aspect-ratio:1;background:var(--surface-1);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:20px;color:var(--text-muted)"></i></div>
+<div style="aspect-ratio:1;background:var(--surface-1);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:20px;color:var(--text-muted)"></i></div>
+<div style="aspect-ratio:1;background:var(--surface-1);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--border-strong)"><i class="ti ti-camera-plus" style="font-size:22px;color:var(--text-secondary)"></i></div>
+</div></div>
+<div style="padding:14px 16px">
+<p style="font-size:13px;color:var(--text-secondary);margin:0 0 10px;font-weight:500"><i class="ti ti-history" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>История работ</p>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border)">
+<div><p style="font-size:16px;margin:0">Замена тормозных колодок</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4519 · вчера</p></div>
+<i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
+<div><p style="font-size:16px;margin:0">Диагностика ходовой</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4498 · месяц назад</p></div>
+<i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div>
+</div></div>`;
+
+screens['5'] = `<div style="min-height:380px;background:rgba(0,0,0,0.55);border-radius:20px;display:flex;flex-direction:column;justify-content:flex-end;padding:16px;max-width:340px;margin:0 auto">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:auto;padding-top:8px">
+<i class="ti ti-x" style="font-size:22px;color:#fff"></i>
+<span style="font-size:14px;color:#fff;font-weight:500">Toyota Camry · А123ВС</span>
+<i class="ti ti-flash" style="font-size:20px;color:#fff"></i></div>
+<div style="background:var(--surface-2);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="aspect-ratio:4/3;background:var(--surface-1);border-radius:12px;display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="font-size:32px;color:var(--text-muted)"></i></div>
+<p style="font-size:13px;color:var(--text-secondary);margin:0;text-align:center">Превью фото · уменьшено на устройстве (JPEG ≤ 3 МБ)<br>будет добавлено в фотофиксацию</p>
+<div style="display:flex;gap:10px">
+<button style="flex:1;height:48px;font-size:16px">Переснять</button>
+<button style="flex:1;height:48px;font-size:16px;background:var(--fill-primary);color:var(--on-primary);border:none">Отправить</button>
+</div></div></div>`;
+
+screens['7'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:20px 16px;display:flex;align-items:center;gap:14px;border-bottom:0.5px solid var(--border)">
+<div style="width:56px;height:56px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:500;color:var(--text-accent)">ИИ</div>
+<div><p style="font-weight:500;margin:0;font-size:17px">Иван Иванов</p><p style="font-size:14px;color:var(--text-muted);margin:2px 0 0">Инженер · с марта 2024</p></div></div>
+<div style="padding:8px 0">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<div style="display:flex;align-items:center;gap:10px"><i class="ti ti-bell" style="font-size:18px;color:var(--text-secondary)"></i><span style="font-size:16px">Push-уведомления</span></div>
+<span style="font-size:14px;color:var(--text-accent);font-weight:500">Вкл</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:0.5px solid var(--border)">
+<div style="display:flex;align-items:center;gap:10px"><i class="ti ti-phone" style="font-size:18px;color:var(--text-secondary)"></i><span style="font-size:16px">Телефон</span></div>
+<span style="font-size:14px;color:var(--text-muted)">+7 900 123-45-67</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px">
+<div style="display:flex;align-items:center;gap:10px"><i class="ti ti-headset" style="font-size:18px;color:var(--text-secondary)"></i><span style="font-size:16px">Поддержка</span></div>
+<i class="ti ti-chevron-right" style="color:var(--text-muted)"></i></div>
+</div>
+<div style="padding:16px"><button style="width:100%;height:48px;font-size:16px;color:var(--text-danger)">Выйти</button></div>
+</div>`;
+
+screens['8'] = `<div style="min-height:360px;background:rgba(0,0,0,0.7);border-radius:24px;display:flex;flex-direction:column;justify-content:flex-start;padding:24px 12px;max-width:340px;margin:0 auto">
+<div style="text-align:center;margin-bottom:20px">
+<p style="font-size:52px;font-weight:500;color:#fff;margin:0;line-height:1">10:42</p>
+<p style="font-size:15px;color:rgba(255,255,255,0.7);margin:4px 0 0">Четверг, 3 сентября</p></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="background:rgba(255,255,255,0.14);border-radius:16px;padding:12px 14px;display:flex;gap:10px">
+<div style="width:36px;height:36px;border-radius:9px;background:var(--fill-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-tool" style="font-size:18px;color:#fff"></i></div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:500">СТО Мастер</span><span style="font-size:12px;color:rgba(255,255,255,0.6)">сейчас</span></div>
+<p style="font-size:15px;color:#fff;margin:2px 0 0;font-weight:500">Новый заказ #4523</p>
+<p style="font-size:14px;color:rgba(255,255,255,0.85);margin:2px 0 0">Toyota Camry · А123ВС ожидает мастера</p></div></div>
+</div></div>`;
+
+for (const key in screens) {
+  document.getElementById('render-' + key).innerHTML = screens[key];
+  document.getElementById('code-' + key).textContent = screens[key];
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>React Native — экраны СТО — v2</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
+<style>
+:root {
+  --surface-2: #ffffff;
+  --surface-1: #f5f4f0;
+  --surface-0: #ececea;
+  --text-primary: #1a1a18;
+  --text-secondary: #5f5e5a;
+  --text-muted: #888780;
+  --border: #d3d1c7;
+  --border-strong: #b4b2a9;
+  --radius: 8px;
+  --bg-accent: #e6f1fb;
+  --text-accent: #185fa5;
+  --bg-accent-muted: rgba(55,138,221,0.12);
+  --fill-accent: #378add;
+  --bg-warning: #faeeda;
+  --text-warning: #854f0b;
+  --bg-success: #eaf3de;
+  --text-success: #3b6d11;
+  --bg-danger: #fcebeb;
+  --text-danger: #a32d2d;
+  --fill-primary: #1a1a18;
+  --on-primary: #ffffff;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { background: var(--surface-0); margin: 0; padding: 40px 20px; color: var(--text-primary); }
+h1 { font-size: 22px; font-weight: 500; text-align: center; margin-bottom: 40px; }
+.entry { max-width: 900px; margin: 0 auto 64px; }
+.entry-title { font-size: 16px; font-weight: 500; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border-strong); }
+.layout { display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start; }
+.render-frame { background: var(--surface-1); border-radius: 20px; padding: 16px; }
+pre { background: #1e1e1c; color: #d4d4d2; padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 12px; line-height: 1.5; max-height: 500px; }
+button { font-size: 14px; height: 36px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: transparent; color: var(--text-primary); cursor: pointer; }
+input { height: 36px; border-radius: var(--radius); border: 0.5px solid var(--border); padding: 0 12px; background: #fff; color: var(--text-primary); }
+@media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Наметки экранов — React Native (инженер СТО) — v2</h1>
+
+<div class="entry">
+<div class="entry-title">6. Чат — список диалогов</div>
+<div class="layout">
+<div class="render-frame" id="render-6"></div>
+<pre id="code-6"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">6b. Чат — диалог</div>
+<div class="layout">
+<div class="render-frame" id="render-6b"></div>
+<pre id="code-6b"></pre>
+</div>
+</div>
+
+<div class="entry">
+<div class="entry-title">Push-уведомления (экран блокировки)</div>
+<div class="layout">
+<div class="render-frame" id="render-8"></div>
+<pre id="code-8"></pre>
+</div>
+</div>
+
+<script>
+const screens = {};
+
+screens['6'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto">
+<div style="padding:16px 16px 12px"><p style="font-weight:500;font-size:18px;margin:0">Чат</p></div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:0.5px solid var(--border)">
+<div style="width:40px;height:40px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--text-accent)">ИИ</div>
+<div style="flex:1"><p style="font-size:16px;margin:0">Иванов И.И.</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4521 · Когда будет готово?</p></div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span style="font-size:12px;color:var(--text-muted)">10:40</span><span style="width:8px;height:8px;border-radius:50%;background:var(--fill-accent)"></span></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:0.5px solid var(--border)">
+<div style="width:40px;height:40px;border-radius:50%;background:var(--surface-1);display:flex;align-items:center;justify-content:center"><i class="ti ti-user-star" style="font-size:18px;color:var(--text-secondary)"></i></div>
+<div style="flex:1"><p style="font-size:16px;margin:0">Директор</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Отправьте отчёт по складу</p></div>
+<span style="font-size:12px;color:var(--text-muted)">вчера</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:0.5px solid var(--border)">
+<div style="width:40px;height:40px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--text-accent)">КВ</div>
+<div style="flex:1"><p style="font-size:16px;margin:0">Кузнецова В.П.</p><p style="font-size:13px;color:var(--text-muted);margin:2px 0 0">Заказ #4517 · Спасибо!</p></div>
+<span style="font-size:12px;color:var(--text-muted)">2 дня</span></div>
+</div></div>`;
+
+screens['6b'] = `<div style="background:var(--surface-2);border-radius:16px;border:0.5px solid var(--border);overflow:hidden;max-width:340px;margin:0 auto;display:flex;flex-direction:column">
+<div style="padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px">
+<i class="ti ti-arrow-left" style="font-size:20px;color:var(--text-secondary)"></i>
+<div style="width:36px;height:36px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--text-accent)">ИИ</div>
+<div style="flex:1"><p style="font-size:16px;font-weight:500;margin:0">Иванов И.И.</p><p style="font-size:12px;color:var(--text-muted);margin:1px 0 0">Заказ #4521 · Toyota Camry</p></div>
+</div>
+<div style="padding:16px;display:flex;flex-direction:column;gap:10px;min-height:220px">
+<div style="align-self:flex-start;max-width:75%">
+<div style="background:var(--surface-1);border-radius:14px 14px 14px 4px;padding:10px 14px"><p style="font-size:16px;margin:0">Здравствуйте! Как продвигается ремонт?</p></div>
+<p style="font-size:11px;color:var(--text-muted);margin:4px 0 0">10:12</p></div>
+<div style="align-self:flex-end;max-width:75%">
+<div style="background:var(--bg-accent-muted);border-radius:14px 14px 4px 14px;padding:10px 14px"><p style="font-size:16px;margin:0;color:var(--text-primary)">Добрый день! Меняем тормозные колодки, закончим сегодня к вечеру</p></div>
+<p style="font-size:11px;color:var(--text-muted);margin:4px 0 0;text-align:right">10:25</p></div>
+<div style="align-self:flex-start;max-width:75%">
+<div style="background:var(--surface-1);border-radius:14px 14px 14px 4px;padding:10px 14px"><p style="font-size:16px;margin:0">Когда будет готово?</p></div>
+<p style="font-size:11px;color:var(--text-muted);margin:4px 0 0">10:40</p></div>
+</div>
+<div style="padding:12px 16px;border-top:0.5px solid var(--border);display:flex;gap:8px;align-items:center">
+<input placeholder="Сообщение" style="flex:1;height:44px;font-size:16px"/>
+<button style="width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center;background:var(--fill-primary);border:none"><i class="ti ti-send" style="font-size:18px;color:var(--on-primary)"></i></button>
+</div></div>`;
+
+screens['8'] = `<div style="min-height:360px;background:rgba(0,0,0,0.7);border-radius:24px;display:flex;flex-direction:column;justify-content:flex-start;padding:24px 12px;max-width:340px;margin:0 auto">
+<div style="text-align:center;margin-bottom:20px">
+<p style="font-size:52px;font-weight:500;color:#fff;margin:0;line-height:1">10:42</p>
+<p style="font-size:15px;color:rgba(255,255,255,0.7);margin:4px 0 0">Четверг, 3 сентября</p></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="background:rgba(255,255,255,0.14);border-radius:16px;padding:12px 14px;display:flex;gap:10px">
+<div style="width:36px;height:36px;border-radius:9px;background:var(--fill-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-tool" style="font-size:18px;color:#fff"></i></div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:500">СТО Мастер</span><span style="font-size:12px;color:rgba(255,255,255,0.6)">сейчас</span></div>
+<p style="font-size:15px;color:#fff;margin:2px 0 0;font-weight:500">Новый заказ #4523</p>
+<p style="font-size:14px;color:rgba(255,255,255,0.85);margin:2px 0 0">Toyota Camry · А123ВС ожидает мастера</p></div></div>
+<div style="background:rgba(255,255,255,0.14);border-radius:16px;padding:12px 14px;display:flex;gap:10px">
+<div style="width:36px;height:36px;border-radius:9px;background:var(--fill-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-tool" style="font-size:18px;color:#fff"></i></div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:rgba(255,255,255,0.85);font-weight:500">СТО Мастер</span><span style="font-size:12px;color:rgba(255,255,255,0.6)">5 мин</span></div>
+<p style="font-size:15px;color:#fff;margin:2px 0 0;font-weight:500">Иванов И.И.</p>
+<p style="font-size:14px;color:rgba(255,255,255,0.85);margin:2px 0 0">Когда будет готово?</p></div></div>
+</div></div>`;
+
+for (const key in screens) {
+  document.getElementById('render-' + key).innerHTML = screens[key];
+  document.getElementById('code-' + key).textContent = screens[key];
+}
+</script>
+</body>
+</html>

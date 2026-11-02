@@ -30,24 +30,36 @@
 
 Всё — без Go-логики (скелеты с `// TODO(dev)` вместо тел функций).
 
-1. Монорепо по ADR-036: `go.work`, 7 модулей (`go.mod`), каталоги, пустые пакеты.
-2. `docker-compose.yml` по ADR-038: nginx, gateway, users, orders, inventory, 3 × postgres:18
+Прогресс на 01.11.2026: ✅ — сделано и проверено запуском, ◐ — частично, ⏳ — не начато.
+
+1. ✅ Монорепо по ADR-036: `go.work`, 7 модулей (`go.mod`), каталоги, пустые пакеты.
+   _Проверено: `make build`, `make lint` — 0 issues._
+2. ✅ `docker-compose.yml` по ADR-038: nginx, gateway, users, orders, inventory, 3 × postgres:18
    (vehicle/services — закомментированы до недели 2), RabbitMQ 4.3 с definitions в `configs:`,
    Gotenberg; сети, healthcheck, `restart`. `.env.example`.
-3. Dockerfile на сервис (alpine, non-root, `wget /healthz`); конфиг nginx (`sto.localhost`,
+   _Проверено: `make up` — БД, RabbitMQ (definitions импортированы), Gotenberg healthy._
+3. ✅ Dockerfile на сервис (alpine, non-root, `wget /healthz`); конфиг nginx (`sto.localhost`,
    `/api/` → Gateway, `client_max_body_size 4m`).
-4. Миграции goose + `queries/*.sql` + `sqlc.yaml` (overrides uuid/decimal) для users, orders
+   _Проверено: 6 образов собраны; nginx отдаёт `502` на `/api/` при лежащем Gateway._
+4. ◐ Миграции goose + `queries/*.sql` + `sqlc.yaml` (overrides uuid/decimal) для users, orders
    (orders, order_items, order_engineers, saga_state, certificates, outbox), inventory
    (inventory, stock_attempts, stock_attempt_items, outbox); `make generate` проходит.
-5. `api/openapi.yaml` — только эндпоинты недели 1 + общий компонент ошибки; генерация
+   _Сделано: миграции всех трёх сервисов; `sqlc.yaml` + queries + генерация для users.
+   Осталось: `sqlc.yaml` + queries для orders и inventory._
+5. ⏳ `api/openapi.yaml` — только эндпоинты недели 1 + общий компонент ошибки; генерация
    `oapi-codegen` (strict server) по сервисам.
-6. Seed-миграции: инженер и директор (bcrypt-хеш), 3–5 товаров с остатком, 1–2 `vehicle_id`.
-7. `Makefile` (`generate`, `build`, `test`, `lint`, `up`, `down`), `.golangci.yml`.
-8. HTML-шаблон справки + TTF с кириллицей (это не Go — делает агент).
-9. `scripts/e2e.sh` — сценарий успеха и сценарий дедлайна (останавливает inventory).
+6. ⏳ Seed-миграции: инженер и директор (bcrypt-хеш), 3–5 товаров с остатком, 1–2 `vehicle_id`.
+7. ✅ `Makefile` (`generate`, `build`, `test`, `lint`, `up`, `down`), `.golangci.yml`.
+   _Дополнительно: `up SVC=…`, `infra`, `stop`, `logs`, `ps`, `run SVC=…` (ADR-040)._
+8. ⏳ HTML-шаблон справки + TTF с кириллицей (это не Go — делает агент).
+9. ⏳ `scripts/e2e.sh` — сценарий успеха и сценарий дедлайна (останавливает inventory).
 
 **Готово, когда:** `make up` поднимает инфраструктуру, `make generate && make build` зелёные
 (сервисы стартуют и сразу падают на `TODO` — нормально).
+_Сейчас: `make up` и `make build` — да; `make generate` — только для users._
+
+**К вечеру 1 нужны:** п. 6 (seed Users) и п. 5 (OpenAPI регистрации и входа + конфиг
+`oapi-codegen` для Users).
 
 ## Вечера — разработчик (≈ 3 ч каждый)
 

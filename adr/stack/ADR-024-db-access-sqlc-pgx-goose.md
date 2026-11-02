@@ -17,6 +17,16 @@ CONFLICT`, условные `UPDATE … WHERE`, `jsonb`, `numeric`. SQL —
   с пулом, и с транзакцией — outbox в той же транзакции, что и данные.
 - Overrides типов в `sqlc.yaml`: `uuid` → `google/uuid`, `numeric` →
   `decimal.Decimal` / `decimal.NullDecimal` (ADR-026).
+
+  > Уточнено 01.11.2026 (при генерации Users): под `sql_package: pgx/v5` sqlc
+  > по умолчанию генерирует `pgtype.Timestamptz` / `pgtype.Date` **даже для
+  > NOT NULL** колонок; `emit_pointers_for_null_types` на время не влияет.
+  > Поэтому в каждом `sqlc.yaml` нужны ещё overrides: `timestamptz`, `date` →
+  > `time.Time`, nullable → `*time.Time`. Nullable `uuid` → `*uuid.UUID`;
+  > остальные nullable (`text`, `int`) — указатели через
+  > `emit_pointers_for_null_types: true`. Генерация — в `internal/db`, пакет `db`.
+  > Комментарии к запросу пишутся под строкой `-- name:` — всё, что выше,
+  > sqlc приклеивает к документации предыдущего/первого запроса.
 - Динамические фильтры — через `sqlc.narg` или отдельные запросы.
 - Сгенерированные модели остаются внутри репозитория и маппятся в
   доменные типы.

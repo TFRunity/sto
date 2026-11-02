@@ -1,0 +1,192 @@
+# Публичный контракт API v1 (ADR-028). Одна спецификация на все сервисы:
+# каждый сервис генерирует strict-сервер из своей части по тегу (oapi-codegen.yaml).
+# Неделя 1: пока только Users (регистрация, вход).
+openapi: 3.0.3
+
+info:
+  title: STO API
+  version: 0.1.0
+  description: |
+    Все запросы идут через nginx → Gateway (`/api/…`); Gateway снимает префикс
+    `/api` и проксирует в сервис по префиксу пути (ADR-022, ADR-038).
+
+    Ошибки — единый конверт `Error` (ADR-032). Клиенты ветвятся только по
+    `error.code`; `message` — для разработчика, не для показа.
+
+    Деньги — строкой (`"1500.50"`), идентификаторы — UUID (ADR-026).
+
+servers:
+  - url: /api
+
+tags:
+  - name: users
+    description: Регистрация и вход (сервис Users)
+
+# По умолчанию эндпоинт закрыт JWT; публичные явно ставят `security: []`.
+security:
+  - bearerAuth: []
+
+paths:
+  /register:
+    post:
+      tags: [users]
+      operationId: register
+      summary: Регистрация клиента
+      description: |
+        Всегда создаёт роль `client` (ADR-019); инженер и директор заводятся
+        в БД. Сразу выдаёт токен, как вход (`sequence-register`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Клиент создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '409':
+          description: '`phone_taken` — телефон уже занят среди живых пользователей (ADR-033)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /login:
+    post:
+      tags: [users]
+      operationId: login
+      summary: Вход по телефону и паролю
+      description: |
+        Неизвестный телефон и неверный пароль неразличимы ни по ответу, ни по
+        времени (ADR-023). Токен — JWT HS256 на 7 дней, без refresh.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          description: '`invalid_credentials` — телефон или пароль не подходят'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Проверяется только в Gateway (ADR-010, ADR-023).
+
+  responses:
+    ValidationFailed:
+      description: '`validation_failed` — ошибки входных данных; подробности в `error.fields`'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnexpectedError:
+      description: Прочие ошибки (`internal_error`, а у Gateway — `unauthorized`, `forbidden`, `upstream_error`, `upstream_timeout`)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # ── общие ───────────────────────────────────────────────────────────
+    Error:
+      description: Конверт ошибки (ADR-032)
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Стабильная машиночитаемая строка (`phone_taken`, `validation_failed`, …)
+          example: phone_taken
+        message:
+          type: string
+          description: Для разработчика; не показывать пользователю
+        fields:
+          type: object
+          description: Ошибки валидации «поле → причина» (ADR-028, P-13); только у `validation_failed`
+          additionalProperties:
+            type: string
+          example:
+            phone: required
+            password: too_long
+
+    # ── users ───────────────────────────────────────────────────────────
+    RegisterRequest:
+      type: object
+      required: [name, phone, password]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+          description: Логин; уникален среди живых пользователей (ADR-033, А-03)
+        password:
+          type: string
+          format: password
+          description: Не длиннее 72 байт в UTF-8 — лимит bcrypt (ADR-023)
+
+    RegisterResponse:
+      type: object
+      required: [user_id, token]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        token:
+          type: string
+          description: JWT, как у `/login`
+
+    LoginRequest:
+      type: object
+      required: [phone, password]
+      additionalProperties: false
+      properties:
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: 'JWT HS256: `sub` = user_id, claim роли, `exp` — 7 дней'

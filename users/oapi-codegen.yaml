@@ -1,0 +1,13 @@
+# oapi-codegen v2 для Users (ADR-028). Запуск — make generate MODULE=users:
+#   oapi-codegen -config oapi-codegen.yaml ../api/openapi.yaml
+# Генерируется только своя часть спецификации — по тегу users.
+package: api
+output: internal/api/api.gen.go
+generate:
+  models: true
+  std-http-server: true   # stdlib ServeMux (ADR-022)
+  strict-server: true
+  embedded-spec: true     # спецификация для валидатора запросов (ADR-041)
+output-options:
+  include-tags:
+    - users

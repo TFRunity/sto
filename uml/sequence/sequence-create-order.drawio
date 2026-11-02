@@ -74,19 +74,19 @@
             <mxPoint x="105" y="340" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m6" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="6. POST /orders (vehicle_id, client_id, engineer_id)">
+        <mxCell id="m6" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="6. POST /orders (vehicle_id, client_id)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="100" y="360" as="sourcePoint" />
             <mxPoint x="300" y="360" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m7" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="7. Проксирует">
+        <mxCell id="m7" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;align=center;verticalAlign=bottom;" value="7. Проксирует + X-User-Id = engineer_id из JWT (ADR-037)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="305" y="420" as="sourcePoint" />
             <mxPoint x="505" y="420" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="8. Создаёт заказ, status = 'active' (client_id — как есть) + INSERT order_engineers (ответственный), 1 tx">
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="8. Создаёт заказ, status = 'active', engineer_id ← X-User-Id (не из тела, ADR-028) (client_id — как есть) + INSERT order_engineers (ответственный), 1 tx">
           <mxGeometry relative="1" x="NaN" as="geometry">
             <mxPoint as="offset" />
             <mxPoint x="505" y="470" as="sourcePoint" />

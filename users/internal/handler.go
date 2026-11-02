@@ -1,7 +1,8 @@
 package internal
 
 // TODO(dev): HTTP.
-//   - реализация strict-сервера oapi-codegen (появится после make generate) → ADR-028
+//   - реализация api.StrictServerInterface (internal/api/api.gen.go)  → ADR-028
 //   - регистрация и вход недели 1
-//   - Validate() у входных DTO, DisallowUnknownFields               → ADR-028, P-13
+//   - структура запроса — валидатор по спецификации (chassis/httpx);
+//     Validate() — только правила вне спецификации (≤ 72 байт пароля) → ADR-041
 //   - ошибки — конвертом chassis/httpx                               → ADR-032

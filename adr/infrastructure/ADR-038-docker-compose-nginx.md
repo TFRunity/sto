@@ -63,6 +63,19 @@ configs:
   разрешается открытый HTTP (Android cleartext, iOS ATS);
 - `client_max_body_size 4m` (ADR-029).
 
+> Уточнено 01.11.2026 (при первом `make up`):
+> - nginx резолвит имя из `proxy_pass` один раз при старте; пока Gateway
+>   перезапускается, nginx падал с `host not found in upstream`. Поэтому —
+>   `resolver 127.0.0.11` (DNS Docker) + `proxy_pass` через переменную: имя
+>   резолвится на каждый запрос, при лежащем Gateway клиент получает `502`;
+> - `/api/…` передаётся в Gateway без изменения пути, префикс снимает Gateway;
+> - `depends_on` с `condition: service_started` описывает и рантайм-зависимости
+>   (Orders → Inventory, Users, Gotenberg; Gateway → сервисы), чтобы
+>   `make up SVC=<сервис>` поднимал всё нужное. Ждём healthy только своей БД и
+>   RabbitMQ;
+> - definitions RabbitMQ 4.3 в формате выше импортируются целиком (проверено
+>   запуском); healthcheck Gotenberg — `curl` (есть в образе).
+
 **`/healthz` (I-09):** только «процесс жив», всегда 200. Compose не
 перезапускает unhealthy-контейнер; healthcheck нужен для порядка запуска
 и наглядности. Готовность БД гарантирует healthcheck самого Postgres.

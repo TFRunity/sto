@@ -78,6 +78,9 @@ services:
       DATABASE_URL: postgres://${USERS_DB_USER}:${USERS_DB_PASSWORD}@users-db:5432/users?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
       JWT_TTL: ${JWT_TTL}
+      # seed-миграция 00002 (goose ENVSUB)
+      SEED_ENGINEER_PASSWORD_HASH: ${SEED_ENGINEER_PASSWORD_HASH}
+      SEED_DIRECTOR_PASSWORD_HASH: ${SEED_DIRECTOR_PASSWORD_HASH}
     networks: [backend, users-db]
     depends_on:
       users-db:

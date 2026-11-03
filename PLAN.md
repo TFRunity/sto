@@ -65,6 +65,8 @@ _Сейчас: `make up` и `make build` — да; `make generate` — толь�
 
 После каждого куска — ревью агентом (C): сверка с ADR и `decisions/`, `make test lint`.
 
+Задачи вечера — `tasks/evening-<N>.md` (вечер 1: `tasks/evening-1.md`).
+
 | Вечер | Что пишешь | Готово, когда |
 |---|---|---|
 | **1** | `chassis`: загрузка конфига из env (`errors.Join`), slog, конверт ошибок + запись ответа, middleware идентичности (`X-User-Id/Role` → контекст, 401), graceful shutdown. **Users**: регистрация (bcrypt, 409 phone_taken), вход (JWT HS256) | `curl` в Users напрямую: регистрация и вход работают |

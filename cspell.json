@@ -19,7 +19,23 @@
     "ENVSUB",
     "Alexe",
     "Babanov",
-    "JWTTTL"
+    "JWTTTL",
+    "logx",
+    "httpx",
+    "codegen",
+    "nethttp",
+    "pressly",
+    "jackc",
+    "getkin",
+    "golangci",
+    "healthz",
+    "bcrypt",
+    "amqp",
+    "gotenberg",
+    "testify",
+    "sslmode",
+    "uuid",
+    "openapi"
   ],
   "ignorePaths": ["**/*.gen.go", "**/internal/db/**", "go.sum", "go.work.sum"]
 }

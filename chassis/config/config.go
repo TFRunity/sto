@@ -1,13 +1,26 @@
 // Package config — общая часть загрузки конфигурации сервисов (ADR-042).
 package config
 
-// Пустой импорт держит зависимость в go.mod, пока нет кода (go mod tidy её не
-// удалит). Когда появится вызов env.ParseAs, заменить на обычный импорт.
-import _ "github.com/caarlos0/env/v11"
+import (
+	"log/slog"
 
-// TODO(dev): общая обёртка над caarlos0/env.                          → ADR-042
-//   - разбор структуры конфига сервиса (у каждого сервиса своя, с тегами
-//     env:"NAME,required" / envDefault) — все ошибки сразу, при старте
-//   - LOG_LEVEL → slog.Level
-//   - секреты (JWT_SECRET, пароли в DATABASE_URL, SEED_*) не логируются → ADR-011
-// Имена переменных — в .env.example и docker-compose.yml.
+	"github.com/caarlos0/env/v11"
+)
+
+// Прописывать в каждом конфиге сервиса
+type Base struct {
+	HTTPAddr string     `env:"HTTP_ADDR,required"`
+	LogLevel slog.Level `env:"LOG_LEVEL" envDefault:"info"`
+}
+
+// Load читает конфиг сервиса T из окружения процесса.
+// Ошибка возвращается в виде env.AggregateError
+func Load[T any]() (T, error) {
+	return load[T](nil)
+}
+
+// load - то же с явным окружением;
+// nil - окружение процесса. Нужна тестам.
+func load[T any](environ map[string]string) (T, error) {
+	return env.ParseAsWithOptions[T](env.Options{Environment: environ})
+}

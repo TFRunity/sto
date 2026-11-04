@@ -22,8 +22,9 @@ TARGETS  := $(if $(MODULE),$(MODULE),$(MODULES))
 # Инструменты запускаются через `go run pkg@version`: версия зафиксирована здесь,
 # глобальная установка не нужна, golangci-lint собирается текущим Go.
 # Любой можно переопределить: make generate SQLC=sqlc
-# sqlc собирается с CGO (pg_query_go) — нужен gcc. Без него:
-#   SQLC='docker run --rm -v $(CURDIR):/src -w /src/$$m sqlc/sqlc:1.29.0'
+# sqlc собирается с CGO (pg_query_go) — нужен gcc. Нет gcc — sqlc из Docker:
+#   make generate SQLC='docker run --rm -v $(CURDIR):/src -w /src/$$m sqlc/sqlc:1.29.0'
+#   ($$m — каталог модуля из цикла в цели generate; Docker запускается в нём)
 SQLC         ?= go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
 OAPI_CODEGEN ?= go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.0
 GOLANGCI     ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
@@ -32,19 +33,22 @@ SVC   ?=
 INFRA := users-db orders-db inventory-db rabbitmq gotenberg
 
 # Хостовые адреса для make run (ADR-040). Остальное (JWT_SECRET, LOG_LEVEL, …) — из .env.
-# Сервис слушает только 127.0.0.1; соседи — тоже на хосте. $$VAR раскрывает шелл после .env.
-DB_URL = postgres://$$$(1)_DB_USER:$$$(1)_DB_PASSWORD@127.0.0.1:$(2)/$(3)?sslmode=disable
+# Сервис слушает только 127.0.0.1; соседи — тоже на хосте.
+# $$VAR — это $VAR для шелла (одиночный $ съедает Make); раскрывается после чтения .env.
+RUN_SERVICES := gateway users orders inventory
 AMQP_URL := amqp://$$RABBITMQ_USER:$$RABBITMQ_PASSWORD@127.0.0.1:5672/
 
 RUN_ENV_gateway   := HTTP_ADDR=127.0.0.1:8080 \
 	USERS_URL=http://127.0.0.1:8081 ORDERS_URL=http://127.0.0.1:8082 INVENTORY_URL=http://127.0.0.1:8083
 RUN_ENV_users     := HTTP_ADDR=127.0.0.1:8081 \
-	DATABASE_URL="$(call DB_URL,USERS,5433,users)"
+	DATABASE_URL="postgres://$$USERS_DB_USER:$$USERS_DB_PASSWORD@127.0.0.1:5433/users?sslmode=disable"
 RUN_ENV_orders    := HTTP_ADDR=127.0.0.1:8082 \
-	DATABASE_URL="$(call DB_URL,ORDERS,5434,orders)" RABBITMQ_URL="$(AMQP_URL)" \
+	DATABASE_URL="postgres://$$ORDERS_DB_USER:$$ORDERS_DB_PASSWORD@127.0.0.1:5434/orders?sslmode=disable" \
+	RABBITMQ_URL="$(AMQP_URL)" \
 	INVENTORY_URL=http://127.0.0.1:8083 USERS_URL=http://127.0.0.1:8081 GOTENBERG_URL=http://127.0.0.1:3000
 RUN_ENV_inventory := HTTP_ADDR=127.0.0.1:8083 \
-	DATABASE_URL="$(call DB_URL,INVENTORY,5435,inventory)" RABBITMQ_URL="$(AMQP_URL)"
+	DATABASE_URL="postgres://$$INVENTORY_DB_USER:$$INVENTORY_DB_PASSWORD@127.0.0.1:5435/inventory?sslmode=disable" \
+	RABBITMQ_URL="$(AMQP_URL)"
 
 .PHONY: generate build test lint up infra stop logs ps down run
 
@@ -92,8 +96,11 @@ logs:
 ps:
 	docker compose ps -a
 
+# RUN_ENV_$(SVC) — переменные выбранного сервиса: SVC=users → RUN_ENV_users.
 run:
-	$(if $(RUN_ENV_$(SVC)),,$(error make run SVC=<gateway|users|orders|inventory>))
+ifeq ($(filter $(SVC),$(RUN_SERVICES)),)
+	$(error укажи сервис: make run SVC=<$(RUN_SERVICES)>)
+endif
 	set -a; . ./.env; set +a; cd $(SVC) && env $(RUN_ENV_$(SVC)) go run ./cmd/$(SVC)
 
 down:

@@ -12,26 +12,19 @@ sql:
         sql_package: pgx/v5
         emit_pointers_for_null_types: true   # nullable text/int → *string, *int32
         overrides:                 # ADR-026; numeric → decimal — у сервисов с деньгами
+          # Только типы колонок таблицы users; другим сервисам — в их sqlc.yaml.
           - db_type: uuid
             go_type: github.com/google/uuid.UUID
-          - db_type: uuid
-            nullable: true
-            go_type:
-              import: github.com/google/uuid
-              type: UUID
-              pointer: true
           # Под pgx/v5 время по умолчанию — pgtype.*, даже у NOT NULL; переводим в time.
-          - db_type: timestamptz
+          - db_type: timestamptz           # created_at, updated_at
             go_type: time.Time
-          - db_type: timestamptz
+          - db_type: timestamptz           # deleted_at
             nullable: true
             go_type:
               import: time
               type: Time
               pointer: true
-          - db_type: date
-            go_type: time.Time
-          - db_type: date
+          - db_type: date                  # work_started_at
             nullable: true
             go_type:
               import: time

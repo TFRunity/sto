@@ -1,0 +1,25 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignoreRegExpList": ["/[а-яё]+/gi"],
+  "words": [
+    "caarlos",
+    "slog",
+    "pgxpool",
+    "pgx",
+    "sqlc",
+    "goose",
+    "oapi",
+    "gofumpt",
+    "gopls",
+    "envDefault",
+    "envPrefix",
+    "notEmpty",
+    "environ",
+    "ENVSUB",
+    "Alexe",
+    "Babanov",
+    "JWTTTL"
+  ],
+  "ignorePaths": ["**/*.gen.go", "**/internal/db/**", "go.sum", "go.work.sum"]
+}

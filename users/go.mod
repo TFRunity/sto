@@ -14,6 +14,8 @@ require (
 )
 
 require (
+	github.com/AlexeBabanov/sto/chassis v0.0.0-00010101000000-000000000000
+	github.com/caarlos0/env/v11 v11.4.1 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

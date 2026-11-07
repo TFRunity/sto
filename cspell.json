@@ -35,7 +35,8 @@
     "testify",
     "sslmode",
     "uuid",
-    "openapi"
+    "openapi",
+    "Healthz"
   ],
   "ignorePaths": ["**/*.gen.go", "**/internal/db/**", "go.sum", "go.work.sum"]
 }

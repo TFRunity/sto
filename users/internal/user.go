@@ -1,7 +1,29 @@
 // Package internal — домен пользователей (один домен — плоская структура, ADR-004).
 package internal
 
-// TODO(dev): доменные типы и правила.
-//   - роль: client | engineer | director                            → ADR-019
-//   - регистрация всегда создаёт client; engineer/director — seed
-//   - пароль ≤ 72 байт (лимит bcrypt)                                → ADR-023
+import (
+	"errors"
+
+	"github.com/google/uuid"
+)
+
+type Role string
+
+const (
+	RoleClient   Role = "client"
+	RoleEngineer Role = "engineer"
+	RoleDirector Role = "director"
+)
+
+type User struct {
+	ID           uuid.UUID
+	Name         string
+	Phone        string
+	PasswordHash string
+	Role         Role
+}
+
+var (
+	ErrPhoneTaken   = errors.New("phone already taken")
+	ErrUserNotFound = errors.New("user not found")
+)

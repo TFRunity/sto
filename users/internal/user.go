@@ -1,11 +1,7 @@
 // Package internal — домен пользователей (один домен — плоская структура, ADR-004).
 package internal
 
-import (
-	"errors"
-
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 type Role string
 
@@ -22,8 +18,3 @@ type User struct {
 	PasswordHash string
 	Role         Role
 }
-
-var (
-	ErrPhoneTaken   = errors.New("phone already taken")
-	ErrUserNotFound = errors.New("user not found")
-)

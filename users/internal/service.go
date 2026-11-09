@@ -16,11 +16,6 @@ const (
 	maxPasswordBytes = 72
 )
 
-var (
-	ErrPasswordTooLong    = errors.New("password longer than 72 bytes")
-	ErrInvalidCredentials = errors.New("invalid phone or password")
-)
-
 type UserStore interface {
 	CreateClient(ctx context.Context, u User) (User, error)
 	GetByPhone(ctx context.Context, phone string) (User, error)

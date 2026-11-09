@@ -36,7 +36,12 @@
     "sslmode",
     "uuid",
     "openapi",
-    "Healthz"
+    "Healthz",
+    "pgconn",
+    "Noop",
+    "stdlib",
+    "jwt",
+    "Errorf"
   ],
-  "ignorePaths": ["**/*.gen.go", "**/internal/db/**", "go.sum", "go.work.sum"]
+  "ignorePaths": ["**/*.gen.go", "**/internal/db/**", "go.sum", "go.work.sum", "**/go.mod"]
 }

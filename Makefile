@@ -27,7 +27,7 @@ TARGETS  := $(if $(MODULE),$(MODULE),$(MODULES))
 #   ($$m — каталог модуля из цикла в цели generate; Docker запускается в нём)
 SQLC         ?= go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
 OAPI_CODEGEN ?= go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.0
-GOLANGCI     ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
+GOLANGCI     ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 
 SVC   ?=
 INFRA := users-db orders-db inventory-db rabbitmq gotenberg

@@ -39,7 +39,8 @@ func ping(ctx context.Context, pool *pgxpool.Pool) error {
 
 func Migrate(ctx context.Context, pool *pgxpool.Pool, fsys fs.FS) (int, error) {
 	db := stdlib.OpenDBFromPool(pool)
-	defer db.Close()
+	// Ошибка закрытия не нужна: db — обёртка над пулом на время миграций.
+	defer func() { _ = db.Close() }()
 
 	provider, err := goose.NewProvider(goose.DialectPostgres, db, fsys)
 	if err != nil {

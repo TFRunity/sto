@@ -1,0 +1,24 @@
+{
+  // Форматирование Go через gopls (расширение golang.go).
+  // Shift+Alt+F — весь файл; при сохранении — то же самое плюс порядок импортов.
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[go.mod]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.formatOnSave": true
+  },
+  "go.useLanguageServer": true,
+  "gopls": {
+    // gofumpt — строгий надмножество gofmt, встроен в gopls, ставить отдельно не нужно.
+    "formatting.gofumpt": true,
+    // Свои модули группируются в импортах отдельным блоком после сторонних.
+    "formatting.local": "github.com/AlexeBabanov/sto",
+    // go.work в корне — gopls видит все модули сразу.
+    "build.directoryFilters": ["-v2", "-**/node_modules"]
+  }
+}

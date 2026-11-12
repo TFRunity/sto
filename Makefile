@@ -14,6 +14,7 @@
 #
 # Сервис на хосте (ADR-040): сначала make infra, потом
 #   make run SVC=users            go run с переменными из .env и хостовыми адресами
+#   make dev SVC=users            то же, но LOG_LEVEL=debug и логи через jq
 
 MODULES  := chassis gateway users orders vehicle inventory services
 MODULE   ?=
@@ -50,7 +51,7 @@ RUN_ENV_inventory := HTTP_ADDR=127.0.0.1:8083 \
 	DATABASE_URL="postgres://$$INVENTORY_DB_USER:$$INVENTORY_DB_PASSWORD@127.0.0.1:5435/inventory?sslmode=disable" \
 	RABBITMQ_URL="$(AMQP_URL)"
 
-.PHONY: generate build test lint up infra stop logs ps down run
+.PHONY: generate build test lint up infra stop logs ps down run dev
 
 # sqlc — модули с sqlc.yaml; oapi-codegen — модули с oapi-codegen.yaml
 # (конфиг генерации по своей части api/openapi.yaml, ADR-028).
@@ -102,6 +103,15 @@ ifeq ($(filter $(SVC),$(RUN_SERVICES)),)
 	$(error укажи сервис: make run SVC=<$(RUN_SERVICES)>)
 endif
 	set -a; . ./.env; set +a; cd $(SVC) && env $(RUN_ENV_$(SVC)) go run ./cmd/$(SVC)
+
+# То же, что run, но для чтения глазами: LOG_LEVEL=debug и вывод через jq (нужен в системе).
+# Фильтр jq: строка-JSON разворачивается, любая другая печатается как есть.
+dev:
+ifeq ($(filter $(SVC),$(RUN_SERVICES)),)
+	$(error укажи сервис: make dev SVC=<$(RUN_SERVICES)>)
+endif
+	@set -a; . ./.env; set +a; cd $(SVC) && env $(RUN_ENV_$(SVC)) LOG_LEVEL=debug go run ./cmd/$(SVC) \
+		| jq -R '. as $$line | try fromjson catch $$line'
 
 down:
 	docker compose down

@@ -1,9 +1,45 @@
 package main
 
-// TODO(dev): сборка Gateway.
-//   - конфиг (chassis/config): HTTP_ADDR, JWT_SECRET, *_URL сервисов
-//   - таблица маршрутов → прокси; собственные эндпоинты (дашборд) — неделя 2
-//   - HTTP-сервер + graceful shutdown (chassis/httpx)
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/AlexeBabanov/sto/chassis/config"
+	"github.com/AlexeBabanov/sto/chassis/httpx"
+	"github.com/AlexeBabanov/sto/chassis/logx"
+)
+
+// TODO(dev): таблица маршрутов → прокси (задачи 3–5 вечера 2);
+// собственные эндпоинты (дашборд) — неделя 2.
 func main() {
-	panic("TODO(dev): gateway")
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	cfg, err := config.Load[Config]()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	logger := logx.New("gateway", cfg.LogLevel)
+	logger.Info("gateway started",
+		"addr", cfg.HTTPAddr,
+		"log_level", cfg.LogLevel,
+		"users_url", cfg.UsersURL.String(),
+		"orders_url", cfg.OrdersURL.String(),
+		"inventory_url", cfg.InventoryURL.String(),
+	)
+
+	// Маршрутов пока нет: всё, кроме /healthz, — 404.
+	app := http.NotFoundHandler()
+
+	if err := httpx.Run(ctx, cfg.HTTPAddr, app, logger); err != nil {
+		logger.Error("http server failed", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("gateway stopped")
 }

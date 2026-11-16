@@ -11,6 +11,7 @@ import (
 	"github.com/AlexeBabanov/sto/chassis/config"
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/chassis/logx"
+	"github.com/AlexeBabanov/sto/gateway/internal"
 )
 
 // TODO(dev): таблица маршрутов → прокси (задачи 3–5 вечера 2);
@@ -34,8 +35,17 @@ func main() {
 		"inventory_url", cfg.InventoryURL.String(),
 	)
 
-	// Маршрутов пока нет: всё, кроме /healthz, — 404.
-	app := http.NotFoundHandler()
+	usersProxy := internal.NewProxy(&cfg.UsersURL, logger)
+	ordersProxy := internal.NewProxy(&cfg.OrdersURL, logger)
+	inventoryProxy := internal.NewProxy(&cfg.InventoryURL, logger)
+
+	proxies := map[string]http.Handler{
+		"users":     usersProxy,
+		"orders":    ordersProxy,
+		"inventory": inventoryProxy,
+	}
+
+	app := internal.NewRouter([]byte(cfg.JWTSecret), proxies, logger)
 
 	if err := httpx.Run(ctx, cfg.HTTPAddr, app, logger); err != nil {
 		logger.Error("http server failed", "err", err)

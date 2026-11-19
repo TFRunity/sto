@@ -1,8 +1,22 @@
-// Package order — заказ: создание, позиции, чтение (ADR-021).
+// Package order implements order creation, item addition and reading.
 package order
 
-// TODO(dev): доменные типы и чистые правила.                          → D-07, ADR-031
-//   - статусы requested → active → paid / cancelled                  → ADR-021
-//   - сумма заказа по сохранённым ценам позиций, decimal             → ADR-034, ADR-026
-//   - canStartPayment: только из active
-//   - табличные тесты на сумму и canStartPayment                     → ADR-013
+import (
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+)
+
+type orderItem struct {
+	id       uuid.UUID
+	itemID   uuid.UUID
+	quantity int32
+	price    decimal.Decimal
+}
+
+func total(items []orderItem) decimal.Decimal {
+	sum := decimal.Zero
+	for _, item := range items {
+		sum = sum.Add(item.price.Mul(decimal.NewFromInt(int64(item.quantity))))
+	}
+	return sum
+}

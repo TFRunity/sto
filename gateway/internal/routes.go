@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	roleClient   = "client"
 	roleEngineer = "engineer"
 )
 
@@ -32,15 +31,19 @@ type Route struct {
 var routes = []Route{
 	{Prefix: "/register", Upstream: "users", Public: true},
 	{Prefix: "/login", Upstream: "users", Public: true},
-	{Prefix: "/orders", Upstream: "orders", Roles: []string{roleEngineer, roleClient}},
+	{Prefix: "/orders", Upstream: "orders", Roles: []string{roleEngineer}},
 }
 
 //-------------------------------START Outer Func zone-----------------------------
 
 func NewRouter(secret []byte, proxies map[string]http.Handler, logger *slog.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	app := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleRequest(w, r, secret, proxies, logger)
 	})
+	mux := http.NewServeMux()
+	mux.Handle("/api/", http.StripPrefix("/api", app))
+	mux.Handle("/", app)
+	return mux
 }
 
 //-------------------------------END Outer Func zone-------------------------------
@@ -71,24 +74,18 @@ func handleRequest(w http.ResponseWriter, r *http.Request, secret []byte, proxie
 		return
 	}
 
-	identity, hasIdentity := authenticateRequest(r, route, secret)
-	if !hasIdentity {
-		httpx.WriteError(w, logger, &httpx.Error{
-			Status:  http.StatusBadRequest,
-			Code:    "no_such_permission_role",
-			Message: "no such permission role",
-		})
-		return
+	var identity Identity
+	if !route.Public {
+		var err error
+		identity, err = Authenticate(r.Header.Get("Authorization"), secret)
+		if err != nil {
+			httpx.WriteError(w, logger, ErrUnauthorized)
+			return
+		}
 	}
 
 	route, decision := decideRequest(r, route, identity)
-
 	if !handleDecision(w, logger, decision) {
-		httpx.WriteError(w, logger, &httpx.Error{
-			Status:  http.StatusBadRequest,
-			Code:    "_not_configured",
-			Message: "upstream not configured",
-		})
 		return
 	}
 
@@ -102,53 +99,27 @@ func handleRequest(w http.ResponseWriter, r *http.Request, secret []byte, proxie
 		return
 	}
 
-	proxyRequest(w, r, proxy, identity)
+	if !route.Public {
+		r = r.WithContext(WithIdentity(r.Context(), identity))
+	}
+	proxy.ServeHTTP(w, r)
 }
 
-// Подтверждает личность и наличие подходящей роли
-func authenticateRequest(r *http.Request, route Route, secret []byte) (Identity, bool) {
-	authHeader := r.Header.Get("Authorization")
-	identity, err := Authenticate(authHeader, secret)
-	if err != nil {
-		return Identity{}, false
+func decideRequest(_ *http.Request, route Route, identity Identity) (Route, Decision) {
+	if route.Public || slices.Contains(route.Roles, identity.Role) {
+		return route, Allow
 	}
-	if route.Public {
-		return identity, true
-	}
-	if !slices.Contains(route.Roles, identity.Role) {
-		return Identity{}, false
-	}
-	return identity, true
+	return route, Forbidden
 }
 
-func decideRequest(r *http.Request, route Route, identity Identity) (Route, Decision) {
-	// Сюда можно будет вписать особенные правила, всякие разные. Пока что
-	// Просто будем возвращать route, Allow.
-	// Например для тестировщиков, (в дальнейших сценариях понадобится)
-	// Временно заменяет собой httpx.identity из задачи 1 вечера 3
-	return route, Allow
-}
-
-// Усложнить после усложенения decideRequest
 func handleDecision(w http.ResponseWriter, logger *slog.Logger, decision Decision) bool {
-	if decision != Allow {
-		return false
+	if decision == Allow {
+		return true
 	}
-	return true
-}
-
-// По умолчанию если мы используем с пустым identity - значит аноним сидит
-func proxyRequest(w http.ResponseWriter, r *http.Request, logger *slog.Logger, proxy http.Handler, identity Identity) {
-	// Докидываем identity, если не пустая
-	if identity != (Identity{}) {
-		ctx := WithIdentity(r.Context(), identity)
-		// Выполняем serve с подменой ctx на новый с Identity
-		proxy.ServeHTTP(w, r.WithContext(ctx))
-	} else {
-		httpx.WriteError(w, logger, &httpx.Error{
-			Status:  http.StatusInternalServerError,
-			Code:    "identity_not_found",
-			Message: "identity not found",
-		})
-	}
+	httpx.WriteError(w, logger, &httpx.Error{
+		Status:  http.StatusForbidden,
+		Code:    "forbidden",
+		Message: "forbidden",
+	})
+	return false
 }

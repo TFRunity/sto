@@ -181,6 +181,49 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /orders/{id}/pay:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    post:
+      tags: [orders]
+      operationId: payOrder
+      summary: Начать оплату заказа клиента
+      responses:
+        '202':
+          description: Оплата принята в обработку
+        '409':
+          description: Заказ недоступен для оплаты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/certificate:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [orders]
+      operationId: getCertificate
+      summary: Скачать готовую справку об оплате
+      responses:
+        '200':
+          description: PDF-справка
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Справка отсутствует или ещё не готова (certificate_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /inventory/{id}:
     parameters:
       - $ref: '#/components/parameters/ResourceId'

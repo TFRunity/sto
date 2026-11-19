@@ -41,7 +41,26 @@
     "Noop",
     "stdlib",
     "jwt",
-    "Errorf"
+    "Errorf",
+    "Applicationpdf",
+    "DBTX",
+    "MQURL",
+    "Timestamptz",
+    "errgroup",
+    "execrows",
+    "fkey",
+    "fsys",
+    "narg",
+    "noproxy",
+    "pdftotext",
+    "pgtype",
+    "pgxdecimal",
+    "psql",
+    "savepoint",
+    "shopspring",
+    "stockmessage",
+    "unroutable",
+    "varnames"
   ],
   "ignorePaths": ["**/*.gen.go", "**/internal/db/**", "go.sum", "go.work.sum", "**/go.mod"]
 }

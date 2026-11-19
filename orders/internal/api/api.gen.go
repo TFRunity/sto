@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -145,9 +146,15 @@ type ServerInterface interface {
 	// Карточка заказа
 	// (GET /orders/{id})
 	GetOrder(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Скачать готовую справку об оплате
+	// (GET /orders/{id}/certificate)
+	GetCertificate(w http.ResponseWriter, r *http.Request, id ResourceId)
 	// Добавление товарной позиции
 	// (POST /orders/{id}/items)
 	AddOrderItem(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Начать оплату заказа клиента
+	// (POST /orders/{id}/pay)
+	PayOrder(w http.ResponseWriter, r *http.Request, id ResourceId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -210,6 +217,37 @@ func (siw *ServerInterfaceWrapper) GetOrder(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
+// GetCertificate operation middleware
+func (siw *ServerInterfaceWrapper) GetCertificate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCertificate(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AddOrderItem operation middleware
 func (siw *ServerInterfaceWrapper) AddOrderItem(w http.ResponseWriter, r *http.Request) {
 
@@ -232,6 +270,37 @@ func (siw *ServerInterfaceWrapper) AddOrderItem(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AddOrderItem(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PayOrder operation middleware
+func (siw *ServerInterfaceWrapper) PayOrder(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PayOrder(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -363,7 +432,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc("POST "+options.BaseURL+"/orders", wrapper.CreateOrder)
 	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}", wrapper.GetOrder)
+	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}/certificate", wrapper.GetCertificate)
 	m.HandleFunc("POST "+options.BaseURL+"/orders/{id}/items", wrapper.AddOrderItem)
+	m.HandleFunc("POST "+options.BaseURL+"/orders/{id}/pay", wrapper.PayOrder)
 
 	return m
 }
@@ -470,6 +541,54 @@ func (response GetOrderdefaultJSONResponse) VisitGetOrderResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type GetCertificateRequestObject struct {
+	Id ResourceId `json:"id"`
+}
+
+type GetCertificateResponseObject interface {
+	VisitGetCertificateResponse(w http.ResponseWriter) error
+}
+
+type GetCertificate200ApplicationpdfResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetCertificate200ApplicationpdfResponse) VisitGetCertificateResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/pdf")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetCertificate404JSONResponse Error
+
+func (response GetCertificate404JSONResponse) VisitGetCertificateResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCertificatedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetCertificatedefaultJSONResponse) VisitGetCertificateResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 type AddOrderItemRequestObject struct {
 	Id   ResourceId `json:"id"`
 	Body *AddOrderItemJSONRequestBody
@@ -527,6 +646,43 @@ func (response AddOrderItemdefaultJSONResponse) VisitAddOrderItemResponse(w http
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type PayOrderRequestObject struct {
+	Id ResourceId `json:"id"`
+}
+
+type PayOrderResponseObject interface {
+	VisitPayOrderResponse(w http.ResponseWriter) error
+}
+
+type PayOrder202Response struct {
+}
+
+func (response PayOrder202Response) VisitPayOrderResponse(w http.ResponseWriter) error {
+	w.WriteHeader(202)
+	return nil
+}
+
+type PayOrder409JSONResponse Error
+
+func (response PayOrder409JSONResponse) VisitPayOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PayOrderdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response PayOrderdefaultJSONResponse) VisitPayOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Создание активного заказа инженером
@@ -535,9 +691,15 @@ type StrictServerInterface interface {
 	// Карточка заказа
 	// (GET /orders/{id})
 	GetOrder(ctx context.Context, request GetOrderRequestObject) (GetOrderResponseObject, error)
+	// Скачать готовую справку об оплате
+	// (GET /orders/{id}/certificate)
+	GetCertificate(ctx context.Context, request GetCertificateRequestObject) (GetCertificateResponseObject, error)
 	// Добавление товарной позиции
 	// (POST /orders/{id}/items)
 	AddOrderItem(ctx context.Context, request AddOrderItemRequestObject) (AddOrderItemResponseObject, error)
+	// Начать оплату заказа клиента
+	// (POST /orders/{id}/pay)
+	PayOrder(ctx context.Context, request PayOrderRequestObject) (PayOrderResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -626,6 +788,32 @@ func (sh *strictHandler) GetOrder(w http.ResponseWriter, r *http.Request, id Res
 	}
 }
 
+// GetCertificate operation middleware
+func (sh *strictHandler) GetCertificate(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request GetCertificateRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCertificate(ctx, request.(GetCertificateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCertificate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCertificateResponseObject); ok {
+		if err := validResponse.VisitGetCertificateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // AddOrderItem operation middleware
 func (sh *strictHandler) AddOrderItem(w http.ResponseWriter, r *http.Request, id ResourceId) {
 	var request AddOrderItemRequestObject
@@ -659,48 +847,77 @@ func (sh *strictHandler) AddOrderItem(w http.ResponseWriter, r *http.Request, id
 	}
 }
 
+// PayOrder operation middleware
+func (sh *strictHandler) PayOrder(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request PayOrderRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PayOrder(ctx, request.(PayOrderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PayOrder")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PayOrderResponseObject); ok {
+		if err := validResponse.VisitPayOrderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"T7WbpxbPXJ36Qu72tEZEyP3/AHY6dZC3HAAA",
+	"H4sIAAAAAAAC/7xZ3W4b1xF+lcVpLix0RVJSUiT0lRvXgQq0Eey4vZBUcbV7SG1K7q53DxWzAgGRrO0E",
+	"EiKkcJHCQJMGBdyL3qxos6IpkQLyBHNewU9SzJzl/lCrSI5lAYbM/Tln5szPN9/M7jDTbXiuwx0RsPIO",
+	"8wzfaHDBfbq6ywO36Zt82cIr22Fl5hlii+nMMRqclZltMZ35/EHT9rnFysJvcp0F5hZvGLii6voNQ7Ay",
+	"azbpTdHycFUgfNupsXa7jYsDz3UCTvI+9S3u/94Vd9ymQyJN1xHcEfjT8Ly6bRrCdp3i54Hr4L1E0ns+",
+	"r7Iy+0UxOU5RPQ2Kv/F911fSLB6Yvu3hJqzMKi7K23BcsVFFiRXt9e5TDY4ghBGEcKTBGAb4J4RX8BIG",
+	"MGZtnd13jKbYcn37L/w6dGymxEUKolayBy8hhGOYyI7c12RPdmQXQhjDBPowlF25r8FQaS27MJRP8JHs",
+	"qAd4xFO5izcgVIfiDz1uCm4pTd75ueB7Ev8EhmjiifwShnAIIxhqNyq2I7jvGPUNjqsrugahJnvaJ4bg",
+	"XxgtskHWLLpWqbr+pm1Z3MGLphcInxuNeIPkjrAb3G2Kyhye+g9G3bboWHcMu34t7tyORW5USWbk07QF",
+	"oC8fwQRewljuyUcaOXqsLm5qcIqP0HhwOHUprdEqdNpC1eZ1K6gwFB7pg+resixKr2XBG3f5gyYP1Bkt",
+	"y0ZtjPqK73rcFzamYtWoB1xnXurWDrMFb2zY1iUSW2cPmoYjbNHKvGw7YmmR6axhO3aj2WDlhXglurzG",
+	"fdZup/FkNZaZ2nE9XuRufs5NgeI+9rkhOJ3v553NrNvcEZc93Tbfss06v9zrMydKJGX2ufBUCiYJozOa",
+	"Kwz7OZrEK/NkxzAwk7bPYAJj6MNA7sruTOLeun13vrS0OMdmrcunm12YM792rdYZRdXyc7WkNWfsYroW",
+	"z9H/B0LJQxjCsdxHaJcHGpxASOcYK0SiVwZ090AjyMRsG0Go3ah4W67DN4TxZ4U0Z9NZ117vPkcT8IdG",
+	"w6ujvqk1edGkEvb8gN05u2TmUN9lwIPKAkJ/KB/DEIbaj/8l0DiGgfb68d80Qv4hQe8Ywh+PI8ctfqhr",
+	"K/MLS3M3NdnF1+U+jGCCyJtzzPQBkTYEwReub7EyE667UXedGtPVuVk58WU7x4UNHgRGLc9VT+EY7b+L",
+	"pZj+HsJEdknvEYQ3o+p8qlwDR3IPj67q22mk/xFVw1B2YQDH8uuLkxODJtEpL+R+5zq8lRtYPTjBmEEo",
+	"lruyB4eov3ykyQ5CeB+fY7AdEaFAlU/QXadUhNE3aHX5BJ1YyITPwgelUuGDEhrUEFgZWZn9abU0/9H6",
+	"L1cL6/RjZ7H93pnD6ezhfM2dj25a3LQbRr1wW/2ffjpvNzzXJ8iMeJ0Vv0R8r8xqtthqbhZMt1EMtlwv",
+	"8FBCcfoampFgKicN3whYuVOzHR7j2YyJ/5GiM39VUUA221UcjQwrn+ArRINewESjGP8f3RpgDBU0+DfR",
+	"H3kAfZUvJzDBNxSadWVH9uhvF/rT4JH76JALlb/kGbGkxfU0uAgV45qdSh7D940WXntGq4HWNV2navsN",
+	"nme0v6c5n8LtL+U3ZCIFbxDCC4zaCZzCMR13r5Dovem6dW44KC0QUZ5yB4v3KlNAAmN5ILtMZ9DfSNIU",
+	"BnjnBf2cQJ8eyz1FZdj6rFkwGHHX+W3DxxAMcPt7KO+WaXJPcLQkXS87K75b83kQTO/c5YbVml7c5nV7",
+	"m2M2ryuNRTNIq+wrdkD7GaawtznFOHnKNByT15EGrue4TbjCqF/kLQUOb8kQlDL5NCE+09Qd03iaKpgX",
+	"FHkwlsTVmZR9gzi+bF57vm3ySxvvysijxfQ8BjnV56xdMGa42fRt0bqHWimDbHLD5/6tpthKru5M9frt",
+	"Hz9j+c1NlG0HiC2yg7mWLqvQjxsaVX8XSrqmCvHSHCYgmYVSkAQmZt0SwlO9he1U3ZyU/14VH9X0yT0Y",
+	"qOSPGj65R40hwpyGaCl3YQBHGiLvQ+IHsVqVouHZxde7zytzN+O7sgNjGGKhU5iJuw4UHMvOmkNrKhpV",
+	"NkWbZAeGVA/p9T5ugDKxSe1Q+ZvZQ/bwRo+6moiZLEaWWfpwrrDmUOgGCFiHiDfyKwhjE8NIW3a2uSNc",
+	"v6Wqwim54ET25Ne6Bod01qxACDWldWHNWXMyZIpaswG8JJTbg1cajDL8t0IEtJJQ34IGz4h9UZ1CU+Or",
+	"XejLg0jDbBCcwmTNiRo3JB+Vm1olYh9RY/jyJ1mQHrEg9VZChiBUh3lKiuzDi+gwKTY7gVfajcralF6s",
+	"scqcnh0ZZGqs3KMN7t9fvj11y6/QGxiXtiCicu+zT7VbK8uEWH6ggrFUWCiUMKldjzuGZ7MyWyqUCksR",
+	"taD8KtpTlxV3bKs9O4dazYeN5JViak7VRtwv1t2aje06/qY2h+R4ruoLEeyIzOJcK91lRcMsHohpT3El",
+	"04Cc7rTdbs8OzmaHYYulhXejgZKRO5T5Nh59yQ5M4Ciq122dvV8qnSck1rp4Zp5CCxcuXpiZqZFaVaNZ",
+	"F5dZmJ1bEYI3Gw3DbxEpTw6hBk0hjDC0oZ8wxHjcB+EsXZzACYa3UQvifjlg6+0kquJ4rfGcyPqEiySs",
+	"Mp4tXZlnlYCLfKmQ4QiG2BEiHCI+4z9CoxdUqxAPZCfqYibw6i29/v7FC7Pj3it0+zMI5W7cToUZH+c5",
+	"VH9bvElFQ9FEJlVFb/KfioyPU6+9UXx4VjUbHjFF2rQdNEDunD0bHCu378zLDpXBkPqgMOW0dzz4/SEt",
+	"9kzPNeUJQ6yiGgzkV/KbqMbFzQQOYlJWTgb4c1eLHSNqJ6ORQiwdmYSWNh4SlgkcpjooGLzzKIubx7fY",
+	"U48r4oyLnhMChgltVOOxfppo9dNEa0j1Qj4ik4xTlBf6GehRo41sLqQH0++oAOfNvq+5Aqf6+LyPIWl0",
+	"RjaHw30MrmPliavA4uv+lhalcIUasOQ+avRBafE6vpxlvwIRfc00B0js1SexHpxOP+9dFXw8nfHhMJrw",
+	"0Uhpl+jHq5ncuATXKHpG68qyPpuHK0brHLaymAMR38VYF2rpOZCaf057s2gWNJI9FYgfXUN9+Tbz+XbW",
+	"xXGrlBp3XaXb/5muGYmM3gzPHCVNIoTn+d3nNTsQNFVNTybI4+mZxOo6ejXg/vY0Hpp+nZUZNrXk8Gj3",
+	"M078FwywM4yawnAKP8kXSO1Gplu/H3A/mEs+/zfxmrX1nXN9IPcinvkoE/xqKJEJ/hlRqslPyYoskyPs",
+	"P7KbZNhj/Cn30tLCma1jDEjtHnegWGr/PwAgDO1XFSEAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"time"
 
 	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
@@ -39,6 +40,21 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 		pool.Close()
 		return nil, fmt.Errorf("postgres: ping: %w", err)
 	}
+	return pool, nil
+}
+
+// ConnectAndMigrate возвращает готовый пул. При ошибке миграции закрывает его.
+func ConnectAndMigrate(ctx context.Context, url string, migrations fs.FS, logger *slog.Logger) (*pgxpool.Pool, error) {
+	pool, err := Connect(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	applied, err := Migrate(ctx, pool, migrations)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	logger.InfoContext(ctx, "migrations done", "applied", applied)
 	return pool, nil
 }
 

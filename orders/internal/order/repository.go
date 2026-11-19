@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/AlexeBabanov/sto/chassis/postgres"
 	"github.com/AlexeBabanov/sto/orders/internal/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -12,19 +13,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var errOrderNotFound = errors.New("order not found")
+
 type repository struct {
 	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
 func (r repository) create(ctx context.Context, clientID, vehicleID, engineerID uuid.UUID) (uuid.UUID, error) {
-	tx, err := r.pool.Begin(ctx)
+	var id uuid.UUID
+	err := postgres.InTx(ctx, r.pool, func(tx pgx.Tx) error {
+		inserted, err := insertOrderWithEngineer(ctx, db.New(tx), clientID, vehicleID, engineerID)
+		id = inserted
+		return err
+	})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("begin order creation: %w", err)
+		return uuid.Nil, fmt.Errorf("create order: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	return id, nil
+}
 
-	queries := r.queries.WithTx(tx)
+// Для назначения ответственного обе вставки должны пройти в одной транзакции.
+func insertOrderWithEngineer(ctx context.Context, queries *db.Queries, clientID, vehicleID, engineerID uuid.UUID) (uuid.UUID, error) {
 	id, err := queries.CreateOrder(ctx, db.CreateOrderParams{
 		ClientID: clientID, VehicleID: vehicleID, EngineerID: engineerID,
 	})
@@ -36,13 +46,8 @@ func (r repository) create(ctx context.Context, clientID, vehicleID, engineerID 
 	}); err != nil {
 		return uuid.Nil, fmt.Errorf("assign order engineer: %w", err)
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return uuid.Nil, fmt.Errorf("commit order creation: %w", err)
-	}
 	return id, nil
 }
-
-var errOrderNotFound = errors.New("order not found")
 
 func (r repository) addItem(ctx context.Context, orderID uuid.UUID, item orderItem) (uuid.UUID, error) {
 	id, err := r.queries.AddOrderItem(ctx, db.AddOrderItemParams{
@@ -59,6 +64,7 @@ func (r repository) addItem(ctx context.Context, orderID uuid.UUID, item orderIt
 }
 
 func (r repository) get(ctx context.Context, id uuid.UUID) (db.GetOrderRow, []orderItem, error) {
+	// Заказ, подтверждение оплаты и позиции читаем из одного снимка.
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return db.GetOrderRow{}, nil, fmt.Errorf("begin order read: %w", err)
@@ -80,9 +86,18 @@ func (r repository) get(ctx context.Context, id uuid.UUID) (db.GetOrderRow, []or
 	if err := tx.Commit(ctx); err != nil {
 		return db.GetOrderRow{}, nil, fmt.Errorf("commit order read: %w", err)
 	}
+	return row, mapOrderItems(rows), nil
+}
+
+func mapOrderItems(rows []db.ListOrderItemsRow) []orderItem {
 	items := make([]orderItem, 0, len(rows))
 	for _, item := range rows {
-		items = append(items, orderItem{id: item.ID, itemID: item.ItemID, quantity: item.Quantity, price: item.Price})
+		items = append(items, orderItem{
+			id:       item.ID,
+			itemID:   item.ItemID,
+			quantity: item.Quantity,
+			price:    item.Price,
+		})
 	}
-	return row, items, nil
+	return items
 }

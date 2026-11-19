@@ -3,7 +3,6 @@ package item
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -83,7 +82,6 @@ type getItemResponse struct {
 }
 
 func (r getItemResponse) VisitGetItemResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	return json.NewEncoder(w).Encode(r)
+	httpx.WriteJSON(w, http.StatusOK, r)
+	return nil
 }

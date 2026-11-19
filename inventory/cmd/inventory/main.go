@@ -12,14 +12,19 @@ import (
 	"github.com/AlexeBabanov/sto/chassis/config"
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/chassis/logx"
+	"github.com/AlexeBabanov/sto/chassis/outbox"
 	"github.com/AlexeBabanov/sto/chassis/postgres"
+	"github.com/AlexeBabanov/sto/chassis/rabbit"
 	"github.com/AlexeBabanov/sto/inventory/internal/api"
 	"github.com/AlexeBabanov/sto/inventory/internal/item"
+	"github.com/AlexeBabanov/sto/inventory/internal/stock"
 	"github.com/AlexeBabanov/sto/inventory/migrations"
+	"golang.org/x/sync/errgroup"
 )
 
 type Config struct {
 	config.Base
+	RabbitMQURL config.Secret `env:"RABBITMQ_URL,notEmpty"`
 
 	DatabaseURL config.Secret `env:"DATABASE_URL,notEmpty"`
 }
@@ -41,17 +46,11 @@ func run(ctx context.Context) error {
 	}
 	logger := logx.New("inventory", cfg.LogLevel)
 
-	pool, err := postgres.Connect(ctx, cfg.DatabaseURL.Reveal())
+	pool, err := postgres.ConnectAndMigrate(ctx, cfg.DatabaseURL.Reveal(), migrations.FS, logger)
 	if err != nil {
-		return fmt.Errorf("connect to inventory database: %w", err)
+		return fmt.Errorf("prepare inventory database: %w", err)
 	}
 	defer pool.Close()
-
-	applied, err := postgres.Migrate(ctx, pool, migrations.FS)
-	if err != nil {
-		return fmt.Errorf("apply inventory migrations: %w", err)
-	}
-	logger.Info("migrations done", "applied", applied)
 
 	handler := item.NewHandler(item.NewRepository(pool))
 	app, err := newApp(handler, logger)
@@ -59,10 +58,14 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	if err := httpx.Run(ctx, cfg.HTTPAddr, app, logger); err != nil {
-		return fmt.Errorf("run inventory HTTP server: %w", err)
-	}
-	return nil
+	group, ctx := errgroup.WithContext(ctx)
+	group.Go(func() error { return httpx.Run(ctx, cfg.HTTPAddr, app, logger) })
+	group.Go(func() error {
+		route := rabbit.Route{Exchange: "saga_replies", RoutingKey: "orders.saga_replies", Queue: "inventory.saga_commands"}
+
+		return outbox.RunRabbit(ctx, pool, cfg.RabbitMQURL.Reveal(), route, stock.NewHandler(pool), logger)
+	})
+	return group.Wait()
 }
 
 func newApp(handler *item.Handler, logger *slog.Logger) (http.Handler, error) {

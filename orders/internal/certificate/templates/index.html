@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<title>Справка об оплате</title>
+<style>
+  @font-face { font-family: DejaVu; src: url(DejaVuSans.ttf); }
+  body { font: 12pt DejaVu, sans-serif; margin: 2cm; color: #17212d; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border-bottom: 1px solid #c0c8d2; padding: 0.5em; text-align: left; }
+  .amount { text-align: right; white-space: nowrap; }
+</style>
+<h1>Справка об оплате</h1>
+<p>Заказ № {{.OrderID}}</p>
+<p>Дата создания заказа: {{.CreatedAt}}</p>
+<table>
+  <thead><tr><th>Товар</th><th class="amount">Количество</th><th class="amount">Цена, руб.</th></tr></thead>
+  <tbody>
+  {{range .Items}}
+  <tr><td>{{.Name}}</td><td class="amount">{{.Quantity}}</td><td class="amount">{{.Price}}</td></tr>
+  {{end}}
+  </tbody>
+</table>
+<p class="amount"><strong>Итого: {{.Total}} руб.</strong></p>
+</html>

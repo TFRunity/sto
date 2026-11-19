@@ -14,7 +14,7 @@ VALUES ($1, $2, $3, $4)
 RETURNING id;
 
 -- name: GetOrder :one
-SELECT o.id, o.client_id, o.vehicle_id, o.engineer_id, o.status, o.stage,
+SELECT o.id, o.client_id, o.vehicle_id, o.engineer_id, o.status, o.stage, o.created_at,
        EXISTS (
            SELECT 1
            FROM saga_state AS s

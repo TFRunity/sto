@@ -16,7 +16,8 @@ type orderItem struct {
 func total(items []orderItem) decimal.Decimal {
 	sum := decimal.Zero
 	for _, item := range items {
-		sum = sum.Add(item.price.Mul(decimal.NewFromInt(int64(item.quantity))))
+		lineTotal := item.price.Mul(decimal.NewFromInt(int64(item.quantity)))
+		sum = sum.Add(lineTotal)
 	}
 	return sum
 }

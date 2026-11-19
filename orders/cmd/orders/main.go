@@ -8,17 +8,25 @@ import (
 	"os/signal"
 	"syscall"
 
+	pdf "github.com/AlexeBabanov/sto/chassis/certificate"
 	"github.com/AlexeBabanov/sto/chassis/config"
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/chassis/logx"
+	"github.com/AlexeBabanov/sto/chassis/outbox"
 	"github.com/AlexeBabanov/sto/chassis/postgres"
+	"github.com/AlexeBabanov/sto/chassis/rabbit"
+	"github.com/AlexeBabanov/sto/orders/internal/certificate"
 	"github.com/AlexeBabanov/sto/orders/internal/order"
+	"github.com/AlexeBabanov/sto/orders/internal/saga"
 	"github.com/AlexeBabanov/sto/orders/migrations"
+	"golang.org/x/sync/errgroup"
 )
 
 type ordersConfig struct {
 	config.Base
+	RabbitMQURL  config.Secret `env:"RABBITMQ_URL,notEmpty"`
 	DatabaseURL  config.Secret `env:"DATABASE_URL,notEmpty"`
+	GotenbergURL url.URL       `env:"GOTENBERG_URL,notEmpty"`
 	InventoryURL url.URL       `env:"INVENTORY_URL,notEmpty"`
 }
 
@@ -39,21 +47,28 @@ func run(ctx context.Context) error {
 	}
 	logger := logx.New("orders", cfg.LogLevel)
 
-	pool, err := postgres.Connect(ctx, cfg.DatabaseURL.Reveal())
+	pool, err := postgres.ConnectAndMigrate(ctx, cfg.DatabaseURL.Reveal(), migrations.FS, logger)
 	if err != nil {
-		return fmt.Errorf("connect to orders database: %w", err)
+		return fmt.Errorf("prepare orders database: %w", err)
 	}
 	defer pool.Close()
 
-	applied, err := postgres.Migrate(ctx, pool, migrations.FS)
-	if err != nil {
-		return fmt.Errorf("apply orders migrations: %w", err)
-	}
-	logger.Info("migrations done", "applied", applied)
-
-	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, logger)
+	payments := saga.New(pool)
+	certificates := certificate.NewWorker(pool, order.NewCertificateSource(pool, cfg.InventoryURL), pdf.NewClient(cfg.GotenbergURL), logger)
+	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, payments, logger)
 	if err != nil {
 		return fmt.Errorf("load orders OpenAPI spec: %w", err)
 	}
-	return httpx.Run(ctx, cfg.HTTPAddr, app, logger)
+	group, ctx := errgroup.WithContext(ctx)
+	group.Go(func() error { return httpx.Run(ctx, cfg.HTTPAddr, app, logger) })
+	group.Go(func() error {
+		route := rabbit.Route{Exchange: "saga_commands", RoutingKey: "inventory.saga_commands", Queue: "orders.saga_replies"}
+		handle := func(ctx context.Context, event string, body []byte) error {
+			return payments.HandleReply(ctx, event, body, logger)
+		}
+		return outbox.RunRabbit(ctx, pool, cfg.RabbitMQURL.Reveal(), route, handle, logger)
+	})
+	group.Go(func() error { payments.RunDeadlines(ctx, logger); return nil })
+	group.Go(func() error { certificates.Run(ctx); return nil })
+	return group.Wait()
 }

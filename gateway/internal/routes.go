@@ -11,30 +11,22 @@ import (
 
 const (
 	roleEngineer = "engineer"
+	roleClient   = "client"
 )
 
-type Decision int
-
-const (
-	Forbidden Decision = iota
-	Unauthorized
-	Allow
-)
-
-type Route struct {
-	Prefix   string
-	Upstream string
-	Public   bool
-	Roles    []string
+type route struct {
+	prefix   string
+	upstream string
+	public   bool
+	roles    []string
 }
 
-var routes = []Route{
-	{Prefix: "/register", Upstream: "users", Public: true},
-	{Prefix: "/login", Upstream: "users", Public: true},
-	{Prefix: "/orders", Upstream: "orders", Roles: []string{roleEngineer}},
+var routes = []route{
+	{prefix: "/register", upstream: "users", public: true},
+	{prefix: "/login", upstream: "users", public: true},
+	// Запись позиций и создание заказа доступны инженеру. Исключения проверяются по методу.
+	{prefix: "/orders", upstream: "orders", roles: []string{roleEngineer}},
 }
-
-//-------------------------------START Outer Func zone-----------------------------
 
 func NewRouter(secret []byte, proxies map[string]http.Handler, logger *slog.Logger) http.Handler {
 	app := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,23 +38,20 @@ func NewRouter(secret []byte, proxies map[string]http.Handler, logger *slog.Logg
 	return mux
 }
 
-//-------------------------------END Outer Func zone-------------------------------
-
-func findRoute(path string) (Route, bool) {
-	for _, route := range routes {
-		if matchesPrefix(path, route.Prefix) {
-			return route, true
+func findRoute(path string) (route, bool) {
+	for _, candidate := range routes {
+		if matchesPrefix(path, candidate.prefix) {
+			return candidate, true
 		}
 	}
-	return Route{}, false
+	return route{}, false
 }
 
-func matchesPrefix(path string, prefix string) bool {
+func matchesPrefix(path, prefix string) bool {
 	rest, found := strings.CutPrefix(path, prefix)
 	return found && (rest == "" || rest[0] == '/')
 }
 
-// Управляет обработкой входящего запроса.
 func handleRequest(w http.ResponseWriter, r *http.Request, secret []byte, proxies map[string]http.Handler, logger *slog.Logger) {
 	route, found := findRoute(r.URL.Path)
 	if !found {
@@ -74,23 +63,46 @@ func handleRequest(w http.ResponseWriter, r *http.Request, secret []byte, proxie
 		return
 	}
 
-	var identity Identity
-	if !route.Public {
-		var err error
-		identity, err = Authenticate(r.Header.Get("Authorization"), secret)
-		if err != nil {
-			httpx.WriteError(w, logger, ErrUnauthorized)
-			return
-		}
-	}
-
-	route, decision := decideRequest(r, route, identity)
-	if !handleDecision(w, logger, decision) {
+	request, err := authorizeRequest(r, route, secret)
+	if err != nil {
+		httpx.WriteError(w, logger, err)
 		return
 	}
+	forwardRequest(w, request, proxies[route.upstream], logger)
+}
 
-	proxy, found := proxies[route.Upstream]
-	if !found {
+func authorizeRequest(r *http.Request, route route, secret []byte) (*http.Request, error) {
+	if route.public {
+		return r, nil
+	}
+
+	identity, err := Authenticate(r.Header.Get("Authorization"), secret)
+	if err != nil {
+		return nil, ErrUnauthorized
+	}
+	if err := decideRequest(r, route, identity); err != nil {
+		return nil, err
+	}
+	return r.WithContext(WithIdentity(r.Context(), identity)), nil
+}
+
+func decideRequest(r *http.Request, route route, identity Identity) error {
+	roles := route.roles
+	if route.prefix == "/orders" {
+		roles = orderRoles(r, roles)
+	}
+	if slices.Contains(roles, identity.Role) {
+		return nil
+	}
+	return &httpx.Error{
+		Status:  http.StatusForbidden,
+		Code:    "forbidden",
+		Message: "forbidden",
+	}
+}
+
+func forwardRequest(w http.ResponseWriter, r *http.Request, proxy http.Handler, logger *slog.Logger) {
+	if proxy == nil {
 		httpx.WriteError(w, logger, &httpx.Error{
 			Status:  http.StatusBadGateway,
 			Code:    "upstream_not_configured",
@@ -98,28 +110,19 @@ func handleRequest(w http.ResponseWriter, r *http.Request, secret []byte, proxie
 		})
 		return
 	}
-
-	if !route.Public {
-		r = r.WithContext(WithIdentity(r.Context(), identity))
-	}
 	proxy.ServeHTTP(w, r)
 }
 
-func decideRequest(_ *http.Request, route Route, identity Identity) (Route, Decision) {
-	if route.Public || slices.Contains(route.Roles, identity.Role) {
-		return route, Allow
+func orderRoles(r *http.Request, fallback []string) []string {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/orders/"), "/")
+	if len(parts) == 2 && parts[1] == "pay" && r.Method == http.MethodPost {
+		return []string{roleClient}
 	}
-	return route, Forbidden
-}
-
-func handleDecision(w http.ResponseWriter, logger *slog.Logger, decision Decision) bool {
-	if decision == Allow {
-		return true
+	if len(parts) == 2 && parts[1] == "certificate" && r.Method == http.MethodGet {
+		return []string{roleClient}
 	}
-	httpx.WriteError(w, logger, &httpx.Error{
-		Status:  http.StatusForbidden,
-		Code:    "forbidden",
-		Message: "forbidden",
-	})
-	return false
+	if len(parts) == 1 && parts[0] != "/orders" && parts[0] != "" && r.Method == http.MethodGet {
+		return []string{roleEngineer, roleClient}
+	}
+	return fallback
 }

@@ -98,8 +98,8 @@ func setIdentityHeaders(pr *httputil.ProxyRequest) {
 		return
 	}
 
-	pr.Out.Header.Set("X-User-Id", identity.UserID)
-	pr.Out.Header.Set("X-User-Role", identity.Role)
+	pr.Out.Header.Set(httpx.UserIDHeader, identity.UserID)
+	pr.Out.Header.Set(httpx.UserRoleHeader, identity.Role)
 }
 
 // setRequestID генерирует новый Request ID.

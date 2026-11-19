@@ -1,6 +1,5 @@
 package saga
 
-// TODO(dev): HTTP оплаты (strict-сервер oapi-codegen).               → ADR-028
-//   - оплата клиентом → 202 Accepted; клиент перечитывает заказ      → ADR-030 (А-06)
-//   - заказ не active → 409 конвертом                                → ADR-032
-//   - без автоматического повтора                                    → ADR-016
+// HTTP-обработчик PayOrder находится в internal/order/payment.go рядом
+// с другими операциями strict-сервера Orders. В этот пакет он входит
+// через [Service.StartPayment].

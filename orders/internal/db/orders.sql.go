@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
 
@@ -73,7 +74,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (uuid.
 }
 
 const getOrder = `-- name: GetOrder :one
-SELECT o.id, o.client_id, o.vehicle_id, o.engineer_id, o.status, o.stage,
+SELECT o.id, o.client_id, o.vehicle_id, o.engineer_id, o.status, o.stage, o.created_at,
        EXISTS (
            SELECT 1
            FROM saga_state AS s
@@ -90,6 +91,7 @@ type GetOrderRow struct {
 	EngineerID       *uuid.UUID
 	Status           string
 	Stage            string
+	CreatedAt        pgtype.Timestamptz
 	PaymentConfirmed bool
 }
 
@@ -103,6 +105,7 @@ func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, erro
 		&i.EngineerID,
 		&i.Status,
 		&i.Stage,
+		&i.CreatedAt,
 		&i.PaymentConfirmed,
 	)
 	return i, err

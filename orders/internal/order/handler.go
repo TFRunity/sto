@@ -2,68 +2,88 @@ package order
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/orders/internal/api"
 	"github.com/AlexeBabanov/sto/orders/internal/db"
+	"github.com/AlexeBabanov/sto/orders/internal/saga"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shopspring/decimal"
 )
 
 type handler struct {
 	repo      repository
+	payments  *saga.Service
 	inventory inventoryClient
 	logger    *slog.Logger
 }
 
-type engineerIDKey struct{}
+type identityKey struct{}
+type identity struct {
+	id   uuid.UUID
+	role string
+}
 
-func NewHTTPHandler(pool *pgxpool.Pool, inventoryURL url.URL, logger *slog.Logger) (http.Handler, error) {
+func requestIdentity(ctx context.Context) (identity, bool) {
+	user, ok := ctx.Value(identityKey{}).(identity)
+	return user, ok
+}
+
+// NewHTTPHandler подключает валидацию OpenAPI перед сгенерированным HTTP-сервером.
+func NewHTTPHandler(pool *pgxpool.Pool, inventoryURL url.URL, payments *saga.Service, logger *slog.Logger) (http.Handler, error) {
 	spec, err := api.GetSwagger()
 	if err != nil {
 		return nil, err
 	}
-	h := handler{
+	h := newHandler(pool, inventoryURL, payments, logger)
+	return httpx.Validator(spec, logger)(strictHTTPHandler(h)), nil
+}
+
+func newHandler(pool *pgxpool.Pool, inventoryURL url.URL, payments *saga.Service, logger *slog.Logger) handler {
+	return handler{
+		payments:  payments,
 		repo:      repository{pool: pool, queries: db.New(pool)},
-		inventory: inventoryClient{baseURL: inventoryURL, http: &http.Client{Timeout: 5 * time.Second}},
+		inventory: newInventoryClient(inventoryURL),
 		logger:    logger,
 	}
-	handleError := httpx.StrictErrorHandler(logger)
-	strict := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{readEngineerID(logger)}, api.StrictHTTPServerOptions{
+}
+
+func strictHTTPHandler(h handler) http.Handler {
+	handleError := httpx.StrictErrorHandler(h.logger)
+	strict := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{readIdentity(h.logger)}, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  handleError,
 		ResponseErrorHandlerFunc: handleError,
 	})
-	return httpx.Validator(spec, logger)(api.Handler(strict)), nil
+	return api.Handler(strict)
 }
 
-func readEngineerID(logger *slog.Logger) api.StrictMiddlewareFunc {
-	return func(next api.StrictHandlerFunc, operation string) api.StrictHandlerFunc {
-		if operation != "CreateOrder" {
-			return next
-		}
+// Strict-обработчик получает context и тело. Заголовок читаем на HTTP-границе
+// и передаём дальше только проверенный UUID.
+func readIdentity(logger *slog.Logger) api.StrictMiddlewareFunc {
+	return func(next api.StrictHandlerFunc, _ string) api.StrictHandlerFunc {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
-			id, err := uuid.Parse(r.Header.Get("X-User-Id"))
-			if err != nil || id == uuid.Nil {
-				logger.WarnContext(ctx, "missing or invalid engineer ID")
-				return nil, &httpx.Error{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "unauthorized"}
+			id, err := uuid.Parse(r.Header.Get(httpx.UserIDHeader))
+			role := r.Header.Get(httpx.UserRoleHeader)
+			if err != nil || id == uuid.Nil || role == "" {
+				logger.WarnContext(ctx, "missing or invalid request identity")
+				return nil, unauthorized()
 			}
-			return next(context.WithValue(ctx, engineerIDKey{}, id), w, r, request)
+			return next(context.WithValue(ctx, identityKey{}, identity{id: id, role: role}), w, r, request)
 		}
 	}
 }
 
 func (h handler) CreateOrder(ctx context.Context, req api.CreateOrderRequestObject) (api.CreateOrderResponseObject, error) {
-	engineerID, ok := ctx.Value(engineerIDKey{}).(uuid.UUID)
+	user, ok := requestIdentity(ctx)
 	if !ok {
-		return nil, &httpx.Error{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "unauthorized"}
+		return nil, unauthorized()
 	}
-	id, err := h.repo.create(ctx, req.Body.ClientId, req.Body.VehicleId, engineerID)
+	id, err := h.repo.create(ctx, req.Body.ClientId, req.Body.VehicleId, user.id)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +91,9 @@ func (h handler) CreateOrder(ctx context.Context, req api.CreateOrderRequestObje
 }
 
 func (h handler) AddOrderItem(ctx context.Context, req api.AddOrderItemRequestObject) (api.AddOrderItemResponseObject, error) {
-	price, err := h.inventory.price(ctx, req.Body.ItemId)
-	if errors.Is(err, errItemNotFound) {
-		return nil, &httpx.Error{Status: http.StatusNotFound, Code: "item_not_found", Message: "item not found"}
-	}
+	price, err := h.itemPrice(ctx, req.Body.ItemId)
 	if err != nil {
-		h.logger.WarnContext(ctx, "could not get inventory price", "err", err)
-		return nil, &httpx.Error{Status: http.StatusBadGateway, Code: "upstream_error", Message: "inventory unavailable"}
+		return nil, err
 	}
 
 	item := orderItem{itemID: req.Body.ItemId, quantity: req.Body.Quantity, price: price}
@@ -91,25 +107,25 @@ func (h handler) AddOrderItem(ctx context.Context, req api.AddOrderItemRequestOb
 	return itemResponse(item), nil
 }
 
+func (h handler) itemPrice(ctx context.Context, itemID uuid.UUID) (decimal.Decimal, error) {
+	product, err := h.inventory.lookup(ctx, itemID)
+	if errors.Is(err, errItemNotFound) {
+		return decimal.Zero, &httpx.Error{Status: http.StatusNotFound, Code: "item_not_found", Message: "item not found"}
+	}
+	if err != nil {
+		h.logger.WarnContext(ctx, "could not get inventory price", "err", err)
+		return decimal.Zero, &httpx.Error{Status: http.StatusBadGateway, Code: "upstream_error", Message: "inventory unavailable"}
+	}
+
+	return product.price, nil
+}
+
+func unauthorized() *httpx.Error {
+	return &httpx.Error{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "unauthorized"}
+}
+
 func orderNotFound() *httpx.Error {
 	return &httpx.Error{Status: http.StatusNotFound, Code: "order_not_found", Message: "order not found"}
-}
-
-type itemJSON struct {
-	ID       uuid.UUID `json:"id"`
-	ItemID   uuid.UUID `json:"item_id"`
-	Quantity int32     `json:"quantity"`
-	Price    string    `json:"price"`
-}
-
-func itemResponse(item orderItem) itemJSON {
-	return itemJSON{ID: item.id, ItemID: item.itemID, Quantity: item.quantity, Price: item.price.StringFixed(2)}
-}
-
-func (item itemJSON) VisitAddOrderItemResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	return json.NewEncoder(w).Encode(item)
 }
 
 func (h handler) GetOrder(ctx context.Context, req api.GetOrderRequestObject) (api.GetOrderResponseObject, error) {
@@ -121,29 +137,12 @@ func (h handler) GetOrder(ctx context.Context, req api.GetOrderRequestObject) (a
 		return nil, err
 	}
 
-	response := orderJSON{
-		Order: api.Order{
-			Id: row.ID, ClientId: row.ClientID, VehicleId: row.VehicleID,
-			EngineerId: row.EngineerID, Status: api.OrderStatus(row.Status),
-			Stage: api.OrderStage(row.Stage), PaymentConfirmed: row.PaymentConfirmed,
-		},
-		Items: make([]itemJSON, 0, len(items)),
-		Total: total(items).StringFixed(2),
+	user, ok := requestIdentity(ctx)
+	if !ok {
+		return nil, unauthorized()
 	}
-	for _, item := range items {
-		response.Items = append(response.Items, itemResponse(item))
+	if user.role == "client" && row.ClientID != user.id {
+		return nil, orderNotFound()
 	}
-	return response, nil
-}
-
-type orderJSON struct {
-	api.Order
-	Items []itemJSON `json:"items"`
-	Total string     `json:"total"`
-}
-
-func (order orderJSON) VisitGetOrderResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	return json.NewEncoder(w).Encode(order)
+	return orderResponse(row, items), nil
 }

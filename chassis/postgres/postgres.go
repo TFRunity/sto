@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"time"
 
+	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -18,10 +20,21 @@ const pingTimeout = 5 * time.Second
 
 // Connect открывает пул соединений и проверяет, что база отвечает.
 func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, url)
+	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: bad config: %w", err)
 	}
+
+	cfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
+		pgxdecimal.Register(conn.TypeMap())
+		return nil
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: create pool: %w", err)
+	}
+
 	if err := ping(ctx, pool); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("postgres: ping: %w", err)

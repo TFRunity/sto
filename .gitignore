@@ -1,6 +1,6 @@
 # Секреты — только локально (ADR-011, I-04)
 .env
 
-# Личные заметки для Claude (CLAUDE.md)
-CLAUDE.local.md
+# Личные заметки для Codex (AGENTS.md)
+AGENTS.local.md
 .claude/settings.local.json

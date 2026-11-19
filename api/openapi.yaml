@@ -1,14 +1,14 @@
 # Публичный контракт API v1 (ADR-028). Одна спецификация на все сервисы:
 # каждый сервис генерирует strict-сервер из своей части по тегу (oapi-codegen.yaml).
-# Неделя 1: пока только Users (регистрация, вход).
 openapi: 3.0.3
 
 info:
   title: STO API
   version: 0.1.0
   description: |
-    Все запросы идут через nginx → Gateway (`/api/…`); Gateway снимает префикс
+    Публичные запросы идут через nginx → Gateway (`/api/…`); Gateway снимает префикс
     `/api` и проксирует в сервис по префиксу пути (ADR-022, ADR-038).
+    Orders обращается к Inventory напрямую, без префикса `/api`.
 
     Ошибки — единый конверт `Error` (ADR-032). Клиенты ветвятся только по
     `error.code`; `message` — для разработчика, не для показа.
@@ -21,6 +21,10 @@ servers:
 tags:
   - name: users
     description: Регистрация и вход (сервис Users)
+  - name: orders
+    description: Заказы и их товарные позиции (сервис Orders)
+  - name: inventory
+    description: Чтение цены товара (сервис Inventory)
 
 # По умолчанию эндпоинт закрыт JWT; публичные явно ставят `security: []`.
 security:
@@ -93,7 +97,127 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /orders:
+    post:
+      tags: [orders]
+      operationId: createOrder
+      summary: Создание активного заказа инженером
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Заказ создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [orders]
+      operationId: getOrder
+      summary: Карточка заказа
+      responses:
+        '200':
+          description: Заказ с позициями и итоговой суммой
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/items:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    post:
+      tags: [orders]
+      operationId: addOrderItem
+      summary: Добавление товарной позиции
+      description: Цена запрашивается в Inventory и сохраняется в позиции.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddOrderItemRequest'
+      responses:
+        '201':
+          description: Позиция добавлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItem'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          description: '`order_not_found` или `item_not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: '`upstream_error` — Inventory недоступен'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /inventory/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [inventory]
+      operationId: getItem
+      summary: Имя и цена товара
+      description: Внутренний HTTP-вызов Orders → Inventory.
+      security: []
+      responses:
+        '200':
+          description: Товар найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          description: '`item_not_found` — товар отсутствует или удалён'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
 components:
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -102,6 +226,18 @@ components:
       description: Проверяется только в Gateway (ADR-010, ADR-023).
 
   responses:
+    Unauthorized:
+      description: '`unauthorized` — не удалось установить идентичность запроса'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    OrderNotFound:
+      description: '`order_not_found` — заказ не найден'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     ValidationFailed:
       description: '`validation_failed` — ошибки входных данных; подробности в `error.fields`'
       content:
@@ -190,3 +326,109 @@ components:
         token:
           type: string
           description: 'JWT HS256: `sub` = user_id, claim роли, `exp` — 7 дней'
+
+    Money:
+      type: string
+      description: Сумма в рублях с двумя знаками после точки.
+      pattern: '^[0-9]+[.][0-9]{2}$'
+      example: "1500.50"
+      x-go-type: decimal.Decimal
+      x-go-type-import:
+        path: github.com/shopspring/decimal
+        name: decimal
+
+    CreateOrderRequest:
+      type: object
+      required: [client_id, vehicle_id]
+      additionalProperties: false
+      properties:
+        client_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+
+    CreateOrderResponse:
+      type: object
+      required: [order_id]
+      properties:
+        order_id:
+          type: string
+          format: uuid
+
+    AddOrderItemRequest:
+      type: object
+      required: [item_id, quantity]
+      additionalProperties: false
+      properties:
+        item_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+
+    OrderItem:
+      type: object
+      required: [id, item_id, quantity, price]
+      properties:
+        id:
+          type: string
+          format: uuid
+        item_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+        price:
+          $ref: '#/components/schemas/Money'
+
+    Order:
+      type: object
+      required: [id, client_id, vehicle_id, status, stage, items, total, payment_confirmed]
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        engineer_id:
+          type: string
+          format: uuid
+          description: Идентификатор назначенного инженера. У заявки может отсутствовать.
+        status:
+          type: string
+          enum: [requested, active, paid, cancelled]
+        stage:
+          type: string
+          enum: [принят, в_работе, готов, выдан]
+          x-enum-varnames: [StageAccepted, StageInProgress, StageReady, StageDelivered]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        total:
+          $ref: '#/components/schemas/Money'
+        payment_confirmed:
+          type: boolean
+          description: Есть завершённая сага оплаты.
+
+    InventoryItem:
+      type: object
+      required: [id, name, price]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'

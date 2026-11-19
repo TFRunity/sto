@@ -115,3 +115,9 @@ endif
 
 down:
 	docker compose down
+
+dev-up: infra
+	@echo "==> Инфраструктура проверена/запущена."
+	@echo "==> Запускаем $(SVC) в отладчике (dlv headless на :2345)..."
+	@set -a; . ./.env; set +a; cd $(SVC) && env $(RUN_ENV_$(SVC)) LOG_LEVEL=debug \
+		dlv debug ./cmd/$(SVC) --headless --listen=:2345 --api-version=2 --accept-multiclient --check-go-version=false

@@ -125,6 +125,7 @@ func decideRequest(r *http.Request, route Route, identity Identity) (Route, Deci
 	// Сюда можно будет вписать особенные правила, всякие разные. Пока что
 	// Просто будем возвращать route, Allow.
 	// Например для тестировщиков, (в дальнейших сценариях понадобится)
+	// Временно заменяет собой httpx.identity из задачи 1 вечера 3
 	return route, Allow
 }
 
@@ -137,5 +138,17 @@ func handleDecision(w http.ResponseWriter, logger *slog.Logger, decision Decisio
 }
 
 // По умолчанию если мы используем с пустым identity - значит аноним сидит
-func proxyRequest(w http.ResponseWriter, r *http.Request, proxy http.Handler, identity Identity) {
+func proxyRequest(w http.ResponseWriter, r *http.Request, logger *slog.Logger, proxy http.Handler, identity Identity) {
+	// Докидываем identity, если не пустая
+	if identity != (Identity{}) {
+		ctx := WithIdentity(r.Context(), identity)
+		// Выполняем serve с подменой ctx на новый с Identity
+		proxy.ServeHTTP(w, r.WithContext(ctx))
+	} else {
+		httpx.WriteError(w, logger, &httpx.Error{
+			Status:  http.StatusInternalServerError,
+			Code:    "identity_not_found",
+			Message: "identity not found",
+		})
+	}
 }

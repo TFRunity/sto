@@ -20,5 +20,6 @@
     "formatting.local": "github.com/AlexeBabanov/sto",
     // go.work в корне — gopls видит все модули сразу.
     "build.directoryFilters": ["-v2", "-**/node_modules"]
-  }
+  },
+  "editor.hover.enabled": "off"
 }

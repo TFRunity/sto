@@ -2,6 +2,7 @@ package rabbit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -105,12 +106,18 @@ func runWorkers(ctx context.Context, cancel context.CancelFunc, publisher *Publi
 	select {
 	case err = <-consumed:
 		cancel()
-	case <-closed:
+	case closeErr := <-closed:
 		if ctx.Err() == nil {
-			err = fmt.Errorf("RabbitMQ publisher channel closed")
+			if closeErr != nil {
+				err = fmt.Errorf("RabbitMQ publisher channel closed: %w", *closeErr)
+			} else {
+				err = errors.New("RabbitMQ publisher channel closed")
+			}
 		}
 		cancel()
-		<-consumed
+		if consumeErr := <-consumed; err != nil && consumeErr != nil {
+			err = errors.Join(err, consumeErr)
+		}
 	}
 	<-published
 	return err

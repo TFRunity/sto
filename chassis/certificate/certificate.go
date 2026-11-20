@@ -41,14 +41,14 @@ func (c *Client) Convert(ctx context.Context, html []byte, assets map[string][]b
 
 func readPDF(response *http.Response) ([]byte, error) {
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Gotenberg returned HTTP %d", response.StatusCode)
+		return nil, fmt.Errorf("gotenberg returned HTTP %d", response.StatusCode)
 	}
 	pdf, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
 	if !bytes.HasPrefix(pdf, []byte("%PDF-")) {
-		return nil, errors.New("Gotenberg returned a response without a PDF signature")
+		return nil, errors.New("gotenberg returned a response without a PDF signature")
 	}
 	return pdf, nil
 }

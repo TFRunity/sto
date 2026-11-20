@@ -14,8 +14,7 @@ import (
 	"github.com/AlexeBabanov/sto/gateway/internal"
 )
 
-// TODO(dev): таблица маршрутов → прокси (задачи 3–5 вечера 2);
-// собственные эндпоинты (дашборд) — неделя 2.
+// TODO(dev): собственные эндпоинты директора — этап 2.
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

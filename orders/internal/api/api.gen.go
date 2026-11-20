@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/oapi-codegen/runtime"
@@ -39,10 +40,20 @@ const (
 
 // Defines values for OrderStatus.
 const (
-	Active    OrderStatus = "active"
-	Cancelled OrderStatus = "cancelled"
-	Paid      OrderStatus = "paid"
-	Requested OrderStatus = "requested"
+	OrderStatusActive    OrderStatus = "active"
+	OrderStatusCancelled OrderStatus = "cancelled"
+	OrderStatusPaid      OrderStatus = "paid"
+	OrderStatusRequested OrderStatus = "requested"
+)
+
+// Defines values for ServiceBookingListItemStatus.
+const (
+	ServiceBookingListItemStatusRequested ServiceBookingListItemStatus = "requested"
+)
+
+// Defines values for ListServiceBookingsParamsStatus.
+const (
+	Requested ListServiceBookingsParamsStatus = "requested"
 )
 
 // AddOrderItemRequest defines model for AddOrderItemRequest.
@@ -51,15 +62,33 @@ type AddOrderItemRequest struct {
 	Quantity int32              `json:"quantity"`
 }
 
-// CreateOrderRequest defines model for CreateOrderRequest.
-type CreateOrderRequest struct {
+// CreateEngineerOrderRequest Прямое создание активного заказа инженером.
+type CreateEngineerOrderRequest struct {
 	ClientId  openapi_types.UUID `json:"client_id"`
 	VehicleId openapi_types.UUID `json:"vehicle_id"`
+}
+
+// CreateOrderRequest defines model for CreateOrderRequest.
+type CreateOrderRequest struct {
+	union json.RawMessage
 }
 
 // CreateOrderResponse defines model for CreateOrderResponse.
 type CreateOrderResponse struct {
 	OrderId openapi_types.UUID `json:"order_id"`
+}
+
+// CreateServiceBookingRequest Заявка клиента на сервис. Выбор услуги сохраняется как описание заявки.
+type CreateServiceBookingRequest struct {
+	// Comment Дополнительная информация от клиента.
+	Comment *string `json:"comment,omitempty"`
+
+	// Date Желаемая дата визита без времени и часового пояса.
+	Date openapi_types.Date `json:"date"`
+
+	// Service Название желаемой услуги для заявки.
+	Service   string             `json:"service"`
+	VehicleId openapi_types.UUID `json:"vehicle_id"`
 }
 
 // Error Конверт ошибки (ADR-032)
@@ -117,6 +146,21 @@ type OrderItem struct {
 	Quantity int32 `json:"quantity"`
 }
 
+// ServiceBookingListItem defines model for ServiceBookingListItem.
+type ServiceBookingListItem struct {
+	ClientId  openapi_types.UUID           `json:"client_id"`
+	Comment   *string                      `json:"comment,omitempty"`
+	CreatedAt time.Time                    `json:"created_at"`
+	Date      *openapi_types.Date          `json:"date,omitempty"`
+	Id        openapi_types.UUID           `json:"id"`
+	Service   *string                      `json:"service,omitempty"`
+	Status    ServiceBookingListItemStatus `json:"status"`
+	VehicleId openapi_types.UUID           `json:"vehicle_id"`
+}
+
+// ServiceBookingListItemStatus defines model for ServiceBookingListItem.Status.
+type ServiceBookingListItemStatus string
+
 // ResourceId defines model for ResourceId.
 type ResourceId = openapi_types.UUID
 
@@ -132,15 +176,91 @@ type UnexpectedError = Error
 // ValidationFailed Конверт ошибки (ADR-032)
 type ValidationFailed = Error
 
+// VehicleNotFound Конверт ошибки (ADR-032)
+type VehicleNotFound = Error
+
+// ListServiceBookingsParams defines parameters for ListServiceBookings.
+type ListServiceBookingsParams struct {
+	Status ListServiceBookingsParamsStatus `form:"status" json:"status"`
+}
+
+// ListServiceBookingsParamsStatus defines parameters for ListServiceBookings.
+type ListServiceBookingsParamsStatus string
+
 // CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
 type CreateOrderJSONRequestBody = CreateOrderRequest
 
 // AddOrderItemJSONRequestBody defines body for AddOrderItem for application/json ContentType.
 type AddOrderItemJSONRequestBody = AddOrderItemRequest
 
+// AsCreateEngineerOrderRequest returns the union data inside the CreateOrderRequest as a CreateEngineerOrderRequest
+func (t CreateOrderRequest) AsCreateEngineerOrderRequest() (CreateEngineerOrderRequest, error) {
+	var body CreateEngineerOrderRequest
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateEngineerOrderRequest overwrites any union data inside the CreateOrderRequest as the provided CreateEngineerOrderRequest
+func (t *CreateOrderRequest) FromCreateEngineerOrderRequest(v CreateEngineerOrderRequest) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateEngineerOrderRequest performs a merge with any union data inside the CreateOrderRequest, using the provided CreateEngineerOrderRequest
+func (t *CreateOrderRequest) MergeCreateEngineerOrderRequest(v CreateEngineerOrderRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateServiceBookingRequest returns the union data inside the CreateOrderRequest as a CreateServiceBookingRequest
+func (t CreateOrderRequest) AsCreateServiceBookingRequest() (CreateServiceBookingRequest, error) {
+	var body CreateServiceBookingRequest
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceBookingRequest overwrites any union data inside the CreateOrderRequest as the provided CreateServiceBookingRequest
+func (t *CreateOrderRequest) FromCreateServiceBookingRequest(v CreateServiceBookingRequest) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceBookingRequest performs a merge with any union data inside the CreateOrderRequest, using the provided CreateServiceBookingRequest
+func (t *CreateOrderRequest) MergeCreateServiceBookingRequest(v CreateServiceBookingRequest) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateOrderRequest) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateOrderRequest) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Создание активного заказа инженером
+	// Список заявок на сервис для инженера
+	// (GET /orders)
+	ListServiceBookings(w http.ResponseWriter, r *http.Request, params ListServiceBookingsParams)
+	// Записаться на сервис или создать активный заказ
 	// (POST /orders)
 	CreateOrder(w http.ResponseWriter, r *http.Request)
 	// Карточка заказа
@@ -165,6 +285,46 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListServiceBookings operation middleware
+func (siw *ServerInterfaceWrapper) ListServiceBookings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListServiceBookingsParams
+
+	// ------------- Required query parameter "status" -------------
+
+	if paramValue := r.URL.Query().Get("status"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "status", r.URL.Query(), &params.Status)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListServiceBookings(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // CreateOrder operation middleware
 func (siw *ServerInterfaceWrapper) CreateOrder(w http.ResponseWriter, r *http.Request) {
@@ -430,6 +590,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/orders", wrapper.ListServiceBookings)
 	m.HandleFunc("POST "+options.BaseURL+"/orders", wrapper.CreateOrder)
 	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}", wrapper.GetOrder)
 	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}/certificate", wrapper.GetCertificate)
@@ -446,6 +607,55 @@ type UnauthorizedJSONResponse Error
 type UnexpectedErrorJSONResponse Error
 
 type ValidationFailedJSONResponse Error
+
+type VehicleNotFoundJSONResponse Error
+
+type ListServiceBookingsRequestObject struct {
+	Params ListServiceBookingsParams
+}
+
+type ListServiceBookingsResponseObject interface {
+	VisitListServiceBookingsResponse(w http.ResponseWriter) error
+}
+
+type ListServiceBookings200JSONResponse []ServiceBookingListItem
+
+func (response ListServiceBookings200JSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListServiceBookings400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response ListServiceBookings400JSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListServiceBookings401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListServiceBookings401JSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListServiceBookingsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListServiceBookingsdefaultJSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
 
 type CreateOrderRequestObject struct {
 	Body *CreateOrderJSONRequestBody
@@ -478,6 +688,15 @@ type CreateOrder401JSONResponse struct{ UnauthorizedJSONResponse }
 func (response CreateOrder401JSONResponse) VisitCreateOrderResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateOrder404JSONResponse struct{ VehicleNotFoundJSONResponse }
+
+func (response CreateOrder404JSONResponse) VisitCreateOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -685,7 +904,10 @@ func (response PayOrderdefaultJSONResponse) VisitPayOrderResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Создание активного заказа инженером
+	// Список заявок на сервис для инженера
+	// (GET /orders)
+	ListServiceBookings(ctx context.Context, request ListServiceBookingsRequestObject) (ListServiceBookingsResponseObject, error)
+	// Записаться на сервис или создать активный заказ
 	// (POST /orders)
 	CreateOrder(ctx context.Context, request CreateOrderRequestObject) (CreateOrderResponseObject, error)
 	// Карточка заказа
@@ -729,6 +951,32 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListServiceBookings operation middleware
+func (sh *strictHandler) ListServiceBookings(w http.ResponseWriter, r *http.Request, params ListServiceBookingsParams) {
+	var request ListServiceBookingsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListServiceBookings(ctx, request.(ListServiceBookingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListServiceBookings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListServiceBookingsResponseObject); ok {
+		if err := validResponse.VisitListServiceBookingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // CreateOrder operation middleware
@@ -876,48 +1124,62 @@ func (sh *strictHandler) PayOrder(w http.ResponseWriter, r *http.Request, id Res
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

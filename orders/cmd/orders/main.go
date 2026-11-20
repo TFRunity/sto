@@ -28,6 +28,7 @@ type ordersConfig struct {
 	DatabaseURL  config.Secret `env:"DATABASE_URL,notEmpty"`
 	GotenbergURL url.URL       `env:"GOTENBERG_URL,notEmpty"`
 	InventoryURL url.URL       `env:"INVENTORY_URL,notEmpty"`
+	VehicleURL   url.URL       `env:"VEHICLE_URL"`
 }
 
 func main() {
@@ -55,7 +56,7 @@ func run(ctx context.Context) error {
 
 	payments := saga.New(pool)
 	certificates := certificate.NewWorker(pool, order.NewCertificateSource(pool, cfg.InventoryURL), pdf.NewClient(cfg.GotenbergURL), logger)
-	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, payments, logger)
+	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, cfg.VehicleURL, payments, logger)
 	if err != nil {
 		return fmt.Errorf("load orders OpenAPI spec: %w", err)
 	}

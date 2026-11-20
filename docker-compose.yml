@@ -98,12 +98,15 @@ services:
       INVENTORY_URL: http://inventory:8080
       USERS_URL: http://users:8080
       GOTENBERG_URL: http://gotenberg:3000
+      VEHICLE_URL: http://vehicle:8080
     networks: [backend, orders-db]
     # service_started — зависимости в рантайме, не для старта: Orders стартует
     # и без них, но `make up SVC=orders` поднимает всё, что ему нужно.
     depends_on:
       orders-db:
         condition: service_healthy
+      vehicle:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
       inventory:

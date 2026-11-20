@@ -73,6 +73,33 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (uuid.
 	return id, err
 }
 
+const createServiceBooking = `-- name: CreateServiceBooking :one
+INSERT INTO orders (client_id, vehicle_id, status, requested_service, desired_date, comment)
+VALUES ($1, $2, 'requested', $3, $4, $5)
+RETURNING id
+`
+
+type CreateServiceBookingParams struct {
+	ClientID         uuid.UUID
+	VehicleID        uuid.UUID
+	RequestedService *string
+	DesiredDate      pgtype.Date
+	Comment          *string
+}
+
+func (q *Queries) CreateServiceBooking(ctx context.Context, arg CreateServiceBookingParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createServiceBooking,
+		arg.ClientID,
+		arg.VehicleID,
+		arg.RequestedService,
+		arg.DesiredDate,
+		arg.Comment,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getOrder = `-- name: GetOrder :one
 SELECT o.id, o.client_id, o.vehicle_id, o.engineer_id, o.status, o.stage, o.created_at,
        EXISTS (
@@ -139,6 +166,51 @@ func (q *Queries) ListOrderItems(ctx context.Context, orderID uuid.UUID) ([]List
 			&i.ItemID,
 			&i.Quantity,
 			&i.Price,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listServiceBookings = `-- name: ListServiceBookings :many
+SELECT id, client_id, vehicle_id, requested_service, desired_date, comment, created_at
+FROM orders
+WHERE status = 'requested'
+ORDER BY created_at, id
+`
+
+type ListServiceBookingsRow struct {
+	ID               uuid.UUID
+	ClientID         uuid.UUID
+	VehicleID        uuid.UUID
+	RequestedService *string
+	DesiredDate      pgtype.Date
+	Comment          *string
+	CreatedAt        pgtype.Timestamptz
+}
+
+func (q *Queries) ListServiceBookings(ctx context.Context) ([]ListServiceBookingsRow, error) {
+	rows, err := q.db.Query(ctx, listServiceBookings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListServiceBookingsRow
+	for rows.Next() {
+		var i ListServiceBookingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClientID,
+			&i.VehicleID,
+			&i.RequestedService,
+			&i.DesiredDate,
+			&i.Comment,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

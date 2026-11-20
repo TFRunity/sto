@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/AlexeBabanov/sto/chassis/postgres"
 	"github.com/AlexeBabanov/sto/orders/internal/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -111,4 +113,23 @@ func (r repository) getCertificate(ctx context.Context, orderID, clientID uuid.U
 		return nil, fmt.Errorf("get completed certificate: %w", err)
 	}
 	return pdf, nil
+}
+
+func (r repository) createBooking(ctx context.Context, clientID, vehicleID uuid.UUID, service string, date time.Time, comment *string) (uuid.UUID, error) {
+	id, err := r.queries.CreateServiceBooking(ctx, db.CreateServiceBookingParams{
+		ClientID: clientID, VehicleID: vehicleID, RequestedService: &service,
+		DesiredDate: pgtype.Date{Time: date, Valid: true}, Comment: comment,
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("create service booking: %w", err)
+	}
+	return id, nil
+}
+
+func (r repository) listServiceBookings(ctx context.Context) ([]db.ListServiceBookingsRow, error) {
+	rows, err := r.queries.ListServiceBookings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list service bookings: %w", err)
+	}
+	return rows, nil
 }

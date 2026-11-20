@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -54,6 +55,10 @@ func run(ctx context.Context) error {
 		RequestErrorHandlerFunc:  httpx.StrictRequestErrorHandler(logger),
 		ResponseErrorHandlerFunc: handleError,
 	})
-	app := httpx.Validator(spec, logger)(httpx.RequireIdentity(api.Handler(strict), logger))
+	routes := api.Handler(strict)
+	mux := http.NewServeMux()
+	mux.Handle("GET /internal/vehicles/{id}/ownership", routes)
+	mux.Handle("/", httpx.RequireIdentity(routes, logger))
+	app := httpx.Validator(spec, logger)(mux)
 	return httpx.Run(ctx, cfg.HTTPAddr, vehicle.LimitPhotoUpload(app, handleError), logger)
 }

@@ -9,6 +9,7 @@ info:
     Публичные запросы идут через nginx → Gateway (`/api/…`); Gateway снимает префикс
     `/api` и проксирует в сервис по префиксу пути (ADR-022, ADR-038).
     Orders обращается к Inventory напрямую, без префикса `/api`.
+    Проверка владельца ТС тоже выполняется напрямую, через внутренний маршрут Vehicle.
 
     Ошибки — единый конверт `Error` (ADR-032). Клиенты ветвятся только по
     `error.code`; `message` — для разработчика, не для показа.
@@ -100,10 +101,42 @@ paths:
           $ref: '#/components/responses/UnexpectedError'
 
   /orders:
+    get:
+      tags: [orders]
+      operationId: listServiceBookings
+      summary: Список заявок на сервис для инженера
+      description: Общий пул заявок всех клиентов в порядке от старых к новым.
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [requested]
+      responses:
+        '200':
+          description: Заявки в статусе requested. Если заявок нет, возвращается пустой массив.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceBookingListItem'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
     post:
       tags: [orders]
       operationId: createOrder
-      summary: Создание активного заказа инженером
+      summary: Записаться на сервис или создать активный заказ
+      description: |
+        Клиент создаёт заявку в статусе requested для своего ТС. Orders берёт
+        client_id из доверенной идентичности и оставляет заказ без ответственного.
+        Инженер создаёт заказ в статусе active для указанного клиента и назначается
+        ответственным. Вариант тела запроса определяется ролью вызывающего.
       requestBody:
         required: true
         content:
@@ -121,6 +154,8 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/VehicleNotFound'
         default:
           $ref: '#/components/responses/UnexpectedError'
 
@@ -431,6 +466,32 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/VehiclePhotoNotFound'
+      default:
+        $ref: '#/components/responses/UnexpectedError'
+
+  /internal/vehicles/{id}/ownership:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [vehicle]
+      operationId: checkVehicleOwnership
+      summary: Проверить, принадлежит ли ТС указанному клиенту
+      description: Внутренний HTTP-вызов Orders → Vehicle. Gateway этот маршрут не публикует.
+      security: []
+      parameters:
+        - name: owner_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: ТС принадлежит клиенту
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/VehicleNotFound'
         default:
           $ref: '#/components/responses/UnexpectedError'
 
@@ -636,6 +697,12 @@ components:
         name: decimal
 
     CreateOrderRequest:
+      oneOf:
+        - $ref: '#/components/schemas/CreateEngineerOrderRequest'
+        - $ref: '#/components/schemas/CreateServiceBookingRequest'
+
+    CreateEngineerOrderRequest:
+      description: Прямое создание активного заказа инженером.
       type: object
       required: [client_id, vehicle_id]
       additionalProperties: false
@@ -646,6 +713,54 @@ components:
         vehicle_id:
           type: string
           format: uuid
+
+    CreateServiceBookingRequest:
+      description: Заявка клиента на сервис. Выбор услуги сохраняется как описание заявки.
+      type: object
+      required: [vehicle_id, service, date]
+      additionalProperties: false
+      properties:
+        vehicle_id:
+          type: string
+          format: uuid
+        service:
+          type: string
+          minLength: 1
+          description: Название желаемой услуги для заявки.
+        date:
+          type: string
+          format: date
+          description: Желаемая дата визита без времени и часового пояса.
+        comment:
+          type: string
+          description: Дополнительная информация от клиента.
+
+    ServiceBookingListItem:
+      type: object
+      required: [id, client_id, vehicle_id, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [requested]
+        service:
+          type: string
+        date:
+          type: string
+          format: date
+        comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time
 
     CreateOrderResponse:
       type: object

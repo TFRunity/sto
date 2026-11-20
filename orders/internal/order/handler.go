@@ -20,24 +20,26 @@ type handler struct {
 	repo      repository
 	payments  *saga.Service
 	inventory inventoryClient
+	vehicles  vehicleClient
 	logger    *slog.Logger
 }
 
 // NewHTTPHandler подключает валидацию OpenAPI перед сгенерированным HTTP-сервером.
-func NewHTTPHandler(pool *pgxpool.Pool, inventoryURL url.URL, payments *saga.Service, logger *slog.Logger) (http.Handler, error) {
+func NewHTTPHandler(pool *pgxpool.Pool, inventoryURL, vehicleURL url.URL, payments *saga.Service, logger *slog.Logger) (http.Handler, error) {
 	spec, err := api.GetSwagger()
 	if err != nil {
 		return nil, err
 	}
-	h := newHandler(pool, inventoryURL, payments, logger)
+	h := newHandler(pool, inventoryURL, vehicleURL, payments, logger)
 	return httpx.Validator(spec, logger)(strictHTTPHandler(h)), nil
 }
 
-func newHandler(pool *pgxpool.Pool, inventoryURL url.URL, payments *saga.Service, logger *slog.Logger) handler {
+func newHandler(pool *pgxpool.Pool, inventoryURL, vehicleURL url.URL, payments *saga.Service, logger *slog.Logger) handler {
 	return handler{
 		payments:  payments,
 		repo:      repository{pool: pool, queries: db.New(pool)},
 		inventory: newInventoryClient(inventoryURL),
+		vehicles:  newVehicleClient(vehicleURL),
 		logger:    logger,
 	}
 }
@@ -56,7 +58,17 @@ func (h handler) CreateOrder(ctx context.Context, req api.CreateOrderRequestObje
 	if !ok {
 		return nil, httpx.Unauthorized()
 	}
-	id, err := h.repo.create(ctx, req.Body.ClientId, req.Body.VehicleId, user.ID)
+	if user.Role == httpx.RoleClient {
+		return h.createServiceBooking(ctx, user.ID, req.Body)
+	}
+	body, err := req.Body.AsCreateEngineerOrderRequest()
+	if err != nil || body.ClientId == uuid.Nil {
+		return nil, &httpx.Error{
+			Status: http.StatusBadRequest, Code: "validation_failed",
+			Message: "engineer order requires a client ID", Fields: map[string]string{"client_id": "required"},
+		}
+	}
+	id, err := h.repo.create(ctx, body.ClientId, body.VehicleId, user.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -23,6 +23,7 @@ func newVehicleClient(baseURL url.URL) vehicleClient {
 }
 
 func (c vehicleClient) checkOwnership(ctx context.Context, vehicleID, ownerID uuid.UUID) error {
+	// ownerID взят из доверенной идентичности Gateway и передаётся как параметр внутреннего API.
 	endpoint := c.baseURL.JoinPath("internal", "vehicles", vehicleID.String(), "ownership")
 	query := endpoint.Query()
 	query.Set("owner_id", ownerID.String())

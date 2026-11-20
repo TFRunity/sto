@@ -57,6 +57,7 @@ func run(ctx context.Context) error {
 	})
 	routes := api.Handler(strict)
 	mux := http.NewServeMux()
+	// Orders вызывает этот маршрут внутри Compose. Gateway его не публикует.
 	mux.Handle("GET /internal/vehicles/{id}/ownership", routes)
 	mux.Handle("/", httpx.RequireIdentity(routes, logger))
 	app := httpx.Validator(spec, logger)(mux)

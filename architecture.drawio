@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mxfile host="app.diagrams.net" compressed="false">
   <diagram id="topology" name="Сервисы и инфраструктура">
-    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="860">
+    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="860">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -23,7 +23,7 @@
         <mxCell id="users" value="Users&#10;регистрация и вход" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="80" y="500" width="250" height="76" />
         </mxCell>
-        <mxCell id="orders" value="Orders&#10;заказ · оплата · справка" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="orders" value="Orders&#10;заявки · заказы · оплата · справки" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="550" y="500" width="300" height="76" />
         </mxCell>
         <mxCell id="inventory" value="Inventory&#10;цена · списание и возврат" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
@@ -89,7 +89,37 @@
         <mxCell id="inventory-inventorydb" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=0.52;exitY=1;entryX=0.5;entryY=0;" edge="1" source="inventory" target="inventorydb" parent="1">
           <mxGeometry as="geometry" relative="1" />
         </mxCell>
-        <mxCell id="key" value="Сплошные стрелки · HTTP и SQL     Пунктир · AMQP     Vehicle и Services пока не подключены к этому сценарию." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=14;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="vehicle" value="Vehicle&#10;карточки ТС · фото" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1480" y="500" width="260" height="76" />
+        </mxCell>
+        <mxCell id="vehicledb" value="PostgreSQL · vehicle-db" style="shape=cylinder3;boundedLbl=1;whiteSpace=wrap;html=0;fillColor=#fef3c7;strokeColor=#a16207;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1380" y="720" width="220" height="68" />
+        </mxCell>
+        <mxCell id="vehiclephotos" value="Том vehicle-photos&#10;файлы JPEG" style="shape=cylinder3;boundedLbl=1;whiteSpace=wrap;html=0;fillColor=#fef3c7;strokeColor=#a16207;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1640" y="720" width="220" height="68" />
+        </mxCell>
+        <mxCell id="gateway-vehicle" value="/vehicles/…" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=1;exitY=0.4;entryX=0.76;entryY=0;" edge="1" source="gateway" target="vehicle" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1678" y="361" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="orders-vehicle" value="HTTP · проверка владельца ТС" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=0.85;exitY=0;entryX=0.26;entryY=0;" edge="1" source="orders" target="vehicle" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="805" y="456" />
+              <mxPoint x="1548" y="456" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vehicle-vehicledb" value="SQL · ТС и ключи фото" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=0.2;exitY=1;entryX=0.5;entryY=0;" edge="1" source="vehicle" target="vehicledb" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="vehicle-vehiclephotos" value="файлы" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=0.8;exitY=1;entryX=0.5;entryY=0;" edge="1" source="vehicle" target="vehiclephotos" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="key" value="Сплошные стрелки · HTTP и SQL     Пунктир · AMQP     Services запланирован на этап 2." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=14;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="78" y="805" width="1285" height="32" />
         </mxCell>
       </root>
@@ -109,7 +139,7 @@
         <mxCell id="gateway" value="Периметр · Gateway&#10;NewRouter → handleRequest → authorizeRequest → ReverseProxy" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="360" y="140" width="720" height="78" />
         </mxCell>
-        <mxCell id="validation" value="Вход Orders · HTTP и контракт&#10;chassis/httpx.Validator → сгенерированный strict-сервер → readIdentity" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="validation" value="Вход Orders · HTTP и контракт&#10;chassis/httpx.Validator → RequireIdentity → сгенерированный strict-сервер" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="360" y="265" width="720" height="78" />
         </mxCell>
         <mxCell id="handler" value="HTTP-адаптер · orders/internal/order&#10;AddOrderItem → itemPrice → inventoryClient.lookup" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
@@ -291,6 +321,143 @@
         </mxCell>
         <mxCell id="note" value="HTTP-вызовы Inventory и Gotenberg проходят вне транзакции. Скачивание читает готовые байты из базы." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=15;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="82" y="840" width="1300" height="35" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="vehicle-flow" name="Карточки ТС и фотографии">
+    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="900">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Карточки ТС и фотографии" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=32;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="25" width="1360" height="48" />
+        </mxCell>
+        <mxCell id="subtitle" value="Публичные запросы идут через nginx и Gateway. Vehicle проверяет принадлежность ТС клиенту." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="78" width="1360" height="40" />
+        </mxCell>
+        <mxCell id="input" value="Клиент или инженер → nginx → Gateway&#10;Роль и ID из JWT → доверенные заголовки" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="380" y="135" width="680" height="76" />
+        </mxCell>
+        <mxCell id="card" value="POST /vehicles · клиент&#10;ID владельца, нормализованный номер, марка, VIN&#10;201 · vehicle_id" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="300" width="400" height="105" />
+        </mxCell>
+        <mxCell id="upload" value="PUT /vehicles/{id}/cover_photo · владелец&#10;POST /vehicles/{id}/photos · инженер&#10;До 3,5 МиБ → JPEG без метаданных" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="500" y="300" width="440" height="105" />
+        </mxCell>
+        <mxCell id="read" value="GET /vehicles/{id} · владелец / инженер&#10;Карточка со ссылками /api/vehicles/…&#10;GET по ссылке → поток image/jpeg" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="995" y="300" width="400" height="105" />
+        </mxCell>
+        <mxCell id="file" value="1. Записать JPEG в том Vehicle&#10;Имя файла — UUID" style="shape=cylinder3;boundedLbl=1;whiteSpace=wrap;html=0;fillColor=#fef3c7;strokeColor=#a16207;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="500" y="490" width="440" height="82" />
+        </mxCell>
+        <mxCell id="vehicle-db" value="PostgreSQL · vehicle-db&#10;vehicles · ключ обложки&#10;vehicle_photos · ключ снимка и необязательный order_id" style="shape=cylinder3;boundedLbl=1;whiteSpace=wrap;html=0;fillColor=#fef3c7;strokeColor=#a16207;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="385" y="690" width="670" height="110" />
+        </mxCell>
+        <mxCell id="note" value="Если запись ключа в PostgreSQL не удалась, Vehicle удаляет новый файл. При скачивании ключ читается из БД, а JPEG — из тома." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=14;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="45" y="835" width="1350" height="32" />
+        </mxCell>
+        <mxCell id="input-card" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.18;exitY=1;entryX=.5;entryY=0;" edge="1" source="input" target="card" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="input-upload" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.5;exitY=1;entryX=.5;entryY=0;" edge="1" source="input" target="upload" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="input-read" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.82;exitY=1;entryX=.5;entryY=0;" edge="1" source="input" target="read" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="card-db" value="создание ТС" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.5;exitY=1;entryX=0;entryY=.5;" edge="1" source="card" target="vehicle-db" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="245" y="745" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="upload-file" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;" edge="1" source="upload" target="file" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="file-db" value="2. Записать ключ" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;" edge="1" source="file" target="vehicle-db" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="read-db" value="карточка и ключи" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.65;exitY=1;entryX=1;entryY=.5;" edge="1" source="read" target="vehicle-db" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1255" y="745" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="read-file" value="скачивание JPEG" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.2;exitY=1;entryX=1;entryY=.5;" edge="1" source="read" target="file" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1075" y="531" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="booking-flow" name="Запись на сервис и общий пул">
+    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="900">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Запись на сервис и общий пул" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=32;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="25" width="1360" height="48" />
+        </mxCell>
+        <mxCell id="subtitle" value="POST /orders использует роль из Gateway. GET /orders?status=requested доступен инженеру." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="78" width="1360" height="40" />
+        </mxCell>
+        <mxCell id="input" value="nginx → Gateway → Orders&#10;OpenAPI проверяет форму, RequireIdentity читает ID и роль" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="350" y="135" width="740" height="76" />
+        </mxCell>
+        <mxCell id="client-booking" value="POST /orders · клиент&#10;vehicle_id, услуга, дата, комментарий&#10;client_id из доверенной идентичности" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="300" width="415" height="105" />
+        </mxCell>
+        <mxCell id="engineer-order" value="POST /orders · инженер&#10;client_id и vehicle_id из тела&#10;Ответственный — текущий инженер" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="510" y="300" width="420" height="105" />
+        </mxCell>
+        <mxCell id="pool" value="GET /orders?status=requested · инженер&#10;Заявки всех клиентов от старых к новым&#10;200 · массив, включая пустой пул" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="975" y="300" width="415" height="105" />
+        </mxCell>
+        <mxCell id="ownership" value="Vehicle · внутренний HTTP&#10;GET /internal/vehicles/{id}/ownership?owner_id=…&#10;204 · принадлежит клиенту&#10;404 · ТС отсутствует или принадлежит другому" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="490" width="440" height="110" />
+        </mxCell>
+        <mxCell id="save-booking" value="Orders · создать заявку" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="635" width="440" height="50" />
+        </mxCell>
+        <mxCell id="orders-db" value="PostgreSQL · orders-db&#10;Клиент: INSERT requested без инженера&#10;Инженер: INSERT active и order_engineers в одной транзакции&#10;Пул: SELECT requested ORDER BY created_at, id" style="shape=cylinder3;boundedLbl=1;whiteSpace=wrap;html=0;fillColor=#fef3c7;strokeColor=#a16207;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="350" y="705" width="740" height="120" />
+        </mxCell>
+        <mxCell id="note" value="Проверка Vehicle выполняется до вставки заявки. После успешной записи POST возвращает 201 и order_id." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=14;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="845" width="1340" height="32" />
+        </mxCell>
+        <mxCell id="input-client-booking" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.18;exitY=1;entryX=.5;entryY=0;" edge="1" source="input" target="client-booking" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="input-engineer-order" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.5;exitY=1;entryX=.5;entryY=0;" edge="1" source="input" target="engineer-order" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="input-pool" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.82;exitY=1;entryX=.5;entryY=0;" edge="1" source="input" target="pool" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="client-ownership" value="проверить владельца до записи" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;" edge="1" source="client-booking" target="ownership" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="ownership-save-booking" value="204 · ответ Vehicle" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.5;exitY=1;entryX=.5;entryY=0;" edge="1" source="ownership" target="save-booking" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="save-booking-orders-db" value="вставка заявки" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.65;exitY=1;entryX=0;entryY=.35;" edge="1" source="save-booking" target="orders-db" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="engineer-ordersdb" value="транзакция" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.5;exitY=1;entryX=.5;entryY=0;" edge="1" source="engineer-order" target="orders-db" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="pool-ordersdb" value="чтение" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=.5;exitY=1;entryX=1;entryY=.35;" edge="1" source="pool" target="orders-db" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1183" y="747" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

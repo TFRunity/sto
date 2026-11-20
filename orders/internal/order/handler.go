@@ -58,10 +58,12 @@ func (h handler) CreateOrder(ctx context.Context, req api.CreateOrderRequestObje
 	if !ok {
 		return nil, httpx.Unauthorized()
 	}
+	// OpenAPI принимает обе формы, а роль из Gateway определяет сценарий.
 	if user.Role == httpx.RoleClient {
 		return h.createServiceBooking(ctx, user.ID, req.Body)
 	}
 	body, err := req.Body.AsCreateEngineerOrderRequest()
+	// Декодирование варианта oneOf само по себе не проверяет обязательные поля.
 	if err != nil || body.ClientId == uuid.Nil {
 		return nil, &httpx.Error{
 			Status: http.StatusBadRequest, Code: "validation_failed",

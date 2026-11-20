@@ -3,6 +3,9 @@ UPDATE vehicles
 SET cover_photo_url = sqlc.arg(file_key), updated_at = now()
 WHERE id = sqlc.arg(vehicle_id) AND owner_id = sqlc.arg(owner_id) AND deleted_at IS NULL;
 
+-- FOR SHARE удерживает строку ТС до завершения вставки снимка,
+-- чтобы параллельное мягкое удаление дождалось этой операции.
+
 -- name: AddVehiclePhoto :one
 INSERT INTO vehicle_photos (vehicle_id, order_id, file_key)
 SELECT v.id, sqlc.narg(order_id)::uuid, sqlc.arg(file_key)::text

@@ -40,6 +40,8 @@ func rejectRequest(logger *slog.Logger) middleware.ErrorHandlerWithOpts {
 }
 
 func validationFields(err error) map[string]string {
+	// Полный текст ошибки схемы может содержать входное значение.
+	// В HTTP-ответ передаём только путь поля и имя правила.
 	field := "body"
 	var requestErr *openapi3filter.RequestError
 	if errors.As(err, &requestErr) && requestErr.Parameter != nil {

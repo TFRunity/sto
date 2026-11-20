@@ -13,6 +13,9 @@ INSERT INTO order_engineers (order_id, engineer_id)
 VALUES ($1, $2)
 ON CONFLICT (order_id, engineer_id) DO NOTHING;
 
+-- OpenAPI проверяет status=requested, SQL закрепляет этот фильтр.
+-- id задаёт порядок для заявок с одинаковым created_at.
+
 -- name: ListServiceBookings :many
 SELECT id, client_id, vehicle_id, requested_service, desired_date, comment, created_at
 FROM orders

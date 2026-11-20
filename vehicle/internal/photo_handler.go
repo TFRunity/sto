@@ -90,6 +90,7 @@ func (h *Handler) openPhoto(key string) (api.VehiclePhotoJPEGImagejpegResponse, 
 	if err != nil {
 		return api.VehiclePhotoJPEGImagejpegResponse{}, photoReadError(err)
 	}
+	// Сгенерированный JPEG-ответ закроет file после отправки.
 	return api.VehiclePhotoJPEGImagejpegResponse{Body: file, ContentLength: size}, nil
 }
 

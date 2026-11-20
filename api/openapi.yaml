@@ -25,6 +25,8 @@ tags:
     description: Заказы и их товарные позиции (сервис Orders)
   - name: inventory
     description: Чтение цены товара (сервис Inventory)
+  - name: vehicle
+    description: Добавление ТС и чтение карточки (сервис Vehicle)
 
 # По умолчанию эндпоинт закрыт JWT; публичные явно ставят `security: []`.
 security:
@@ -251,6 +253,70 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /vehicles:
+    post:
+      tags: [vehicle]
+      operationId: createVehicle
+      summary: Добавить ТС для текущего клиента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleDetails'
+      responses:
+        '201':
+          description: ТС добавлено
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [vehicle_id]
+                properties:
+                  vehicle_id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: '`plate_taken` — нормализованный номер уже занят'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /vehicles/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [vehicle]
+      operationId: getVehicle
+      summary: Прочитать карточку ТС
+      description: Владелец читает свою карточку, инженер открывает карточку по ID.
+      responses:
+        '200':
+          description: Карточка ТС
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleCard'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: '`vehicle_not_found` — ТС отсутствует, удалено или недоступно клиенту'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
 components:
   parameters:
     ResourceId:
@@ -295,6 +361,29 @@ components:
             $ref: '#/components/schemas/Error'
 
   schemas:
+    VehicleDetails:
+      type: object
+      required: [number, brand, vin]
+      properties:
+        number:
+          type: string
+          minLength: 1
+        brand:
+          type: string
+          minLength: 1
+        vin:
+          type: string
+          minLength: 1
+    VehicleCard:
+      allOf:
+        - $ref: '#/components/schemas/VehicleDetails'
+        - type: object
+          required: [vehicle_id]
+          properties:
+            vehicle_id:
+              type: string
+              format: uuid
+
     # ── общие ───────────────────────────────────────────────────────────
     Error:
       description: Конверт ошибки (ADR-032)

@@ -26,6 +26,7 @@ var routes = []route{
 	{prefix: "/login", upstream: "users", public: true},
 	// Запись позиций и создание заказа доступны инженеру. Исключения проверяются по методу.
 	{prefix: "/orders", upstream: "orders", roles: []string{roleEngineer}},
+	{prefix: "/vehicles", upstream: "vehicle"},
 }
 
 func NewRouter(secret []byte, proxies map[string]http.Handler, logger *slog.Logger) http.Handler {
@@ -88,8 +89,11 @@ func authorizeRequest(r *http.Request, route route, secret []byte) (*http.Reques
 
 func decideRequest(r *http.Request, route route, identity Identity) error {
 	roles := route.roles
-	if route.prefix == "/orders" {
+	switch route.prefix {
+	case "/orders":
 		roles = orderRoles(r, roles)
+	case "/vehicles":
+		roles = vehicleRoles(r)
 	}
 	if slices.Contains(roles, identity.Role) {
 		return nil
@@ -99,6 +103,17 @@ func decideRequest(r *http.Request, route route, identity Identity) error {
 		Code:    "forbidden",
 		Message: "forbidden",
 	}
+}
+
+func vehicleRoles(r *http.Request) []string {
+	if r.Method == http.MethodPost && r.URL.Path == "/vehicles" {
+		return []string{roleClient}
+	}
+	id, found := strings.CutPrefix(r.URL.Path, "/vehicles/")
+	if r.Method == http.MethodGet && found && id != "" && !strings.Contains(id, "/") {
+		return []string{roleClient, roleEngineer}
+	}
+	return nil
 }
 
 func forwardRequest(w http.ResponseWriter, r *http.Request, proxy http.Handler, logger *slog.Logger) {

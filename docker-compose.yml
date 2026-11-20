@@ -1,5 +1,5 @@
 # Локальное окружение v1 (ADR-038). Секреты — только из .env (ADR-011).
-# Неделя 1: vehicle и services закомментированы (PLAN.md).
+# Services подключается на этапе 2 (PLAN.md).
 #
 # Инварианты:
 #   - ports: только у nginx (и Gateway — по желанию в разработке)    ADR-010, ADR-037
@@ -54,14 +54,16 @@ services:
       USERS_URL: http://users:8080
       ORDERS_URL: http://orders:8080
       INVENTORY_URL: http://inventory:8080
+      VEHICLE_URL: http://vehicle:8080
     networks: [edge, backend]
-    # Зависимости в рантайме (см. orders). Неделя 2: + vehicle, services.
     depends_on:
       users:
         condition: service_started
       orders:
         condition: service_started
       inventory:
+        condition: service_started
+      vehicle:
         condition: service_started
     # ports:
     #   - "8080:8080"   # прямой доступ к Gateway в разработке (ADR-038)
@@ -128,19 +130,19 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # vehicle:          # неделя 2
-  #   <<: *service
-  #   build:
-  #     context: .
-  #     dockerfile: vehicle/Dockerfile
-  #   environment:
-  #     HTTP_ADDR: ":8080"
-  #     LOG_LEVEL: ${LOG_LEVEL}
-  #     DATABASE_URL: postgres://${VEHICLE_DB_USER}:${VEHICLE_DB_PASSWORD}@vehicle-db:5432/vehicle?sslmode=disable
-  #   networks: [backend, vehicle-db]
-  #   depends_on:
-  #     vehicle-db:
-  #       condition: service_healthy
+  vehicle:
+    <<: *service
+    build:
+      context: .
+      dockerfile: vehicle/Dockerfile
+    environment:
+      HTTP_ADDR: ":8080"
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: postgres://${VEHICLE_DB_USER}:${VEHICLE_DB_PASSWORD}@vehicle-db:5432/vehicle?sslmode=disable
+    networks: [backend, vehicle-db]
+    depends_on:
+      vehicle-db:
+        condition: service_healthy
 
   # services:         # неделя 2
   #   <<: *service
@@ -194,15 +196,15 @@ services:
       - inventory-db:/var/lib/postgresql
     networks: [inventory-db]
 
-  # vehicle-db:       # неделя 2
-  #   <<: *postgres
-  #   environment:
-  #     POSTGRES_DB: vehicle
-  #     POSTGRES_USER: ${VEHICLE_DB_USER}
-  #     POSTGRES_PASSWORD: ${VEHICLE_DB_PASSWORD}
-  #   volumes:
-  #     - vehicle-db:/var/lib/postgresql
-  #   networks: [vehicle-db]
+  vehicle-db:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: vehicle
+      POSTGRES_USER: ${VEHICLE_DB_USER}
+      POSTGRES_PASSWORD: ${VEHICLE_DB_PASSWORD}
+    volumes:
+      - vehicle-db:/var/lib/postgresql
+    networks: [vehicle-db]
 
   # services-db:      # неделя 2
   #   <<: *postgres
@@ -288,12 +290,12 @@ networks:
   users-db:
   orders-db:
   inventory-db:
-  # vehicle-db:
+  vehicle-db:
   # services-db:
 
 volumes:
   users-db:
   orders-db:
   inventory-db:
-  # vehicle-db:
+  vehicle-db:
   # services-db:

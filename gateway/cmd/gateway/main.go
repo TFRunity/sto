@@ -43,6 +43,9 @@ func main() {
 		"orders":    ordersProxy,
 		"inventory": inventoryProxy,
 	}
+	if cfg.VehicleURL.Host != "" {
+		proxies["vehicle"] = internal.NewProxy(&cfg.VehicleURL, logger)
+	}
 
 	app := internal.NewRouter([]byte(cfg.JWTSecret), proxies, logger)
 

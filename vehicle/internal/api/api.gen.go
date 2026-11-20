@@ -12,6 +12,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"path"
@@ -46,8 +48,14 @@ type ErrorBody struct {
 
 // VehicleCard defines model for VehicleCard.
 type VehicleCard struct {
-	Brand     string             `json:"brand"`
-	Number    string             `json:"number"`
+	Brand string `json:"brand"`
+
+	// CoverPhotoUrl Путь к обложке через Gateway, относительно origin API. Поле отсутствует, если обложки нет.
+	CoverPhotoUrl *string `json:"cover_photo_url,omitempty"`
+	Number        string  `json:"number"`
+
+	// Photos Ссылки на снимки галереи. Пустой массив, если снимков нет.
+	Photos    []VehiclePhotoLink `json:"photos"`
 	VehicleId openapi_types.UUID `json:"vehicle_id"`
 	Vin       string             `json:"vin"`
 }
@@ -58,6 +66,17 @@ type VehicleDetails struct {
 	Number string `json:"number"`
 	Vin    string `json:"vin"`
 }
+
+// VehiclePhotoLink defines model for VehiclePhotoLink.
+type VehiclePhotoLink struct {
+	PhotoId openapi_types.UUID `json:"photo_id"`
+
+	// Url Путь к снимку через Gateway, относительно origin API.
+	Url string `json:"url"`
+}
+
+// VehiclePhotoUpload Изображение JPEG или PNG. Vehicle определяет формат по содержимому.
+type VehiclePhotoUpload = openapi_types.File
 
 // ResourceId defines model for ResourceId.
 type ResourceId = openapi_types.UUID
@@ -71,8 +90,37 @@ type UnexpectedError = Error
 // ValidationFailed Конверт ошибки (ADR-032)
 type ValidationFailed = Error
 
+// VehicleNotFound Конверт ошибки (ADR-032)
+type VehicleNotFound = Error
+
+// VehiclePhotoNotFound Конверт ошибки (ADR-032)
+type VehiclePhotoNotFound = Error
+
+// VehiclePhotoTooLarge Конверт ошибки (ADR-032)
+type VehiclePhotoTooLarge = Error
+
+// ReplaceVehicleCoverPhotoMultipartBody defines parameters for ReplaceVehicleCoverPhoto.
+type ReplaceVehicleCoverPhotoMultipartBody struct {
+	// Photo Изображение JPEG или PNG. Vehicle определяет формат по содержимому.
+	Photo VehiclePhotoUpload `json:"photo"`
+}
+
+// AddVehiclePhotoMultipartBody defines parameters for AddVehiclePhoto.
+type AddVehiclePhotoMultipartBody struct {
+	OrderId *openapi_types.UUID `json:"order_id,omitempty"`
+
+	// Photo Изображение JPEG или PNG. Vehicle определяет формат по содержимому.
+	Photo VehiclePhotoUpload `json:"photo"`
+}
+
 // CreateVehicleJSONRequestBody defines body for CreateVehicle for application/json ContentType.
 type CreateVehicleJSONRequestBody = VehicleDetails
+
+// ReplaceVehicleCoverPhotoMultipartRequestBody defines body for ReplaceVehicleCoverPhoto for multipart/form-data ContentType.
+type ReplaceVehicleCoverPhotoMultipartRequestBody ReplaceVehicleCoverPhotoMultipartBody
+
+// AddVehiclePhotoMultipartRequestBody defines body for AddVehiclePhoto for multipart/form-data ContentType.
+type AddVehiclePhotoMultipartRequestBody AddVehiclePhotoMultipartBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -82,6 +130,18 @@ type ServerInterface interface {
 	// Прочитать карточку ТС
 	// (GET /vehicles/{id})
 	GetVehicle(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Скачать обложку ТС
+	// (GET /vehicles/{id}/cover_photo)
+	GetVehicleCoverPhoto(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Заменить обложку своего ТС
+	// (PUT /vehicles/{id}/cover_photo)
+	ReplaceVehicleCoverPhoto(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Добавить снимок в галерею ТС
+	// (POST /vehicles/{id}/photos)
+	AddVehiclePhoto(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Скачать снимок из галереи ТС
+	// (GET /vehicles/{id}/photos/{photo_id})
+	GetVehiclePhoto(w http.ResponseWriter, r *http.Request, id ResourceId, photoId openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -135,6 +195,139 @@ func (siw *ServerInterfaceWrapper) GetVehicle(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetVehicle(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetVehicleCoverPhoto operation middleware
+func (siw *ServerInterfaceWrapper) GetVehicleCoverPhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetVehicleCoverPhoto(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReplaceVehicleCoverPhoto operation middleware
+func (siw *ServerInterfaceWrapper) ReplaceVehicleCoverPhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReplaceVehicleCoverPhoto(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddVehiclePhoto operation middleware
+func (siw *ServerInterfaceWrapper) AddVehiclePhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddVehiclePhoto(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetVehiclePhoto operation middleware
+func (siw *ServerInterfaceWrapper) GetVehiclePhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "photo_id" -------------
+	var photoId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "photo_id", r.PathValue("photo_id"), &photoId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "photo_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetVehiclePhoto(w, r, id, photoId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -266,6 +459,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc("POST "+options.BaseURL+"/vehicles", wrapper.CreateVehicle)
 	m.HandleFunc("GET "+options.BaseURL+"/vehicles/{id}", wrapper.GetVehicle)
+	m.HandleFunc("GET "+options.BaseURL+"/vehicles/{id}/cover_photo", wrapper.GetVehicleCoverPhoto)
+	m.HandleFunc("PUT "+options.BaseURL+"/vehicles/{id}/cover_photo", wrapper.ReplaceVehicleCoverPhoto)
+	m.HandleFunc("POST "+options.BaseURL+"/vehicles/{id}/photos", wrapper.AddVehiclePhoto)
+	m.HandleFunc("GET "+options.BaseURL+"/vehicles/{id}/photos/{photo_id}", wrapper.GetVehiclePhoto)
 
 	return m
 }
@@ -275,6 +472,18 @@ type UnauthorizedJSONResponse Error
 type UnexpectedErrorJSONResponse Error
 
 type ValidationFailedJSONResponse Error
+
+type VehicleNotFoundJSONResponse Error
+
+type VehiclePhotoJPEGImagejpegResponse struct {
+	Body io.Reader
+
+	ContentLength int64
+}
+
+type VehiclePhotoNotFoundJSONResponse Error
+
+type VehiclePhotoTooLargeJSONResponse Error
 
 type CreateVehicleRequestObject struct {
 	Body *CreateVehicleJSONRequestBody
@@ -390,6 +599,278 @@ func (response GetVehicledefaultJSONResponse) VisitGetVehicleResponse(w http.Res
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type GetVehicleCoverPhotoRequestObject struct {
+	Id ResourceId `json:"id"`
+}
+
+type GetVehicleCoverPhotoResponseObject interface {
+	VisitGetVehicleCoverPhotoResponse(w http.ResponseWriter) error
+}
+
+type GetVehicleCoverPhoto200ImagejpegResponse struct {
+	VehiclePhotoJPEGImagejpegResponse
+}
+
+func (response GetVehicleCoverPhoto200ImagejpegResponse) VisitGetVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "image/jpeg")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetVehicleCoverPhoto400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response GetVehicleCoverPhoto400JSONResponse) VisitGetVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetVehicleCoverPhoto401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetVehicleCoverPhoto401JSONResponse) VisitGetVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetVehicleCoverPhoto404JSONResponse struct {
+	VehiclePhotoNotFoundJSONResponse
+}
+
+func (response GetVehicleCoverPhoto404JSONResponse) VisitGetVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetVehicleCoverPhotodefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetVehicleCoverPhotodefaultJSONResponse) VisitGetVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ReplaceVehicleCoverPhotoRequestObject struct {
+	Id   ResourceId `json:"id"`
+	Body *multipart.Reader
+}
+
+type ReplaceVehicleCoverPhotoResponseObject interface {
+	VisitReplaceVehicleCoverPhotoResponse(w http.ResponseWriter) error
+}
+
+type ReplaceVehicleCoverPhoto200Response struct {
+}
+
+func (response ReplaceVehicleCoverPhoto200Response) VisitReplaceVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type ReplaceVehicleCoverPhoto400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response ReplaceVehicleCoverPhoto400JSONResponse) VisitReplaceVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceVehicleCoverPhoto401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ReplaceVehicleCoverPhoto401JSONResponse) VisitReplaceVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceVehicleCoverPhoto404JSONResponse struct{ VehicleNotFoundJSONResponse }
+
+func (response ReplaceVehicleCoverPhoto404JSONResponse) VisitReplaceVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceVehicleCoverPhoto413JSONResponse struct {
+	VehiclePhotoTooLargeJSONResponse
+}
+
+func (response ReplaceVehicleCoverPhoto413JSONResponse) VisitReplaceVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(413)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceVehicleCoverPhotodefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ReplaceVehicleCoverPhotodefaultJSONResponse) VisitReplaceVehicleCoverPhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type AddVehiclePhotoRequestObject struct {
+	Id   ResourceId `json:"id"`
+	Body *multipart.Reader
+}
+
+type AddVehiclePhotoResponseObject interface {
+	VisitAddVehiclePhotoResponse(w http.ResponseWriter) error
+}
+
+type AddVehiclePhoto201JSONResponse struct {
+	PhotoId openapi_types.UUID `json:"photo_id"`
+}
+
+func (response AddVehiclePhoto201JSONResponse) VisitAddVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddVehiclePhoto400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response AddVehiclePhoto400JSONResponse) VisitAddVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddVehiclePhoto401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AddVehiclePhoto401JSONResponse) VisitAddVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddVehiclePhoto404JSONResponse struct{ VehicleNotFoundJSONResponse }
+
+func (response AddVehiclePhoto404JSONResponse) VisitAddVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddVehiclePhoto413JSONResponse struct {
+	VehiclePhotoTooLargeJSONResponse
+}
+
+func (response AddVehiclePhoto413JSONResponse) VisitAddVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(413)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddVehiclePhotodefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response AddVehiclePhotodefaultJSONResponse) VisitAddVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetVehiclePhotoRequestObject struct {
+	Id      ResourceId         `json:"id"`
+	PhotoId openapi_types.UUID `json:"photo_id"`
+}
+
+type GetVehiclePhotoResponseObject interface {
+	VisitGetVehiclePhotoResponse(w http.ResponseWriter) error
+}
+
+type GetVehiclePhoto200ImagejpegResponse struct {
+	VehiclePhotoJPEGImagejpegResponse
+}
+
+func (response GetVehiclePhoto200ImagejpegResponse) VisitGetVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "image/jpeg")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetVehiclePhoto400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response GetVehiclePhoto400JSONResponse) VisitGetVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetVehiclePhoto401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetVehiclePhoto401JSONResponse) VisitGetVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetVehiclePhoto404JSONResponse struct {
+	VehiclePhotoNotFoundJSONResponse
+}
+
+func (response GetVehiclePhoto404JSONResponse) VisitGetVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetVehiclePhotodefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetVehiclePhotodefaultJSONResponse) VisitGetVehiclePhotoResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Добавить ТС для текущего клиента
@@ -398,6 +879,18 @@ type StrictServerInterface interface {
 	// Прочитать карточку ТС
 	// (GET /vehicles/{id})
 	GetVehicle(ctx context.Context, request GetVehicleRequestObject) (GetVehicleResponseObject, error)
+	// Скачать обложку ТС
+	// (GET /vehicles/{id}/cover_photo)
+	GetVehicleCoverPhoto(ctx context.Context, request GetVehicleCoverPhotoRequestObject) (GetVehicleCoverPhotoResponseObject, error)
+	// Заменить обложку своего ТС
+	// (PUT /vehicles/{id}/cover_photo)
+	ReplaceVehicleCoverPhoto(ctx context.Context, request ReplaceVehicleCoverPhotoRequestObject) (ReplaceVehicleCoverPhotoResponseObject, error)
+	// Добавить снимок в галерею ТС
+	// (POST /vehicles/{id}/photos)
+	AddVehiclePhoto(ctx context.Context, request AddVehiclePhotoRequestObject) (AddVehiclePhotoResponseObject, error)
+	// Скачать снимок из галереи ТС
+	// (GET /vehicles/{id}/photos/{photo_id})
+	GetVehiclePhoto(ctx context.Context, request GetVehiclePhotoRequestObject) (GetVehiclePhotoResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -486,41 +979,173 @@ func (sh *strictHandler) GetVehicle(w http.ResponseWriter, r *http.Request, id R
 	}
 }
 
+// GetVehicleCoverPhoto operation middleware
+func (sh *strictHandler) GetVehicleCoverPhoto(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request GetVehicleCoverPhotoRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetVehicleCoverPhoto(ctx, request.(GetVehicleCoverPhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetVehicleCoverPhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetVehicleCoverPhotoResponseObject); ok {
+		if err := validResponse.VisitGetVehicleCoverPhotoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReplaceVehicleCoverPhoto operation middleware
+func (sh *strictHandler) ReplaceVehicleCoverPhoto(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request ReplaceVehicleCoverPhotoRequestObject
+
+	request.Id = id
+
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
+		return
+	} else {
+		request.Body = reader
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReplaceVehicleCoverPhoto(ctx, request.(ReplaceVehicleCoverPhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReplaceVehicleCoverPhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReplaceVehicleCoverPhotoResponseObject); ok {
+		if err := validResponse.VisitReplaceVehicleCoverPhotoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddVehiclePhoto operation middleware
+func (sh *strictHandler) AddVehiclePhoto(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request AddVehiclePhotoRequestObject
+
+	request.Id = id
+
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
+		return
+	} else {
+		request.Body = reader
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddVehiclePhoto(ctx, request.(AddVehiclePhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddVehiclePhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddVehiclePhotoResponseObject); ok {
+		if err := validResponse.VisitAddVehiclePhotoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetVehiclePhoto operation middleware
+func (sh *strictHandler) GetVehiclePhoto(w http.ResponseWriter, r *http.Request, id ResourceId, photoId openapi_types.UUID) {
+	var request GetVehiclePhotoRequestObject
+
+	request.Id = id
+	request.PhotoId = photoId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetVehiclePhoto(ctx, request.(GetVehiclePhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetVehiclePhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetVehiclePhotoResponseObject); ok {
+		if err := validResponse.VisitGetVehiclePhotoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"FQAA",
+	"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",
+	"AA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

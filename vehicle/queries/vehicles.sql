@@ -4,6 +4,6 @@ VALUES ($1, $2, $3, $4)
 RETURNING id;
 
 -- name: GetVehicle :one
-SELECT id, owner_id, number, brand, vin
+SELECT id, owner_id, number, brand, vin, cover_photo_url
 FROM vehicles
 WHERE id = $1 AND deleted_at IS NULL;

@@ -12,17 +12,16 @@ import (
 	"github.com/AlexeBabanov/sto/orders/internal/certificate"
 	"github.com/AlexeBabanov/sto/orders/internal/db"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func (h handler) GetCertificate(ctx context.Context, req api.GetCertificateRequestObject) (api.GetCertificateResponseObject, error) {
-	user, ok := requestIdentity(ctx)
+	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
-		return nil, unauthorized()
+		return nil, httpx.Unauthorized()
 	}
-	pdf, err := h.repo.queries.GetCompletedCertificate(ctx, db.GetCompletedCertificateParams{OrderID: req.Id, ClientID: user.id})
-	if errors.Is(err, pgx.ErrNoRows) {
+	pdf, err := h.repo.getCertificate(ctx, req.Id, user.ID)
+	if errors.Is(err, errCertificateNotFound) {
 		return nil, &httpx.Error{Status: http.StatusNotFound, Code: "certificate_not_found", Message: "certificate not found"}
 	}
 	if err != nil {

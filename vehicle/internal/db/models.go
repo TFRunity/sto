@@ -10,12 +10,21 @@ import (
 )
 
 type Vehicle struct {
+	ID            uuid.UUID
+	OwnerID       uuid.UUID
+	Number        string
+	Brand         string
+	Vin           string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	DeletedAt     pgtype.Timestamptz
+	CoverPhotoUrl pgtype.Text
+}
+
+type VehiclePhoto struct {
 	ID        uuid.UUID
-	OwnerID   uuid.UUID
-	Number    string
-	Brand     string
-	Vin       string
+	VehicleID uuid.UUID
+	OrderID   pgtype.UUID
+	FileKey   string
 	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	DeletedAt pgtype.Timestamptz
 }

@@ -139,6 +139,9 @@ services:
       HTTP_ADDR: ":8080"
       LOG_LEVEL: ${LOG_LEVEL}
       DATABASE_URL: postgres://${VEHICLE_DB_USER}:${VEHICLE_DB_PASSWORD}@vehicle-db:5432/vehicle?sslmode=disable
+      PHOTO_DIR: /var/lib/sto/vehicle/photos
+    volumes:
+      - vehicle-photos:/var/lib/sto/vehicle/photos
     networks: [backend, vehicle-db]
     depends_on:
       vehicle-db:
@@ -298,4 +301,5 @@ volumes:
   orders-db:
   inventory-db:
   vehicle-db:
+  vehicle-photos:
   # services-db:

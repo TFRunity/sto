@@ -59,22 +59,12 @@ func newTransport() *http.Transport {
 // rewriteRequest возвращает функцию подготовки исходящего запроса.
 func rewriteRequest(target *url.URL) func(*httputil.ProxyRequest) {
 	return func(pr *httputil.ProxyRequest) {
-		setTarget(pr, target)
-		resetHeaders(pr)
+		pr.SetURL(target)
+		pr.Out.Header = make(http.Header)
 		copyAllowedHeaders(pr)
 		setIdentityHeaders(pr)
 		setRequestID(pr)
 	}
-}
-
-// setTarget устанавливает адрес целевого сервиса.
-func setTarget(pr *httputil.ProxyRequest, target *url.URL) {
-	pr.SetURL(target)
-}
-
-// resetHeaders удаляет все исходящие заголовки.
-func resetHeaders(pr *httputil.ProxyRequest) {
-	pr.Out.Header = make(http.Header)
 }
 
 // copyAllowedHeaders копирует только разрешённые заголовки.
@@ -122,14 +112,14 @@ func classifyProxyError(err error) *httpx.Error {
 	if isTimeout(err) {
 		return &httpx.Error{
 			Status:  http.StatusGatewayTimeout,
-			Code:    "gateway_timeout",
+			Code:    "upstream_timeout",
 			Message: "upstream timeout",
 		}
 	}
 
 	return &httpx.Error{
 		Status:  http.StatusBadGateway,
-		Code:    "bad_gateway",
+		Code:    "upstream_error",
 		Message: "upstream unavailable",
 	}
 }

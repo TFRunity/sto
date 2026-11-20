@@ -20,3 +20,24 @@ func normalizePlate(number string) string {
 	}, number)
 	return plateLetters.Replace(number)
 }
+
+type vehicleDetails struct {
+	number string
+	brand  string
+	vin    string
+}
+
+func prepareVehicleDetails(number, brand, vin string) (vehicleDetails, map[string]string) {
+	details := vehicleDetails{
+		number: normalizePlate(number),
+		brand:  strings.TrimSpace(brand),
+		vin:    strings.TrimSpace(vin),
+	}
+	fields := make(map[string]string)
+	for field, value := range map[string]string{"number": details.number, "brand": details.brand, "vin": details.vin} {
+		if value == "" {
+			fields[field] = "required"
+		}
+	}
+	return details, fields
+}

@@ -19,6 +19,7 @@ import (
 type Config struct {
 	config.Base
 	DatabaseURL config.Secret `env:"DATABASE_URL,notEmpty"`
+	PhotoDir    string        `env:"PHOTO_DIR,required,notEmpty"`
 }
 
 func main() {
@@ -49,10 +50,10 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("load vehicle OpenAPI spec: %w", err)
 	}
 	handleError := httpx.StrictErrorHandler(logger)
-	strict := api.NewStrictHandlerWithOptions(vehicle.NewHandler(pool), []api.StrictMiddlewareFunc{vehicle.ReadIdentity}, api.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc:  handleError,
+	strict := api.NewStrictHandlerWithOptions(vehicle.NewHandler(pool, cfg.PhotoDir), nil, api.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc:  httpx.StrictRequestErrorHandler(logger),
 		ResponseErrorHandlerFunc: handleError,
 	})
-	app := httpx.Validator(spec, logger)(api.Handler(strict))
-	return httpx.Run(ctx, cfg.HTTPAddr, app, logger)
+	app := httpx.Validator(spec, logger)(httpx.RequireIdentity(api.Handler(strict), logger))
+	return httpx.Run(ctx, cfg.HTTPAddr, vehicle.LimitPhotoUpload(app, handleError), logger)
 }

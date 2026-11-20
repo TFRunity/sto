@@ -3,6 +3,7 @@ package stock
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/AlexeBabanov/sto/chassis/outbox"
 	"github.com/AlexeBabanov/sto/chassis/postgres"
@@ -62,10 +63,11 @@ func applyCommand(ctx context.Context, tx pgx.Tx, q *db.Queries, next action, co
 		return outbox.Add(ctx, tx, command.SagaID, stockmessage.StockRejected, command.Attempt)
 	case restore:
 		return restoreStock(ctx, q, command.SagaID)
-	default:
+	case ignore, tombstone:
 		// The initial INSERT already records a cancellation tombstone.
 		return nil
 	}
+	return fmt.Errorf("unknown stock action: %d", next)
 }
 
 func deductStock(ctx context.Context, tx pgx.Tx, q *db.Queries, command stockmessage.Deduction) (string, error) {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/AlexeBabanov/sto/chassis/postgres"
 	"github.com/AlexeBabanov/sto/users/internal/db"
 )
 
@@ -27,9 +27,8 @@ func (r *Repository) CreateClient(ctx context.Context, u User) (User, error) {
 		PasswordHash: u.PasswordHash,
 	})
 
-	if isPhoneTaken(err) {
-		return User{},
-			ErrPhoneTaken
+	if postgres.IsConstraintViolation(err, "23505", "uq_users_phone") {
+		return User{}, ErrPhoneTaken
 	}
 	if err != nil {
 		return User{}, fmt.Errorf("create client: %w", err)
@@ -46,12 +45,6 @@ func (r *Repository) GetByPhone(ctx context.Context, phone string) (User, error)
 		return User{}, fmt.Errorf("get user by phone: %w", err)
 	}
 	return toUser(row), nil
-}
-
-func isPhoneTaken(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) &&
-		pgErr.Code == "23505" && pgErr.ConstraintName == "uq_users_phone"
 }
 
 func toUser(row db.User) User {

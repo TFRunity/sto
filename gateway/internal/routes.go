@@ -109,9 +109,23 @@ func vehicleRoles(r *http.Request) []string {
 	if r.Method == http.MethodPost && r.URL.Path == "/vehicles" {
 		return []string{roleClient}
 	}
-	id, found := strings.CutPrefix(r.URL.Path, "/vehicles/")
-	if r.Method == http.MethodGet && found && id != "" && !strings.Contains(id, "/") {
+	path, found := strings.CutPrefix(r.URL.Path, "/vehicles/")
+	if !found {
+		return nil
+	}
+	id, action, hasAction := strings.Cut(path, "/")
+	if id == "" {
+		return nil
+	}
+	resource, photoID, hasPhotoID := strings.Cut(action, "/")
+	galleryPhoto := resource == "photos" && hasPhotoID && photoID != "" && !strings.Contains(photoID, "/")
+	switch {
+	case r.Method == http.MethodGet && (!hasAction || action == "cover_photo" || galleryPhoto):
 		return []string{roleClient, roleEngineer}
+	case action == "cover_photo" && r.Method == http.MethodPut:
+		return []string{roleClient}
+	case action == "photos" && r.Method == http.MethodPost:
+		return []string{roleEngineer}
 	}
 	return nil
 }

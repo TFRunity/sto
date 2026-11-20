@@ -9,7 +9,6 @@ import (
 	"github.com/AlexeBabanov/sto/orders/internal/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -53,8 +52,7 @@ func (r repository) addItem(ctx context.Context, orderID uuid.UUID, item orderIt
 	id, err := r.queries.AddOrderItem(ctx, db.AddOrderItemParams{
 		OrderID: orderID, ItemID: item.itemID, Quantity: item.quantity, Price: item.price,
 	})
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23503" && pgErr.ConstraintName == "order_items_order_id_fkey" {
+	if postgres.IsConstraintViolation(err, "23503", "order_items_order_id_fkey") {
 		return uuid.Nil, errOrderNotFound
 	}
 	if err != nil {
@@ -100,4 +98,17 @@ func mapOrderItems(rows []db.ListOrderItemsRow) []orderItem {
 		})
 	}
 	return items
+}
+
+var errCertificateNotFound = errors.New("certificate not found")
+
+func (r repository) getCertificate(ctx context.Context, orderID, clientID uuid.UUID) ([]byte, error) {
+	pdf, err := r.queries.GetCompletedCertificate(ctx, db.GetCompletedCertificateParams{OrderID: orderID, ClientID: clientID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errCertificateNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get completed certificate: %w", err)
+	}
+	return pdf, nil
 }

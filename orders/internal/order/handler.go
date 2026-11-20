@@ -23,17 +23,6 @@ type handler struct {
 	logger    *slog.Logger
 }
 
-type identityKey struct{}
-type identity struct {
-	id   uuid.UUID
-	role string
-}
-
-func requestIdentity(ctx context.Context) (identity, bool) {
-	user, ok := ctx.Value(identityKey{}).(identity)
-	return user, ok
-}
-
 // NewHTTPHandler подключает валидацию OpenAPI перед сгенерированным HTTP-сервером.
 func NewHTTPHandler(pool *pgxpool.Pool, inventoryURL url.URL, payments *saga.Service, logger *slog.Logger) (http.Handler, error) {
 	spec, err := api.GetSwagger()
@@ -55,35 +44,19 @@ func newHandler(pool *pgxpool.Pool, inventoryURL url.URL, payments *saga.Service
 
 func strictHTTPHandler(h handler) http.Handler {
 	handleError := httpx.StrictErrorHandler(h.logger)
-	strict := api.NewStrictHandlerWithOptions(h, []api.StrictMiddlewareFunc{readIdentity(h.logger)}, api.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc:  handleError,
+	strict := api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
+		RequestErrorHandlerFunc:  httpx.StrictRequestErrorHandler(h.logger),
 		ResponseErrorHandlerFunc: handleError,
 	})
-	return api.Handler(strict)
-}
-
-// Strict-обработчик получает context и тело. Заголовок читаем на HTTP-границе
-// и передаём дальше только проверенный UUID.
-func readIdentity(logger *slog.Logger) api.StrictMiddlewareFunc {
-	return func(next api.StrictHandlerFunc, _ string) api.StrictHandlerFunc {
-		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
-			id, err := uuid.Parse(r.Header.Get(httpx.UserIDHeader))
-			role := r.Header.Get(httpx.UserRoleHeader)
-			if err != nil || id == uuid.Nil || role == "" {
-				logger.WarnContext(ctx, "missing or invalid request identity")
-				return nil, unauthorized()
-			}
-			return next(context.WithValue(ctx, identityKey{}, identity{id: id, role: role}), w, r, request)
-		}
-	}
+	return httpx.RequireIdentity(api.Handler(strict), h.logger)
 }
 
 func (h handler) CreateOrder(ctx context.Context, req api.CreateOrderRequestObject) (api.CreateOrderResponseObject, error) {
-	user, ok := requestIdentity(ctx)
+	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
-		return nil, unauthorized()
+		return nil, httpx.Unauthorized()
 	}
-	id, err := h.repo.create(ctx, req.Body.ClientId, req.Body.VehicleId, user.id)
+	id, err := h.repo.create(ctx, req.Body.ClientId, req.Body.VehicleId, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -120,15 +93,15 @@ func (h handler) itemPrice(ctx context.Context, itemID uuid.UUID) (decimal.Decim
 	return product.price, nil
 }
 
-func unauthorized() *httpx.Error {
-	return &httpx.Error{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "unauthorized"}
-}
-
 func orderNotFound() *httpx.Error {
 	return &httpx.Error{Status: http.StatusNotFound, Code: "order_not_found", Message: "order not found"}
 }
 
 func (h handler) GetOrder(ctx context.Context, req api.GetOrderRequestObject) (api.GetOrderResponseObject, error) {
+	user, ok := httpx.IdentityFromContext(ctx)
+	if !ok {
+		return nil, httpx.Unauthorized()
+	}
 	row, items, err := h.repo.get(ctx, req.Id)
 	if errors.Is(err, errOrderNotFound) {
 		return nil, orderNotFound()
@@ -137,11 +110,7 @@ func (h handler) GetOrder(ctx context.Context, req api.GetOrderRequestObject) (a
 		return nil, err
 	}
 
-	user, ok := requestIdentity(ctx)
-	if !ok {
-		return nil, unauthorized()
-	}
-	if user.role == "client" && row.ClientID != user.id {
+	if user.Role == httpx.RoleClient && row.ClientID != user.ID {
 		return nil, orderNotFound()
 	}
 	return orderResponse(row, items), nil

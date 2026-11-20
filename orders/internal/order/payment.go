@@ -11,11 +11,11 @@ import (
 )
 
 func (h handler) PayOrder(ctx context.Context, req api.PayOrderRequestObject) (api.PayOrderResponseObject, error) {
-	identity, ok := requestIdentity(ctx)
+	identity, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
-		return nil, unauthorized()
+		return nil, httpx.Unauthorized()
 	}
-	err := h.payments.StartPayment(ctx, req.Id, identity.id)
+	err := h.payments.StartPayment(ctx, req.Id, identity.ID)
 	if errors.Is(err, saga.ErrNotActive) {
 		return nil, &httpx.Error{Status: http.StatusConflict, Code: "order_not_active", Message: "order unavailable for payment"}
 	}

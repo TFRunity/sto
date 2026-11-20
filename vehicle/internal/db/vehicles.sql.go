@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createVehicle = `-- name: CreateVehicle :one
@@ -37,17 +38,18 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (u
 }
 
 const getVehicle = `-- name: GetVehicle :one
-SELECT id, owner_id, number, brand, vin
+SELECT id, owner_id, number, brand, vin, cover_photo_url
 FROM vehicles
 WHERE id = $1 AND deleted_at IS NULL
 `
 
 type GetVehicleRow struct {
-	ID      uuid.UUID
-	OwnerID uuid.UUID
-	Number  string
-	Brand   string
-	Vin     string
+	ID            uuid.UUID
+	OwnerID       uuid.UUID
+	Number        string
+	Brand         string
+	Vin           string
+	CoverPhotoUrl pgtype.Text
 }
 
 func (q *Queries) GetVehicle(ctx context.Context, id uuid.UUID) (GetVehicleRow, error) {
@@ -59,6 +61,7 @@ func (q *Queries) GetVehicle(ctx context.Context, id uuid.UUID) (GetVehicleRow, 
 		&i.Number,
 		&i.Brand,
 		&i.Vin,
+		&i.CoverPhotoUrl,
 	)
 	return i, err
 }

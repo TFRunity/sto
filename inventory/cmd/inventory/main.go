@@ -76,7 +76,7 @@ func newApp(handler *item.Handler, logger *slog.Logger) (http.Handler, error) {
 
 	handleError := httpx.StrictErrorHandler(logger)
 	strict := api.NewStrictHandlerWithOptions(handler, nil, api.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc:  handleError,
+		RequestErrorHandlerFunc:  httpx.StrictRequestErrorHandler(logger),
 		ResponseErrorHandlerFunc: handleError,
 	})
 

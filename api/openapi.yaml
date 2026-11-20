@@ -317,6 +317,123 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /vehicles/{id}/cover_photo:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [vehicle]
+      operationId: getVehicleCoverPhoto
+      summary: Скачать обложку ТС
+      description: Доступно владельцу ТС и инженеру.
+      responses:
+        '200':
+          $ref: '#/components/responses/VehiclePhotoJPEG'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/VehiclePhotoNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    put:
+      tags: [vehicle]
+      operationId: replaceVehicleCoverPhoto
+      summary: Заменить обложку своего ТС
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo:
+                  $ref: '#/components/schemas/VehiclePhotoUpload'
+      responses:
+        '200':
+          description: Обложка заменена
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/VehicleNotFound'
+        '413':
+          $ref: '#/components/responses/VehiclePhotoTooLarge'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /vehicles/{id}/photos:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    post:
+      tags: [vehicle]
+      operationId: addVehiclePhoto
+      summary: Добавить снимок в галерею ТС
+      description: Доступно инженеру. Снимок можно связать с заказом.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo:
+                  $ref: '#/components/schemas/VehiclePhotoUpload'
+                order_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Снимок добавлен
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [photo_id]
+                properties:
+                  photo_id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/VehicleNotFound'
+        '413':
+          $ref: '#/components/responses/VehiclePhotoTooLarge'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /vehicles/{id}/photos/{photo_id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+      - name: photo_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [vehicle]
+      operationId: getVehiclePhoto
+      summary: Скачать снимок из галереи ТС
+      description: Доступно владельцу ТС и инженеру. Снимок должен принадлежать указанному ТС.
+      responses:
+        '200':
+          $ref: '#/components/responses/VehiclePhotoJPEG'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/VehiclePhotoNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
 components:
   parameters:
     ResourceId:
@@ -335,6 +452,31 @@ components:
       description: Проверяется только в Gateway (ADR-010, ADR-023).
 
   responses:
+    VehiclePhotoJPEG:
+      description: Изображение JPEG
+      content:
+        image/jpeg:
+          schema:
+            type: string
+            format: binary
+    VehiclePhotoNotFound:
+      description: '`photo_not_found` — фото или ТС отсутствует либо недоступно'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    VehicleNotFound:
+      description: '`vehicle_not_found` — ТС отсутствует, удалено или недоступно клиенту'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    VehiclePhotoTooLarge:
+      description: '`photo_too_large` — тело запроса превышает 3,5 МиБ'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     Unauthorized:
       description: '`unauthorized` — не удалось установить идентичность запроса'
       content:
@@ -361,6 +503,21 @@ components:
             $ref: '#/components/schemas/Error'
 
   schemas:
+    VehiclePhotoLink:
+      type: object
+      required: [photo_id, url]
+      properties:
+        photo_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          description: Путь к снимку через Gateway, относительно origin API.
+          example: /api/vehicles/42dfbb24-832d-4b2b-8830-9564d4857019/photos/208298ad-189e-4534-b5b6-a05697ab2d09
+    VehiclePhotoUpload:
+      type: string
+      format: binary
+      description: Изображение JPEG или PNG. Vehicle определяет формат по содержимому.
     VehicleDetails:
       type: object
       required: [number, brand, vin]
@@ -378,11 +535,20 @@ components:
       allOf:
         - $ref: '#/components/schemas/VehicleDetails'
         - type: object
-          required: [vehicle_id]
+          required: [vehicle_id, photos]
           properties:
             vehicle_id:
               type: string
               format: uuid
+            cover_photo_url:
+              type: string
+              description: Путь к обложке через Gateway, относительно origin API. Поле отсутствует, если обложки нет.
+              example: /api/vehicles/42dfbb24-832d-4b2b-8830-9564d4857019/cover_photo
+            photos:
+              type: array
+              description: Ссылки на снимки галереи. Пустой массив, если снимков нет.
+              items:
+                $ref: '#/components/schemas/VehiclePhotoLink'
 
     # ── общие ───────────────────────────────────────────────────────────
     Error:

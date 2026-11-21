@@ -8,12 +8,12 @@ import (
 	openapiTypes "github.com/oapi-codegen/runtime/types"
 )
 
-func (h handler) ListServiceBookings(ctx context.Context, _ api.ListServiceBookingsRequestObject) (api.ListServiceBookingsResponseObject, error) {
+func (h handler) listServiceBookings(ctx context.Context) (api.ListOrdersResponseObject, error) {
 	rows, err := h.repo.listServiceBookings(ctx)
 	if err != nil {
 		return nil, err
 	}
-	response := make(api.ListServiceBookings200JSONResponse, 0, len(rows))
+	response := make(orderListResponse[api.ServiceBookingListItem], 0, len(rows))
 	for _, row := range rows {
 		response = append(response, serviceBookingListItem(row))
 	}

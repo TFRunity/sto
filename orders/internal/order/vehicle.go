@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/google/uuid"
 )
 
@@ -46,4 +47,16 @@ func (c vehicleClient) checkOwnership(ctx context.Context, vehicleID, ownerID uu
 	default:
 		return fmt.Errorf("vehicle ownership check returned HTTP %d", resp.StatusCode)
 	}
+}
+
+func (h handler) requireVehicleOwner(ctx context.Context, vehicleID, clientID uuid.UUID) error {
+	err := h.vehicles.checkOwnership(ctx, vehicleID, clientID)
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, errVehicleNotFound) {
+		return &httpx.Error{Status: http.StatusNotFound, Code: "vehicle_not_found", Message: "vehicle not found"}
+	}
+	h.logger.WarnContext(ctx, "could not check vehicle ownership", "err", err)
+	return &httpx.Error{Status: http.StatusBadGateway, Code: "upstream_error", Message: "vehicle service unavailable"}
 }

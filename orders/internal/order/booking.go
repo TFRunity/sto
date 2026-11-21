@@ -2,7 +2,6 @@ package order
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -36,12 +35,8 @@ func (h handler) createServiceBooking(ctx context.Context, clientID uuid.UUID, r
 			Message: "invalid service booking", Fields: fields,
 		}
 	}
-	if err := h.vehicles.checkOwnership(ctx, body.VehicleId, clientID); err != nil {
-		if errors.Is(err, errVehicleNotFound) {
-			return nil, &httpx.Error{Status: http.StatusNotFound, Code: "vehicle_not_found", Message: "vehicle not found"}
-		}
-		h.logger.WarnContext(ctx, "could not check vehicle ownership", "err", err)
-		return nil, &httpx.Error{Status: http.StatusBadGateway, Code: "upstream_error", Message: "vehicle service unavailable"}
+	if err := h.requireVehicleOwner(ctx, body.VehicleId, clientID); err != nil {
+		return nil, err
 	}
 	id, err := h.repo.createBooking(ctx, clientID, body.VehicleId, body.Service, body.Date.Time, body.Comment)
 	if err != nil {

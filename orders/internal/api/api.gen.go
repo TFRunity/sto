@@ -46,14 +46,35 @@ const (
 	OrderStatusRequested OrderStatus = "requested"
 )
 
+// Defines values for OrderHistoryItemStage.
+const (
+	ВРаботе OrderHistoryItemStage = "в_работе"
+	Выдан   OrderHistoryItemStage = "выдан"
+	Готов   OrderHistoryItemStage = "готов"
+	Принят  OrderHistoryItemStage = "принят"
+)
+
+// Defines values for OrderHistoryItemStatus.
+const (
+	OrderHistoryItemStatusActive    OrderHistoryItemStatus = "active"
+	OrderHistoryItemStatusCancelled OrderHistoryItemStatus = "cancelled"
+	OrderHistoryItemStatusPaid      OrderHistoryItemStatus = "paid"
+	OrderHistoryItemStatusRequested OrderHistoryItemStatus = "requested"
+)
+
 // Defines values for ServiceBookingListItemStatus.
 const (
 	ServiceBookingListItemStatusRequested ServiceBookingListItemStatus = "requested"
 )
 
-// Defines values for ListServiceBookingsParamsStatus.
+// Defines values for ListOrdersParamsStatus.
 const (
-	Requested ListServiceBookingsParamsStatus = "requested"
+	ListOrdersParamsStatusRequested ListOrdersParamsStatus = "requested"
+)
+
+// Defines values for ListOrdersParamsClientId.
+const (
+	Me ListOrdersParamsClientId = "me"
 )
 
 // AddOrderItemRequest defines model for AddOrderItemRequest.
@@ -136,6 +157,24 @@ type OrderStage string
 // OrderStatus defines model for Order.Status.
 type OrderStatus string
 
+// OrderHistoryItem defines model for OrderHistoryItem.
+type OrderHistoryItem struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// PaymentConfirmed Есть завершённая сага оплаты.
+	PaymentConfirmed bool                   `json:"payment_confirmed"`
+	Stage            OrderHistoryItemStage  `json:"stage"`
+	Status           OrderHistoryItemStatus `json:"status"`
+	VehicleId        openapi_types.UUID     `json:"vehicle_id"`
+}
+
+// OrderHistoryItemStage defines model for OrderHistoryItem.Stage.
+type OrderHistoryItemStage string
+
+// OrderHistoryItemStatus defines model for OrderHistoryItem.Status.
+type OrderHistoryItemStatus string
+
 // OrderItem defines model for OrderItem.
 type OrderItem struct {
 	Id     openapi_types.UUID `json:"id"`
@@ -179,13 +218,18 @@ type ValidationFailed = Error
 // VehicleNotFound Конверт ошибки (ADR-032)
 type VehicleNotFound = Error
 
-// ListServiceBookingsParams defines parameters for ListServiceBookings.
-type ListServiceBookingsParams struct {
-	Status ListServiceBookingsParamsStatus `form:"status" json:"status"`
+// ListOrdersParams defines parameters for ListOrders.
+type ListOrdersParams struct {
+	Status    *ListOrdersParamsStatus   `form:"status,omitempty" json:"status,omitempty"`
+	ClientId  *ListOrdersParamsClientId `form:"client_id,omitempty" json:"client_id,omitempty"`
+	VehicleId *openapi_types.UUID       `form:"vehicle_id,omitempty" json:"vehicle_id,omitempty"`
 }
 
-// ListServiceBookingsParamsStatus defines parameters for ListServiceBookings.
-type ListServiceBookingsParamsStatus string
+// ListOrdersParamsStatus defines parameters for ListOrders.
+type ListOrdersParamsStatus string
+
+// ListOrdersParamsClientId defines parameters for ListOrders.
+type ListOrdersParamsClientId string
 
 // CreateOrderJSONRequestBody defines body for CreateOrder for application/json ContentType.
 type CreateOrderJSONRequestBody = CreateOrderRequest
@@ -257,9 +301,9 @@ func (t *CreateOrderRequest) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Список заявок на сервис для инженера
+	// Общий пул заявок или история клиента
 	// (GET /orders)
-	ListServiceBookings(w http.ResponseWriter, r *http.Request, params ListServiceBookingsParams)
+	ListOrders(w http.ResponseWriter, r *http.Request, params ListOrdersParams)
 	// Записаться на сервис или создать активный заказ
 	// (POST /orders)
 	CreateOrder(w http.ResponseWriter, r *http.Request)
@@ -269,6 +313,9 @@ type ServerInterface interface {
 	// Скачать готовую справку об оплате
 	// (GET /orders/{id}/certificate)
 	GetCertificate(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Взять заявку в работу
+	// (PATCH /orders/{id}/claim)
+	ClaimOrder(w http.ResponseWriter, r *http.Request, id ResourceId)
 	// Добавление товарной позиции
 	// (POST /orders/{id}/items)
 	AddOrderItem(w http.ResponseWriter, r *http.Request, id ResourceId)
@@ -286,8 +333,8 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// ListServiceBookings operation middleware
-func (siw *ServerInterfaceWrapper) ListServiceBookings(w http.ResponseWriter, r *http.Request) {
+// ListOrders operation middleware
+func (siw *ServerInterfaceWrapper) ListOrders(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
@@ -298,25 +345,34 @@ func (siw *ServerInterfaceWrapper) ListServiceBookings(w http.ResponseWriter, r 
 	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params ListServiceBookingsParams
+	var params ListOrdersParams
 
-	// ------------- Required query parameter "status" -------------
+	// ------------- Optional query parameter "status" -------------
 
-	if paramValue := r.URL.Query().Get("status"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "status", r.URL.Query(), &params.Status)
+	err = runtime.BindQueryParameter("form", true, false, "status", r.URL.Query(), &params.Status)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
 		return
 	}
 
+	// ------------- Optional query parameter "client_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "client_id", r.URL.Query(), &params.ClientId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "client_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "vehicle_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "vehicle_id", r.URL.Query(), &params.VehicleId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "vehicle_id", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListServiceBookings(w, r, params)
+		siw.Handler.ListOrders(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -399,6 +455,37 @@ func (siw *ServerInterfaceWrapper) GetCertificate(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetCertificate(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ClaimOrder operation middleware
+func (siw *ServerInterfaceWrapper) ClaimOrder(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ClaimOrder(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -590,10 +677,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc("GET "+options.BaseURL+"/orders", wrapper.ListServiceBookings)
+	m.HandleFunc("GET "+options.BaseURL+"/orders", wrapper.ListOrders)
 	m.HandleFunc("POST "+options.BaseURL+"/orders", wrapper.CreateOrder)
 	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}", wrapper.GetOrder)
 	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}/certificate", wrapper.GetCertificate)
+	m.HandleFunc("PATCH "+options.BaseURL+"/orders/{id}/claim", wrapper.ClaimOrder)
 	m.HandleFunc("POST "+options.BaseURL+"/orders/{id}/items", wrapper.AddOrderItem)
 	m.HandleFunc("POST "+options.BaseURL+"/orders/{id}/pay", wrapper.PayOrder)
 
@@ -610,47 +698,67 @@ type ValidationFailedJSONResponse Error
 
 type VehicleNotFoundJSONResponse Error
 
-type ListServiceBookingsRequestObject struct {
-	Params ListServiceBookingsParams
+type ListOrdersRequestObject struct {
+	Params ListOrdersParams
 }
 
-type ListServiceBookingsResponseObject interface {
-	VisitListServiceBookingsResponse(w http.ResponseWriter) error
+type ListOrdersResponseObject interface {
+	VisitListOrdersResponse(w http.ResponseWriter) error
 }
 
-type ListServiceBookings200JSONResponse []ServiceBookingListItem
+type ListOrders200JSONResponse struct {
+	union json.RawMessage
+}
 
-func (response ListServiceBookings200JSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+func (response ListOrders200JSONResponse) VisitListOrdersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	return json.NewEncoder(w).Encode(response)
+	return json.NewEncoder(w).Encode(response.union)
 }
 
-type ListServiceBookings400JSONResponse struct{ ValidationFailedJSONResponse }
+type ListOrders400JSONResponse struct{ ValidationFailedJSONResponse }
 
-func (response ListServiceBookings400JSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+func (response ListOrders400JSONResponse) VisitListOrdersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListServiceBookings401JSONResponse struct{ UnauthorizedJSONResponse }
+type ListOrders401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response ListServiceBookings401JSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+func (response ListOrders401JSONResponse) VisitListOrdersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListServiceBookingsdefaultJSONResponse struct {
+type ListOrders403JSONResponse Error
+
+func (response ListOrders403JSONResponse) VisitListOrdersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListOrders404JSONResponse struct{ VehicleNotFoundJSONResponse }
+
+func (response ListOrders404JSONResponse) VisitListOrdersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListOrdersdefaultJSONResponse struct {
 	Body       Error
 	StatusCode int
 }
 
-func (response ListServiceBookingsdefaultJSONResponse) VisitListServiceBookingsResponse(w http.ResponseWriter) error {
+func (response ListOrdersdefaultJSONResponse) VisitListOrdersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
 
@@ -808,6 +916,70 @@ func (response GetCertificatedefaultJSONResponse) VisitGetCertificateResponse(w 
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type ClaimOrderRequestObject struct {
+	Id ResourceId `json:"id"`
+}
+
+type ClaimOrderResponseObject interface {
+	VisitClaimOrderResponse(w http.ResponseWriter) error
+}
+
+type ClaimOrder200Response struct {
+}
+
+func (response ClaimOrder200Response) VisitClaimOrderResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type ClaimOrder400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response ClaimOrder400JSONResponse) VisitClaimOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ClaimOrder401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ClaimOrder401JSONResponse) VisitClaimOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ClaimOrder404JSONResponse struct{ OrderNotFoundJSONResponse }
+
+func (response ClaimOrder404JSONResponse) VisitClaimOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ClaimOrder409JSONResponse Error
+
+func (response ClaimOrder409JSONResponse) VisitClaimOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ClaimOrderdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ClaimOrderdefaultJSONResponse) VisitClaimOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 type AddOrderItemRequestObject struct {
 	Id   ResourceId `json:"id"`
 	Body *AddOrderItemJSONRequestBody
@@ -904,9 +1076,9 @@ func (response PayOrderdefaultJSONResponse) VisitPayOrderResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Список заявок на сервис для инженера
+	// Общий пул заявок или история клиента
 	// (GET /orders)
-	ListServiceBookings(ctx context.Context, request ListServiceBookingsRequestObject) (ListServiceBookingsResponseObject, error)
+	ListOrders(ctx context.Context, request ListOrdersRequestObject) (ListOrdersResponseObject, error)
 	// Записаться на сервис или создать активный заказ
 	// (POST /orders)
 	CreateOrder(ctx context.Context, request CreateOrderRequestObject) (CreateOrderResponseObject, error)
@@ -916,6 +1088,9 @@ type StrictServerInterface interface {
 	// Скачать готовую справку об оплате
 	// (GET /orders/{id}/certificate)
 	GetCertificate(ctx context.Context, request GetCertificateRequestObject) (GetCertificateResponseObject, error)
+	// Взять заявку в работу
+	// (PATCH /orders/{id}/claim)
+	ClaimOrder(ctx context.Context, request ClaimOrderRequestObject) (ClaimOrderResponseObject, error)
 	// Добавление товарной позиции
 	// (POST /orders/{id}/items)
 	AddOrderItem(ctx context.Context, request AddOrderItemRequestObject) (AddOrderItemResponseObject, error)
@@ -953,25 +1128,25 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
-// ListServiceBookings operation middleware
-func (sh *strictHandler) ListServiceBookings(w http.ResponseWriter, r *http.Request, params ListServiceBookingsParams) {
-	var request ListServiceBookingsRequestObject
+// ListOrders operation middleware
+func (sh *strictHandler) ListOrders(w http.ResponseWriter, r *http.Request, params ListOrdersParams) {
+	var request ListOrdersRequestObject
 
 	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListServiceBookings(ctx, request.(ListServiceBookingsRequestObject))
+		return sh.ssi.ListOrders(ctx, request.(ListOrdersRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListServiceBookings")
+		handler = middleware(handler, "ListOrders")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListServiceBookingsResponseObject); ok {
-		if err := validResponse.VisitListServiceBookingsResponse(w); err != nil {
+	} else if validResponse, ok := response.(ListOrdersResponseObject); ok {
+		if err := validResponse.VisitListOrdersResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1062,6 +1237,32 @@ func (sh *strictHandler) GetCertificate(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// ClaimOrder operation middleware
+func (sh *strictHandler) ClaimOrder(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request ClaimOrderRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ClaimOrder(ctx, request.(ClaimOrderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ClaimOrder")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ClaimOrderResponseObject); ok {
+		if err := validResponse.VisitClaimOrderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // AddOrderItem operation middleware
 func (sh *strictHandler) AddOrderItem(w http.ResponseWriter, r *http.Request, id ResourceId) {
 	var request AddOrderItemRequestObject
@@ -1124,62 +1325,70 @@ func (sh *strictHandler) PayOrder(w http.ResponseWriter, r *http.Request, id Res
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

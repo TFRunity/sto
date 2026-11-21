@@ -54,6 +54,28 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (uui
 	return id, err
 }
 
+const claimOrder = `-- name: ClaimOrder :execrows
+
+UPDATE orders
+SET status = 'active', engineer_id = $1::uuid, updated_at = now()
+WHERE id = $2 AND status IN ('requested', 'active')
+`
+
+type ClaimOrderParams struct {
+	EngineerID uuid.UUID
+	OrderID    uuid.UUID
+}
+
+// По ADR-017 повторное назначение active допустимо. Оплаченные и
+// отменённые заказы остаются в своих статусах.
+func (q *Queries) ClaimOrder(ctx context.Context, arg ClaimOrderParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimOrder, arg.EngineerID, arg.OrderID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createOrder = `-- name: CreateOrder :one
 INSERT INTO orders (client_id, vehicle_id, engineer_id, status)
 VALUES ($1, $2, $3::uuid, 'active')
@@ -138,6 +160,60 @@ func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, erro
 	return i, err
 }
 
+const listClientOrderHistory = `-- name: ListClientOrderHistory :many
+SELECT o.id, o.vehicle_id, o.status, o.stage, o.created_at,
+       EXISTS (
+           SELECT 1
+           FROM saga_state AS s
+           WHERE s.order_id = o.id AND s.current_step = 'completed'
+       ) AS payment_confirmed
+FROM orders AS o
+WHERE o.client_id = $1
+  AND ($2::uuid IS NULL OR o.vehicle_id = $2::uuid)
+ORDER BY o.created_at DESC, o.id DESC
+`
+
+type ListClientOrderHistoryParams struct {
+	ClientID  uuid.UUID
+	VehicleID *uuid.UUID
+}
+
+type ListClientOrderHistoryRow struct {
+	ID               uuid.UUID
+	VehicleID        uuid.UUID
+	Status           string
+	Stage            string
+	CreatedAt        pgtype.Timestamptz
+	PaymentConfirmed bool
+}
+
+func (q *Queries) ListClientOrderHistory(ctx context.Context, arg ListClientOrderHistoryParams) ([]ListClientOrderHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listClientOrderHistory, arg.ClientID, arg.VehicleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListClientOrderHistoryRow
+	for rows.Next() {
+		var i ListClientOrderHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VehicleID,
+			&i.Status,
+			&i.Stage,
+			&i.CreatedAt,
+			&i.PaymentConfirmed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOrderItems = `-- name: ListOrderItems :many
 SELECT id, item_id, quantity, price
 FROM order_items
@@ -178,6 +254,7 @@ func (q *Queries) ListOrderItems(ctx context.Context, orderID uuid.UUID) ([]List
 }
 
 const listServiceBookings = `-- name: ListServiceBookings :many
+
 SELECT id, client_id, vehicle_id, requested_service, desired_date, comment, created_at
 FROM orders
 WHERE status = 'requested'
@@ -194,6 +271,8 @@ type ListServiceBookingsRow struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+// OpenAPI проверяет status=requested, SQL закрепляет этот фильтр.
+// id задаёт порядок для заявок с одинаковым created_at.
 func (q *Queries) ListServiceBookings(ctx context.Context) ([]ListServiceBookingsRow, error) {
 	rows, err := q.db.Query(ctx, listServiceBookings)
 	if err != nil {

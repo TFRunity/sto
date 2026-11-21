@@ -14,7 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var errOrderNotFound = errors.New("order not found")
+var (
+	errOrderNotFound     = errors.New("order not found")
+	errOrderNotClaimable = errors.New("order cannot be claimed")
+)
 
 type repository struct {
 	pool    *pgxpool.Pool
@@ -130,6 +133,46 @@ func (r repository) listServiceBookings(ctx context.Context) ([]db.ListServiceBo
 	rows, err := r.queries.ListServiceBookings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list service bookings: %w", err)
+	}
+	return rows, nil
+}
+
+func (r repository) claim(ctx context.Context, orderID, engineerID uuid.UUID) error {
+	err := postgres.InTx(ctx, r.pool, func(tx pgx.Tx) error {
+		q := r.queries.WithTx(tx)
+		changed, err := q.ClaimOrder(ctx, db.ClaimOrderParams{
+			OrderID: orderID, EngineerID: engineerID,
+		})
+		if err != nil {
+			return err
+		}
+		if changed != 0 {
+			return q.AddOrderEngineer(ctx, db.AddOrderEngineerParams{
+				OrderID: orderID, EngineerID: engineerID,
+			})
+		}
+		_, err = q.GetOrder(ctx, orderID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errOrderNotFound
+		}
+		if err != nil {
+			return err
+		}
+		return errOrderNotClaimable
+	})
+	if err != nil {
+		return fmt.Errorf("claim order: %w", err)
+	}
+	return nil
+}
+
+func (r repository) listClientOrderHistory(ctx context.Context, clientID uuid.UUID, vehicleID *uuid.UUID) ([]db.ListClientOrderHistoryRow, error) {
+	rows, err := r.queries.ListClientOrderHistory(ctx, db.ListClientOrderHistoryParams{
+		ClientID:  clientID,
+		VehicleID: vehicleID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list client order history: %w", err)
 	}
 	return rows, nil
 }

@@ -103,29 +103,58 @@ paths:
   /orders:
     get:
       tags: [orders]
-      operationId: listServiceBookings
-      summary: Список заявок на сервис для инженера
-      description: Общий пул заявок всех клиентов в порядке от старых к новым.
+      operationId: listOrders
+      summary: Общий пул заявок или история клиента
+      description: |
+        Инженер запрашивает общий пул через status=requested. Заявки выдаются
+        от старых к новым.
+        Клиент запрашивает свою историю через client_id=me. Orders берёт ID
+        клиента из доверенной идентичности. История включает отменённые заказы
+        и выдаётся от новых к старым. Необязательный vehicle_id ограничивает
+        историю выбранным ТС клиента.
+        Нужно указать ровно один из фильтров status и client_id. Параметр
+        vehicle_id применяется только к истории клиента.
       parameters:
         - name: status
           in: query
-          required: true
           schema:
             type: string
             enum: [requested]
+        - name: client_id
+          in: query
+          schema:
+            type: string
+            enum: [me]
+        - name: vehicle_id
+          in: query
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
-          description: Заявки в статусе requested. Если заявок нет, возвращается пустой массив.
+          description: Пул заявок или история клиента. Если записей нет, возвращается пустой массив.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ServiceBookingListItem'
+                anyOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceBookingListItem'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/OrderHistoryItem'
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` — роль не позволяет читать выбранный список'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/VehicleNotFound'
         default:
           $ref: '#/components/responses/UnexpectedError'
     post:
@@ -177,6 +206,35 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '404':
           $ref: '#/components/responses/OrderNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/claim:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    patch:
+      tags: [orders]
+      operationId: claimOrder
+      summary: Взять заявку в работу
+      description: |
+        Доступно инженеру. Переводит заявку в active и назначает текущего
+        инженера ответственным. При повторном назначении активного заказа
+        последний инженер становится ответственным, прежние исполнители сохраняются.
+      responses:
+        '200':
+          description: Заказ взят в работу
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        '409':
+          description: '`order_not_claimable` — заказ оплачен или отменён'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
 
@@ -758,6 +816,29 @@ components:
           format: date
         comment:
           type: string
+        created_at:
+          type: string
+          format: date-time
+
+    OrderHistoryItem:
+      type: object
+      required: [id, vehicle_id, status, stage, payment_confirmed, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [requested, active, paid, cancelled]
+        stage:
+          type: string
+          enum: [принят, в_работе, готов, выдан]
+        payment_confirmed:
+          type: boolean
+          description: Есть завершённая сага оплаты.
         created_at:
           type: string
           format: date-time

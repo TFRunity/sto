@@ -13,6 +13,14 @@ INSERT INTO order_engineers (order_id, engineer_id)
 VALUES ($1, $2)
 ON CONFLICT (order_id, engineer_id) DO NOTHING;
 
+-- По ADR-017 повторное назначение active допустимо. Оплаченные и
+-- отменённые заказы остаются в своих статусах.
+
+-- name: ClaimOrder :execrows
+UPDATE orders
+SET status = 'active', engineer_id = sqlc.arg(engineer_id)::uuid, updated_at = now()
+WHERE id = sqlc.arg(order_id) AND status IN ('requested', 'active');
+
 -- OpenAPI проверяет status=requested, SQL закрепляет этот фильтр.
 -- id задаёт порядок для заявок с одинаковым created_at.
 
@@ -26,6 +34,18 @@ ORDER BY created_at, id;
 INSERT INTO order_items (order_id, item_id, quantity, price)
 VALUES ($1, $2, $3, $4)
 RETURNING id;
+
+-- name: ListClientOrderHistory :many
+SELECT o.id, o.vehicle_id, o.status, o.stage, o.created_at,
+       EXISTS (
+           SELECT 1
+           FROM saga_state AS s
+           WHERE s.order_id = o.id AND s.current_step = 'completed'
+       ) AS payment_confirmed
+FROM orders AS o
+WHERE o.client_id = sqlc.arg(client_id)
+  AND (sqlc.narg(vehicle_id)::uuid IS NULL OR o.vehicle_id = sqlc.narg(vehicle_id)::uuid)
+ORDER BY o.created_at DESC, o.id DESC;
 
 -- name: GetOrder :one
 SELECT o.id, o.client_id, o.vehicle_id, o.engineer_id, o.status, o.stage, o.created_at,

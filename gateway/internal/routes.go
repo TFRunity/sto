@@ -146,6 +146,9 @@ func orderRoles(r *http.Request, fallback []string) []string {
 	if r.Method == http.MethodPost && r.URL.Path == "/orders" {
 		return []string{roleEngineer, roleClient}
 	}
+	if r.Method == http.MethodGet && r.URL.Path == "/orders" && r.URL.Query().Has("client_id") {
+		return []string{roleClient}
+	}
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/orders/"), "/")
 	if len(parts) == 2 && parts[1] == "pay" && r.Method == http.MethodPost {
 		return []string{roleClient}

@@ -32,21 +32,29 @@ func (item itemJSON) VisitAddOrderItemResponse(w http.ResponseWriter) error {
 }
 
 type orderJSON struct {
-	ID               uuid.UUID       `json:"id"`
-	ClientID         uuid.UUID       `json:"client_id"`
-	VehicleID        uuid.UUID       `json:"vehicle_id"`
-	EngineerID       *uuid.UUID      `json:"engineer_id,omitempty"`
-	Status           api.OrderStatus `json:"status"`
-	Stage            api.OrderStage  `json:"stage"`
-	PaymentConfirmed bool            `json:"payment_confirmed"`
-	Items            []itemJSON      `json:"items"`
-	Total            string          `json:"total"`
+	ID               uuid.UUID          `json:"id"`
+	ClientID         uuid.UUID          `json:"client_id"`
+	VehicleID        uuid.UUID          `json:"vehicle_id"`
+	EngineerID       *uuid.UUID         `json:"engineer_id,omitempty"`
+	Status           api.OrderStatus    `json:"status"`
+	Stage            api.OrderStage     `json:"stage"`
+	PaymentConfirmed bool               `json:"payment_confirmed"`
+	Items            []itemJSON         `json:"items"`
+	Services         []api.OrderService `json:"services"`
+	Total            string             `json:"total"`
 }
 
-func orderResponse(row db.GetOrderRow, items []orderItem) orderJSON {
+func orderResponse(row db.GetOrderRow, items []orderItem, services []db.ListOrderServicesRow) orderJSON {
 	positions := make([]itemJSON, 0, len(items))
 	for _, item := range items {
 		positions = append(positions, itemResponse(item))
+	}
+	servicePositions := make([]api.OrderService, 0, len(services))
+	for _, service := range services {
+		servicePositions = append(servicePositions, api.OrderService{
+			Id: service.ID, ServiceId: service.ServiceID, Name: service.Name,
+			Quantity: service.Quantity, Price: service.Price.StringFixed(2),
+		})
 	}
 	return orderJSON{
 		ID:               row.ID,
@@ -57,7 +65,8 @@ func orderResponse(row db.GetOrderRow, items []orderItem) orderJSON {
 		Stage:            api.OrderStage(row.Stage),
 		PaymentConfirmed: row.PaymentConfirmed,
 		Items:            positions,
-		Total:            total(items).StringFixed(2),
+		Services:         servicePositions,
+		Total:            total(items, services).StringFixed(2),
 	}
 }
 

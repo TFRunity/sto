@@ -84,37 +84,47 @@ func readPhotoUpload(reader *multipart.Reader, allowOrderID bool) (photoUpload, 
 func (u *photoUpload) readPart(part *multipart.Part, allowOrderID bool) error {
 	switch part.FormName() {
 	case "photo":
-		if u.jpeg != nil {
-			return invalidPhotoField("photo", "duplicate")
-		}
-		data, err := io.ReadAll(part)
-		if err != nil {
-			return invalidPhotoField("photo", "invalid_multipart")
-		}
-		u.jpeg, err = reencodePhoto(data)
-		return err
+		return u.readPhotoPart(part)
 	case "order_id":
 		if !allowOrderID {
 			return invalidPhotoField("order_id", "unexpected")
 		}
-		if u.orderID != nil {
-			return invalidPhotoField("order_id", "duplicate")
-		}
-		data, err := io.ReadAll(io.LimitReader(part, 37))
-		if err != nil || len(data) != 36 {
-			return invalidPhotoField("order_id", "invalid_uuid")
-		}
-		id, err := uuid.Parse(string(data))
-		if err != nil || id == uuid.Nil {
-			return invalidPhotoField("order_id", "invalid_uuid")
-		}
-		u.orderID = &id
-		return nil
+		return u.readOrderIDPart(part)
 	default:
 		return invalidPhotoField("body", "unexpected_part")
 	}
 }
 
+func (u *photoUpload) readPhotoPart(part io.Reader) error {
+	if u.jpeg != nil {
+		return invalidPhotoField("photo", "duplicate")
+	}
+	data, err := io.ReadAll(part)
+	if err != nil {
+		return invalidPhotoField("photo", "invalid_multipart")
+	}
+	u.jpeg, err = reencodePhoto(data)
+	return err
+}
+
+// readOrderIDPart reads at most one byte beyond the expected UUID length.
+func (u *photoUpload) readOrderIDPart(part io.Reader) error {
+	if u.orderID != nil {
+		return invalidPhotoField("order_id", "duplicate")
+	}
+	data, err := io.ReadAll(io.LimitReader(part, 37))
+	if err != nil || len(data) != 36 {
+		return invalidPhotoField("order_id", "invalid_uuid")
+	}
+	id, err := uuid.Parse(string(data))
+	if err != nil || id == uuid.Nil {
+		return invalidPhotoField("order_id", "invalid_uuid")
+	}
+	u.orderID = &id
+	return nil
+}
+
+// reencodePhoto checks dimensions before full decoding to bound pixel allocation.
 func reencodePhoto(data []byte) ([]byte, error) {
 	switch http.DetectContentType(data) {
 	case "image/jpeg", "image/png":

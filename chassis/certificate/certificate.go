@@ -18,6 +18,7 @@ type Client struct {
 	http     *http.Client
 }
 
+// NewClient подключает HTTP-конвертер HTML в PDF с ограниченным временем запроса.
 func NewClient(baseURL url.URL) *Client {
 	return &Client{
 		endpoint: baseURL.JoinPath("forms", "chromium", "convert", "html").String(),

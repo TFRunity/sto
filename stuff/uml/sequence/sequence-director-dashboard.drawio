@@ -76,7 +76,7 @@
         <mxCell id="a9" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="2. errgroup.WithContext, общий дедлайн 3 с" vertex="1">
           <mxGeometry x="368" y="130" width="10" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. GET /orders/stats (сегодня, в работе, ожидают оплаты)">
+        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. GET /orders/stats (метрики, последние заказы и нагрузка)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="360" y="215" as="sourcePoint" />
             <mxPoint x="620" y="215" as="targetPoint" />
@@ -94,7 +94,7 @@
             <mxPoint x="360" y="278" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="6. 200 OK (загрузка инженеров)">
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="6. 200 OK (список и имена инженеров)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="880" y="305" as="sourcePoint" />
             <mxPoint x="360" y="305" as="targetPoint" />

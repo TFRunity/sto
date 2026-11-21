@@ -66,6 +66,7 @@ func ping(ctx context.Context, pool *pgxpool.Pool) error {
 	return pool.Ping(ctx)
 }
 
+// Migrate применяет миграции сервиса из переданной файловой системы через goose.
 func Migrate(ctx context.Context, pool *pgxpool.Pool, fsys fs.FS) (int, error) {
 	db := stdlib.OpenDBFromPool(pool)
 	// Ошибка закрытия не нужна: db — обёртка над пулом на время миграций.

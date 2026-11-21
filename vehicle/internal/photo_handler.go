@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ReplaceVehicleCoverPhoto сохраняет обложку и обновляет её ключ только для своего ТС.
 func (h *Handler) ReplaceVehicleCoverPhoto(ctx context.Context, req api.ReplaceVehicleCoverPhotoRequestObject) (api.ReplaceVehicleCoverPhotoResponseObject, error) {
 	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
@@ -28,6 +29,7 @@ func (h *Handler) ReplaceVehicleCoverPhoto(ctx context.Context, req api.ReplaceV
 	return api.ReplaceVehicleCoverPhoto200Response{}, nil
 }
 
+// AddVehiclePhoto сохраняет фото в галерее с необязательной привязкой к заказу.
 func (h *Handler) AddVehiclePhoto(ctx context.Context, req api.AddVehiclePhotoRequestObject) (api.AddVehiclePhotoResponseObject, error) {
 	if _, ok := httpx.IdentityFromContext(ctx); !ok {
 		return nil, httpx.Unauthorized()
@@ -55,6 +57,7 @@ func photoWriteError(err error) error {
 	return err
 }
 
+// GetVehicleCoverPhoto открывает JPEG обложки после проверки доступа к ТС.
 func (h *Handler) GetVehicleCoverPhoto(ctx context.Context, req api.GetVehicleCoverPhotoRequestObject) (api.GetVehicleCoverPhotoResponseObject, error) {
 	row, err := h.accessibleVehicle(ctx, req.Id)
 	if err != nil {
@@ -70,6 +73,7 @@ func (h *Handler) GetVehicleCoverPhoto(ctx context.Context, req api.GetVehicleCo
 	return api.GetVehicleCoverPhoto200ImagejpegResponse{VehiclePhotoJPEGImagejpegResponse: jpeg}, nil
 }
 
+// GetVehiclePhoto ищет снимок по паре ID ТС и фото, затем открывает JPEG.
 func (h *Handler) GetVehiclePhoto(ctx context.Context, req api.GetVehiclePhotoRequestObject) (api.GetVehiclePhotoResponseObject, error) {
 	if _, err := h.accessibleVehicle(ctx, req.Id); err != nil {
 		return nil, photoReadError(err)

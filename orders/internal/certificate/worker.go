@@ -17,10 +17,12 @@ type Worker struct {
 	logger    *slog.Logger
 }
 
+// NewWorker подключает загрузку снимка и конвертер. Генерация выполняется фоновым циклом.
 func NewWorker(pool *pgxpool.Pool, load LoadSnapshot, converter converter, logger *slog.Logger) *Worker {
 	return &Worker{queries: db.New(pool), load: load, converter: converter, logger: logger}
 }
 
+// Run проверяет ожидающие справки раз в секунду до отмены контекста.
 func (w *Worker) Run(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()

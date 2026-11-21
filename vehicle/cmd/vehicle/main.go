@@ -50,16 +50,15 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load vehicle OpenAPI spec: %w", err)
 	}
-	handleError := httpx.StrictErrorHandler(logger)
-	strict := api.NewStrictHandlerWithOptions(vehicle.NewHandler(pool, cfg.PhotoDir), nil, api.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc:  httpx.StrictRequestErrorHandler(logger),
-		ResponseErrorHandlerFunc: handleError,
-	})
+	options := httpx.NewStrictErrors(logger)
+	strict := api.NewStrictHandlerWithOptions(vehicle.NewHandler(pool, cfg.PhotoDir), nil, api.StrictHTTPServerOptions(options))
 	routes := api.Handler(strict)
 	mux := http.NewServeMux()
 	// Orders вызывает этот маршрут внутри Compose. Gateway его не публикует.
 	mux.Handle("GET /internal/vehicles/{id}/ownership", routes)
+	mux.Handle("GET /internal/vehicles/search", routes)
+	mux.Handle("GET /internal/vehicles", routes)
 	mux.Handle("/", httpx.RequireIdentity(routes, logger))
 	app := httpx.Validator(spec, logger)(mux)
-	return httpx.Run(ctx, cfg.HTTPAddr, vehicle.LimitPhotoUpload(app, handleError), logger)
+	return httpx.Run(ctx, cfg.HTTPAddr, vehicle.LimitPhotoUpload(app, options.ResponseErrorHandlerFunc), logger)
 }

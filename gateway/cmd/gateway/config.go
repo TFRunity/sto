@@ -14,4 +14,5 @@ type Config struct {
 	OrdersURL    url.URL       `env:"ORDERS_URL,notEmpty"`
 	InventoryURL url.URL       `env:"INVENTORY_URL,notEmpty"`
 	VehicleURL   url.URL       `env:"VEHICLE_URL"`
+	ServicesURL  url.URL       `env:"SERVICES_URL"`
 }

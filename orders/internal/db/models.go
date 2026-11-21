@@ -49,6 +49,17 @@ type OrderItem struct {
 	Quantity  int32
 	Price     decimal.Decimal
 	CreatedAt pgtype.Timestamptz
+	Name      *string
+}
+
+type OrderService struct {
+	ID        uuid.UUID
+	OrderID   uuid.UUID
+	ServiceID uuid.UUID
+	Name      string
+	Quantity  int32
+	Price     decimal.Decimal
+	CreatedAt pgtype.Timestamptz
 }
 
 type Outbox struct {

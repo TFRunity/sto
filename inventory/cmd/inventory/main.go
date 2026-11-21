@@ -74,11 +74,7 @@ func newApp(handler *item.Handler, logger *slog.Logger) (http.Handler, error) {
 		return nil, fmt.Errorf("load inventory OpenAPI spec: %w", err)
 	}
 
-	handleError := httpx.StrictErrorHandler(logger)
-	strict := api.NewStrictHandlerWithOptions(handler, nil, api.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc:  httpx.StrictRequestErrorHandler(logger),
-		ResponseErrorHandlerFunc: handleError,
-	})
+	strict := api.NewStrictHandlerWithOptions(handler, nil, api.StrictHTTPServerOptions(httpx.NewStrictErrors(logger)))
 
 	return httpx.Validator(spec, logger)(api.Handler(strict)), nil
 }

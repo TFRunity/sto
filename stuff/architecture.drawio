@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mxfile host="app.diagrams.net" compressed="false">
   <diagram id="topology" name="Сервисы и инфраструктура">
-    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="860">
+    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2190" pageHeight="860">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -11,7 +11,7 @@
         <mxCell id="subtitle" value="Текущая реализация v1 · локальный Docker Compose. Стрелка показывает, кто инициирует вызов." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="40" y="78" width="1360" height="40" />
         </mxCell>
-        <mxCell id="client" value="Клиент / инженер&#10;HTTP-клиент" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#e2e8f0;strokeColor=#64748b;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="client" value="Клиент / инженер / директор&#10;HTTP-клиент" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#e2e8f0;strokeColor=#64748b;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="550" y="135" width="300" height="60" />
         </mxCell>
         <mxCell id="nginx" value="nginx · порт 80" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
@@ -26,7 +26,7 @@
         <mxCell id="orders" value="Orders&#10;заявки · заказы · оплата · справки" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="550" y="500" width="300" height="76" />
         </mxCell>
-        <mxCell id="inventory" value="Inventory&#10;цена · списание и возврат" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="inventory" value="Inventory&#10;каталог · списание и возврат" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="1090" y="500" width="270" height="76" />
         </mxCell>
         <mxCell id="usersdb" value="PostgreSQL · users-db" style="shape=cylinder3;boundedLbl=1;whiteSpace=wrap;html=0;fillColor=#fef3c7;strokeColor=#a16207;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
@@ -119,7 +119,38 @@
         <mxCell id="vehicle-vehiclephotos" value="файлы" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=0.8;exitY=1;entryX=0.5;entryY=0;" edge="1" source="vehicle" target="vehiclephotos" parent="1">
           <mxGeometry as="geometry" relative="1" />
         </mxCell>
-        <mxCell id="key" value="Сплошные стрелки · HTTP и SQL     Пунктир · AMQP     Services запланирован на этап 2." style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=14;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="services" value="Services&#10;каталог и цены услуг" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1900" y="500" width="250" height="76" />
+        </mxCell>
+        <mxCell id="servicesdb" value="PostgreSQL · services-db" style="shape=cylinder3;boundedLbl=1;whiteSpace=wrap;html=0;fillColor=#fef3c7;strokeColor=#a16207;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1900" y="720" width="250" height="68" />
+        </mxCell>
+        <mxCell id="gateway-inventory" value="/inventory/…" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=1;exitY=0.8;entryX=0.5;entryY=0;" edge="1" source="gateway" target="inventory" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1225" y="392" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gateway-services" value="/services/…" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=1;exitY=0.15;entryX=0.65;entryY=0;" edge="1" source="gateway" target="services" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="2063" y="342" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="orders-services" value="HTTP · цена услуги" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563eb;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=0.95;exitY=0;entryX=0.25;entryY=0;" edge="1" source="orders" target="services" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="835" y="430" />
+              <mxPoint x="1963" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="services-servicesdb" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#a16207;fontFamily=Arial;fontSize=13;fontColor=#0f172a;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" source="services" target="servicesdb" parent="1">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="key" value="Сплошные стрелки · HTTP и SQL     Пунктир · AMQP" style="text;html=0;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;fontSize=14;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="78" y="805" width="1285" height="32" />
         </mxCell>
       </root>
@@ -142,7 +173,7 @@
         <mxCell id="validation" value="Вход Orders · HTTP и контракт&#10;chassis/httpx.Validator → RequireIdentity → сгенерированный strict-сервер" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="360" y="265" width="720" height="78" />
         </mxCell>
-        <mxCell id="handler" value="HTTP-адаптер · orders/internal/order&#10;AddOrderItem → itemPrice → inventoryClient.lookup" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="handler" value="HTTP-адаптер · orders/internal/order&#10;AddOrderItem → itemPrice → catalogClient.lookup" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dcfce7;strokeColor=#15803d;strokeWidth=2;spacing=8;fontSize=16;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry as="geometry" x="360" y="395" width="720" height="84" />
         </mxCell>
         <mxCell id="inventory" value="Inventory · HTTP&#10;GetItem → repository.get → sqlc → PostgreSQL" style="rounded=1;arcSize=14;whiteSpace=wrap;html=0;fillColor=#dbeafe;strokeColor=#2563eb;strokeWidth=2;spacing=8;fontSize=15;fontFamily=Arial;fontColor=#0f172a;verticalAlign=middle;" vertex="1" parent="1">

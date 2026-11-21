@@ -55,14 +55,11 @@ func NewHandler(repo *Repository) *Handler {
 	return &Handler{repo: repo}
 }
 
+// GetItem отдаёт название и цену живого товара для сохранения позиции в Orders.
 func (h *Handler) GetItem(ctx context.Context, req api.GetItemRequestObject) (api.GetItemResponseObject, error) {
 	product, err := h.repo.get(ctx, req.Id)
 	if errors.Is(err, errNotFound) {
-		return nil, &httpx.Error{
-			Status:  http.StatusNotFound,
-			Code:    "item_not_found",
-			Message: "item not found",
-		}
+		return nil, itemNotFound()
 	}
 	if err != nil {
 		return nil, err

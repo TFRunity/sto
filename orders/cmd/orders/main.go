@@ -29,6 +29,8 @@ type ordersConfig struct {
 	GotenbergURL url.URL       `env:"GOTENBERG_URL,notEmpty"`
 	InventoryURL url.URL       `env:"INVENTORY_URL,notEmpty"`
 	VehicleURL   url.URL       `env:"VEHICLE_URL"`
+	ServicesURL  url.URL       `env:"SERVICES_URL"`
+	UsersURL     url.URL       `env:"USERS_URL,notEmpty"`
 }
 
 func main() {
@@ -55,8 +57,8 @@ func run(ctx context.Context) error {
 	defer pool.Close()
 
 	payments := saga.New(pool)
-	certificates := certificate.NewWorker(pool, order.NewCertificateSource(pool, cfg.InventoryURL), pdf.NewClient(cfg.GotenbergURL), logger)
-	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, cfg.VehicleURL, payments, logger)
+	certificates := certificate.NewWorker(pool, order.NewCertificateSource(pool, cfg.InventoryURL, cfg.UsersURL), pdf.NewClient(cfg.GotenbergURL), logger)
+	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, cfg.VehicleURL, cfg.ServicesURL, payments, logger)
 	if err != nil {
 		return fmt.Errorf("load orders OpenAPI spec: %w", err)
 	}

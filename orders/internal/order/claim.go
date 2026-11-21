@@ -9,6 +9,7 @@ import (
 	"github.com/AlexeBabanov/sto/orders/internal/api"
 )
 
+// ClaimOrder назначает текущего инженера ответственным и сохраняет его в списке исполнителей.
 func (h handler) ClaimOrder(ctx context.Context, req api.ClaimOrderRequestObject) (api.ClaimOrderResponseObject, error) {
 	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {

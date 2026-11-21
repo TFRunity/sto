@@ -12,6 +12,7 @@ import (
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 )
 
+// Validator проверяет запрос по OpenAPI до его разбора сгенерированным хендлером.
 func Validator(spec *openapi3.T, logger *slog.Logger) func(http.Handler) http.Handler {
 	return middleware.OapiRequestValidatorWithOptions(spec, validatorOptions(logger))
 }
@@ -69,12 +70,29 @@ func validationFailed(fields map[string]string) *Error {
 	}
 }
 
+// StrictErrors has the same fields as the generated StrictHTTPServerOptions.
+// Each service converts it to its own generated type when wiring the server.
+type StrictErrors struct {
+	RequestErrorHandlerFunc  func(http.ResponseWriter, *http.Request, error)
+	ResponseErrorHandlerFunc func(http.ResponseWriter, *http.Request, error)
+}
+
+// NewStrictErrors keeps request parsing and handler errors in the shared API envelope.
+func NewStrictErrors(logger *slog.Logger) StrictErrors {
+	return StrictErrors{
+		RequestErrorHandlerFunc:  StrictRequestErrorHandler(logger),
+		ResponseErrorHandlerFunc: StrictErrorHandler(logger),
+	}
+}
+
+// StrictRequestErrorHandler переводит ошибки разбора параметров и тела в validation_failed.
 func StrictRequestErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, _ *http.Request, err error) {
 		WriteError(w, logger, validationFailed(validationFields(err)))
 	}
 }
 
+// StrictErrorHandler отправляет ошибки хендлера в общем API-конверте.
 func StrictErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, _ *http.Request, err error) {
 		WriteError(w, logger, err)

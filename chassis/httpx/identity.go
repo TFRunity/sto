@@ -23,6 +23,7 @@ type Identity struct {
 
 type identityKey struct{}
 
+// IdentityFromContext возвращает идентичность, которую положил в контекст RequireIdentity.
 func IdentityFromContext(ctx context.Context) (Identity, bool) {
 	identity, ok := ctx.Value(identityKey{}).(Identity)
 	return identity, ok

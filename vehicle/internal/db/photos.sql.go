@@ -13,6 +13,7 @@ import (
 )
 
 const addVehiclePhoto = `-- name: AddVehiclePhoto :one
+
 INSERT INTO vehicle_photos (vehicle_id, order_id, file_key)
 SELECT v.id, $1::uuid, $2::text
 FROM vehicles AS v
@@ -27,6 +28,8 @@ type AddVehiclePhotoParams struct {
 	VehicleID uuid.UUID
 }
 
+// FOR SHARE удерживает строку ТС до завершения вставки снимка,
+// чтобы параллельное мягкое удаление дождалось этой операции.
 func (q *Queries) AddVehiclePhoto(ctx context.Context, arg AddVehiclePhotoParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, addVehiclePhoto, arg.OrderID, arg.FileKey, arg.VehicleID)
 	var id uuid.UUID

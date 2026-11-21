@@ -1,5 +1,4 @@
 # Локальное окружение v1 (ADR-038). Секреты — только из .env (ADR-011).
-# Services подключается на этапе 2 (PLAN.md).
 #
 # Инварианты:
 #   - ports: только у nginx (и Gateway — по желанию в разработке)    ADR-010, ADR-037
@@ -54,6 +53,7 @@ services:
       USERS_URL: http://users:8080
       ORDERS_URL: http://orders:8080
       INVENTORY_URL: http://inventory:8080
+      SERVICES_URL: http://services:8080
       VEHICLE_URL: http://vehicle:8080
     networks: [edge, backend]
     depends_on:
@@ -62,6 +62,8 @@ services:
       orders:
         condition: service_started
       inventory:
+        condition: service_started
+      services:
         condition: service_started
       vehicle:
         condition: service_started
@@ -96,6 +98,7 @@ services:
       DATABASE_URL: postgres://${ORDERS_DB_USER}:${ORDERS_DB_PASSWORD}@orders-db:5432/orders?sslmode=disable
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
       INVENTORY_URL: http://inventory:8080
+      SERVICES_URL: http://services:8080
       USERS_URL: http://users:8080
       GOTENBERG_URL: http://gotenberg:3000
       VEHICLE_URL: http://vehicle:8080
@@ -110,6 +113,8 @@ services:
       rabbitmq:
         condition: service_healthy
       inventory:
+        condition: service_started
+      services:
         condition: service_started
       users:
         condition: service_started
@@ -150,19 +155,19 @@ services:
       vehicle-db:
         condition: service_healthy
 
-  # services:         # неделя 2
-  #   <<: *service
-  #   build:
-  #     context: .
-  #     dockerfile: services/Dockerfile
-  #   environment:
-  #     HTTP_ADDR: ":8080"
-  #     LOG_LEVEL: ${LOG_LEVEL}
-  #     DATABASE_URL: postgres://${SERVICES_DB_USER}:${SERVICES_DB_PASSWORD}@services-db:5432/services?sslmode=disable
-  #   networks: [backend, services-db]
-  #   depends_on:
-  #     services-db:
-  #       condition: service_healthy
+  services:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    environment:
+      HTTP_ADDR: ":8080"
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: postgres://${SERVICES_DB_USER}:${SERVICES_DB_PASSWORD}@services-db:5432/services?sslmode=disable
+    networks: [backend, services-db]
+    depends_on:
+      services-db:
+        condition: service_healthy
 
   # ── базы данных (ADR-001, I-03) ─────────────────────────────────────
   # Postgres 18+: том монтируется в /var/lib/postgresql, НЕ в …/data.
@@ -212,15 +217,15 @@ services:
       - vehicle-db:/var/lib/postgresql
     networks: [vehicle-db]
 
-  # services-db:      # неделя 2
-  #   <<: *postgres
-  #   environment:
-  #     POSTGRES_DB: services
-  #     POSTGRES_USER: ${SERVICES_DB_USER}
-  #     POSTGRES_PASSWORD: ${SERVICES_DB_PASSWORD}
-  #   volumes:
-  #     - services-db:/var/lib/postgresql
-  #   networks: [services-db]
+  services-db:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: services
+      POSTGRES_USER: ${SERVICES_DB_USER}
+      POSTGRES_PASSWORD: ${SERVICES_DB_PASSWORD}
+    volumes:
+      - services-db:/var/lib/postgresql
+    networks: [services-db]
 
   # ── инфраструктура ──────────────────────────────────────────────────
   rabbitmq:
@@ -297,7 +302,7 @@ networks:
   orders-db:
   inventory-db:
   vehicle-db:
-  # services-db:
+  services-db:
 
 volumes:
   users-db:
@@ -305,4 +310,4 @@ volumes:
   inventory-db:
   vehicle-db:
   vehicle-photos:
-  # services-db:
+  services-db:

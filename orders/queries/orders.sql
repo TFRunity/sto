@@ -31,8 +31,11 @@ WHERE status = 'requested'
 ORDER BY created_at, id;
 
 -- name: AddOrderItem :one
-INSERT INTO order_items (order_id, item_id, quantity, price)
-VALUES ($1, $2, $3, $4)
+INSERT INTO order_items (order_id, item_id, name, quantity, price)
+SELECT o.id, sqlc.arg(item_id), sqlc.narg(name), sqlc.arg(quantity), sqlc.arg(price)
+FROM orders AS o
+WHERE o.id = sqlc.arg(order_id) AND o.status = 'active'
+FOR UPDATE OF o
 RETURNING id;
 
 -- name: ListClientOrderHistory :many
@@ -58,7 +61,33 @@ FROM orders AS o
 WHERE o.id = $1;
 
 -- name: ListOrderItems :many
-SELECT id, item_id, quantity, price
+SELECT id, item_id, name, quantity, price
 FROM order_items
 WHERE order_id = $1
 ORDER BY created_at, id;
+
+-- name: ChangeOrderStage :execrows
+UPDATE orders
+SET stage = sqlc.arg(stage), updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND (sqlc.arg(stage)::text <> 'выдан' OR (
+      status = 'paid' AND EXISTS (
+          SELECT 1 FROM saga_state WHERE order_id = orders.id AND current_step = 'completed'
+      )
+  ));
+
+-- name: CancelOrder :execrows
+UPDATE orders SET status = 'cancelled', updated_at = now()
+WHERE id = $1 AND status IN ('requested', 'active');
+
+-- name: AddOrderService :one
+INSERT INTO order_services (order_id, service_id, name, quantity, price)
+SELECT o.id, sqlc.arg(service_id), sqlc.arg(name), sqlc.arg(quantity), sqlc.arg(price)
+FROM orders AS o
+WHERE o.id = sqlc.arg(order_id) AND o.status = 'active'
+FOR UPDATE OF o
+RETURNING id;
+
+-- name: ListOrderServices :many
+SELECT id, service_id, name, quantity, price
+FROM order_services WHERE order_id = $1 ORDER BY created_at, id;

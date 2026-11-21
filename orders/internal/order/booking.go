@@ -11,9 +11,25 @@ import (
 )
 
 func (h handler) createServiceBooking(ctx context.Context, clientID uuid.UUID, request *api.CreateOrderRequest) (api.CreateOrderResponseObject, error) {
+	body, err := decodeBooking(request)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.requireVehicleOwner(ctx, body.VehicleId, clientID); err != nil {
+		return nil, err
+	}
+	id, err := h.repo.createBooking(ctx, clientID, body.VehicleId, body.Service, body.Date.Time, body.Comment)
+	if err != nil {
+		return nil, err
+	}
+	return api.CreateOrder201JSONResponse{OrderId: id}, nil
+}
+
+// decodeBooking adds role-specific checks after the shared OpenAPI union is decoded.
+func decodeBooking(request *api.CreateOrderRequest) (api.CreateServiceBookingRequest, error) {
 	body, err := request.AsCreateServiceBookingRequest()
 	if err != nil {
-		return nil, &httpx.Error{
+		return api.CreateServiceBookingRequest{}, &httpx.Error{
 			Status: http.StatusBadRequest, Code: "validation_failed",
 			Message: "invalid service booking", Fields: map[string]string{"body": "invalid"},
 		}
@@ -30,17 +46,10 @@ func (h handler) createServiceBooking(ctx context.Context, clientID uuid.UUID, r
 		fields["vehicle_id"] = "required"
 	}
 	if len(fields) != 0 {
-		return nil, &httpx.Error{
+		return api.CreateServiceBookingRequest{}, &httpx.Error{
 			Status: http.StatusBadRequest, Code: "validation_failed",
 			Message: "invalid service booking", Fields: fields,
 		}
 	}
-	if err := h.requireVehicleOwner(ctx, body.VehicleId, clientID); err != nil {
-		return nil, err
-	}
-	id, err := h.repo.createBooking(ctx, clientID, body.VehicleId, body.Service, body.Date.Time, body.Comment)
-	if err != nil {
-		return nil, err
-	}
-	return api.CreateOrder201JSONResponse{OrderId: id}, nil
+	return body, nil
 }

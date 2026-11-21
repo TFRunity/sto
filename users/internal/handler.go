@@ -11,11 +11,12 @@ import (
 // Ошибки сервиса возвращаются как есть: ошибки Users — *httpx.Error (errors.go),
 // их статус и код пишет httpx.StrictErrorHandler; любая другая → 500.
 type Handler struct {
-	svc *Service
+	svc       *Service
+	directory *Repository
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc *Service, directory *Repository) *Handler {
+	return &Handler{svc: svc, directory: directory}
 }
 
 // Register — POST /register: создать клиента и сразу выдать токен.

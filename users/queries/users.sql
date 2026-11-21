@@ -11,3 +11,21 @@ SELECT *
 FROM users
 WHERE phone = @phone
   AND deleted_at IS NULL;
+
+-- include-deleted: директор ищет клиентов из истории заказов.
+-- name: SearchClients :many
+SELECT id FROM users
+WHERE role = 'client' AND (
+    name ILIKE '%' || sqlc.arg(pattern)::text || '%' ESCAPE '!'
+    OR phone ILIKE '%' || sqlc.arg(pattern)::text || '%' ESCAPE '!'
+)
+ORDER BY id LIMIT 201;
+
+-- include-deleted: подписи к историческим заказам и справкам.
+-- name: GetPeopleByIDs :many
+SELECT id, name, phone FROM users WHERE id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: ListEngineersForLoad :many
+SELECT id, name, phone FROM users
+WHERE role = 'engineer' AND deleted_at IS NULL
+ORDER BY name, id;

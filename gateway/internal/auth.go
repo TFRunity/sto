@@ -27,6 +27,7 @@ type tokenClaims struct {
 	jwt.RegisteredClaims
 }
 
+// Authenticate проверяет подпись, срок JWT и обязательные поля идентичности.
 func Authenticate(authHeader string, secret []byte) (Identity, error) {
 	rawToken, err := bearerToken(authHeader)
 	if err != nil {

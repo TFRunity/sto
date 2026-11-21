@@ -18,8 +18,6 @@ import (
 	"github.com/AlexeBabanov/sto/users/migrations"
 )
 
-// Порядок: сначала перехват сигналов, потом конфиг — так принято.
-// Поток данных при старте — users/uml/users-flow.drawio, страница 1.
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -55,7 +53,7 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("initialize users service: %w", err)
 	}
 
-	app, err := newApp(svc, logger)
+	app, err := newApp(svc, repo, logger)
 	if err != nil {
 		return fmt.Errorf("initialize users HTTP application: %w", err)
 	}
@@ -67,17 +65,12 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-// newApp — валидатор по спецификации → strict-сервер → наш Handler (ADR-041).
-// Валидатор снаружи: иначе strict-сервер молча проглотил бы лишние поля.
-func newApp(svc *internal.Service, logger *slog.Logger) (http.Handler, error) {
+// newApp ставит проверку OpenAPI перед разбором запроса сгенерированным сервером (ADR-041).
+func newApp(svc *internal.Service, repo *internal.Repository, logger *slog.Logger) (http.Handler, error) {
 	spec, err := api.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("load openapi spec: %w", err)
 	}
-	handleError := httpx.StrictErrorHandler(logger)
-	strict := api.NewStrictHandlerWithOptions(internal.NewHandler(svc), nil, api.StrictHTTPServerOptions{
-		RequestErrorHandlerFunc:  httpx.StrictRequestErrorHandler(logger),
-		ResponseErrorHandlerFunc: handleError,
-	})
+	strict := api.NewStrictHandlerWithOptions(internal.NewHandler(svc, repo), nil, api.StrictHTTPServerOptions(httpx.NewStrictErrors(logger)))
 	return httpx.Validator(spec, logger)(api.Handler(strict)), nil
 }

@@ -22,6 +22,7 @@ func (Secret) MarshalText() ([]byte, error) {
 	return []byte(redacted), nil
 }
 
+// Reveal возвращает исходное значение для подключения или подписи. Обычное форматирование его скрывает.
 func (s Secret) Reveal() string {
 	return string(s)
 }

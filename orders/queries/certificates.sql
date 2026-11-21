@@ -13,3 +13,8 @@ WHERE id = sqlc.arg(id) AND status = sqlc.arg(old_status) AND attempts = sqlc.ar
 -- name: GetCompletedCertificate :one
 SELECT c.pdf FROM certificates AS c JOIN orders AS o ON o.id = c.order_id
 WHERE c.order_id = $1 AND o.client_id = $2 AND c.status = 'completed';
+
+-- name: ListCertificateEngineerIDs :many
+SELECT engineer_id FROM order_engineers
+WHERE order_id = $1
+ORDER BY created_at, engineer_id;

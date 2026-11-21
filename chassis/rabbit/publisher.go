@@ -47,6 +47,10 @@ func (p *Publisher) Publish(ctx context.Context, id, event string, body []byte) 
 		}
 	}()
 
+	return p.publishConfirmed(ctx, id, event, body)
+}
+
+func (p *Publisher) publishConfirmed(ctx context.Context, id, event string, body []byte) error {
 	confirmation, err := p.channel.PublishWithDeferredConfirm(p.exchange, p.key, true, false, amqp.Publishing{
 		MessageId: id, Type: event, ContentType: "application/json", DeliveryMode: amqp.Persistent, Body: body,
 	})

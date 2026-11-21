@@ -14,7 +14,7 @@ type Inventory struct {
 	ID        uuid.UUID
 	Name      string
 	Price     decimal.Decimal
-	Quantity  int32
+	Quantity  int64
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 	DeletedAt pgtype.Timestamptz
@@ -41,5 +41,5 @@ type StockAttempt struct {
 type StockAttemptItem struct {
 	SagaID   uuid.UUID
 	ItemID   uuid.UUID
-	Quantity int32
+	Quantity int64
 }

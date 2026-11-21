@@ -131,16 +131,16 @@
           <mxGeometry x="0" y="90" width="190" height="42" as="geometry" />
         </mxCell>
         <mxCell id="oitem" value="ПозицияТовара (order_items)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;html=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;swimlaneFillColor=#ffffff;fontSize=12;" parent="1" vertex="1">
-          <mxGeometry x="640" y="1300" width="260" height="102.0" as="geometry" />
+          <mxGeometry x="640" y="1300" width="260" height="120.0" as="geometry" />
         </mxCell>
-        <mxCell id="oitem_a" value="+uuid order_id&lt;br&gt;+uuid item_id&lt;br&gt;+int количество&lt;br&gt;+decimal цена &lt;font color=&quot;#888888&quot;&gt;&lt;i&gt;фиксируется, ADR-034&lt;/i&gt;&lt;/font&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=nowrap;html=1;fontSize=12;" parent="oitem" vertex="1">
-          <mxGeometry x="0" y="26" width="260" height="76" as="geometry" />
+        <mxCell id="oitem_a" value="+uuid order_id&lt;br&gt;+uuid item_id&lt;br&gt;+text name (nullable)&lt;br&gt;+int количество&lt;br&gt;+decimal цена &lt;font color=&quot;#888888&quot;&gt;&lt;i&gt;фиксируется, ADR-034&lt;/i&gt;&lt;/font&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=nowrap;html=1;fontSize=12;" parent="oitem" vertex="1">
+          <mxGeometry x="0" y="26" width="260" height="94" as="geometry" />
         </mxCell>
         <mxCell id="oserv" value="ПозицияУслуги (order_services)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;html=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;swimlaneFillColor=#ffffff;fontSize=12;" parent="1" vertex="1">
-          <mxGeometry x="920" y="1300" width="260" height="84.0" as="geometry" />
+          <mxGeometry x="920" y="1300" width="260" height="146.0" as="geometry" />
         </mxCell>
-        <mxCell id="oserv_a" value="+uuid order_id&lt;br&gt;+uuid service_id&lt;br&gt;+decimal цена &lt;font color=&quot;#888888&quot;&gt;&lt;i&gt;фиксируется, ADR-034&lt;/i&gt;&lt;/font&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=nowrap;html=1;fontSize=12;" parent="oserv" vertex="1">
-          <mxGeometry x="0" y="26" width="260" height="58" as="geometry" />
+        <mxCell id="oserv_a" value="+uuid id&lt;br&gt;+uuid order_id&lt;br&gt;+uuid service_id&lt;br&gt;+text name&lt;br&gt;+int quantity&lt;br&gt;+timestamptz created_at&lt;br&gt;+decimal цена &lt;font color=&quot;#888888&quot;&gt;&lt;i&gt;фиксируется, ADR-034&lt;/i&gt;&lt;/font&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=nowrap;html=1;fontSize=12;" parent="oserv" vertex="1">
+          <mxGeometry x="0" y="26" width="260" height="120" as="geometry" />
         </mxCell>
         <mxCell id="oeng" value="Исполнитель (order_engineers)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;html=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;swimlaneFillColor=#ffffff;fontSize=12;" parent="1" vertex="1">
           <mxGeometry x="1200" y="1300" width="260" height="85" as="geometry" />
@@ -181,7 +181,7 @@
         <mxCell id="item" value="Товар" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;html=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;swimlaneFillColor=#ffffff;fontSize=12;" parent="1" vertex="1">
           <mxGeometry x="1880" y="850" width="320" height="168.0" as="geometry" />
         </mxCell>
-        <mxCell id="item_a" value="+uuid id&lt;br&gt;+string название&lt;br&gt;+decimal цена&lt;br&gt;+int остаток &lt;font color=&quot;#888888&quot;&gt;&lt;i&gt;CHECK ≥ 0&lt;/i&gt;&lt;/font&gt;&lt;br&gt;+timestamptz deleted_at" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=nowrap;html=1;fontSize=12;" parent="item" vertex="1">
+        <mxCell id="item_a" value="+uuid id&lt;br&gt;+string название&lt;br&gt;+decimal цена&lt;br&gt;+bigint остаток &lt;font color=&quot;#888888&quot;&gt;&lt;i&gt;CHECK ≥ 0&lt;/i&gt;&lt;/font&gt;&lt;br&gt;+timestamptz deleted_at" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=nowrap;html=1;fontSize=12;" parent="item" vertex="1">
           <mxGeometry x="0" y="26" width="320" height="94" as="geometry" />
         </mxCell>
         <mxCell id="item_l" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="item" vertex="1">

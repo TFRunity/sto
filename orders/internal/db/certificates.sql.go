@@ -29,6 +29,32 @@ func (q *Queries) GetCompletedCertificate(ctx context.Context, arg GetCompletedC
 	return pdf, err
 }
 
+const listCertificateEngineerIDs = `-- name: ListCertificateEngineerIDs :many
+SELECT engineer_id FROM order_engineers
+WHERE order_id = $1
+ORDER BY created_at, engineer_id
+`
+
+func (q *Queries) ListCertificateEngineerIDs(ctx context.Context, orderID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listCertificateEngineerIDs, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var engineer_id uuid.UUID
+		if err := rows.Scan(&engineer_id); err != nil {
+			return nil, err
+		}
+		items = append(items, engineer_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDueCertificates = `-- name: ListDueCertificates :many
 SELECT id, order_id, status, attempts FROM certificates
 WHERE status IN ('pending', 'failed') AND attempts < 3 AND next_attempt_at <= now()

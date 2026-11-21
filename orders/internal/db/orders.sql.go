@@ -30,28 +30,100 @@ func (q *Queries) AddOrderEngineer(ctx context.Context, arg AddOrderEngineerPara
 }
 
 const addOrderItem = `-- name: AddOrderItem :one
-INSERT INTO order_items (order_id, item_id, quantity, price)
-VALUES ($1, $2, $3, $4)
+INSERT INTO order_items (order_id, item_id, name, quantity, price)
+SELECT o.id, $1, $2, $3, $4
+FROM orders AS o
+WHERE o.id = $5 AND o.status = 'active'
+FOR UPDATE OF o
 RETURNING id
 `
 
 type AddOrderItemParams struct {
-	OrderID  uuid.UUID
 	ItemID   uuid.UUID
+	Name     *string
 	Quantity int32
 	Price    decimal.Decimal
+	OrderID  uuid.UUID
 }
 
 func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, addOrderItem,
-		arg.OrderID,
 		arg.ItemID,
+		arg.Name,
 		arg.Quantity,
 		arg.Price,
+		arg.OrderID,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const addOrderService = `-- name: AddOrderService :one
+INSERT INTO order_services (order_id, service_id, name, quantity, price)
+SELECT o.id, $1, $2, $3, $4
+FROM orders AS o
+WHERE o.id = $5 AND o.status = 'active'
+FOR UPDATE OF o
+RETURNING id
+`
+
+type AddOrderServiceParams struct {
+	ServiceID uuid.UUID
+	Name      string
+	Quantity  int32
+	Price     decimal.Decimal
+	OrderID   uuid.UUID
+}
+
+func (q *Queries) AddOrderService(ctx context.Context, arg AddOrderServiceParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, addOrderService,
+		arg.ServiceID,
+		arg.Name,
+		arg.Quantity,
+		arg.Price,
+		arg.OrderID,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const cancelOrder = `-- name: CancelOrder :execrows
+UPDATE orders SET status = 'cancelled', updated_at = now()
+WHERE id = $1 AND status IN ('requested', 'active')
+`
+
+func (q *Queries) CancelOrder(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelOrder, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const changeOrderStage = `-- name: ChangeOrderStage :execrows
+UPDATE orders
+SET stage = $1, updated_at = now()
+WHERE id = $2
+  AND ($1::text <> 'выдан' OR (
+      status = 'paid' AND EXISTS (
+          SELECT 1 FROM saga_state WHERE order_id = orders.id AND current_step = 'completed'
+      )
+  ))
+`
+
+type ChangeOrderStageParams struct {
+	Stage string
+	ID    uuid.UUID
+}
+
+func (q *Queries) ChangeOrderStage(ctx context.Context, arg ChangeOrderStageParams) (int64, error) {
+	result, err := q.db.Exec(ctx, changeOrderStage, arg.Stage, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const claimOrder = `-- name: ClaimOrder :execrows
@@ -215,7 +287,7 @@ func (q *Queries) ListClientOrderHistory(ctx context.Context, arg ListClientOrde
 }
 
 const listOrderItems = `-- name: ListOrderItems :many
-SELECT id, item_id, quantity, price
+SELECT id, item_id, name, quantity, price
 FROM order_items
 WHERE order_id = $1
 ORDER BY created_at, id
@@ -224,6 +296,7 @@ ORDER BY created_at, id
 type ListOrderItemsRow struct {
 	ID       uuid.UUID
 	ItemID   uuid.UUID
+	Name     *string
 	Quantity int32
 	Price    decimal.Decimal
 }
@@ -240,6 +313,46 @@ func (q *Queries) ListOrderItems(ctx context.Context, orderID uuid.UUID) ([]List
 		if err := rows.Scan(
 			&i.ID,
 			&i.ItemID,
+			&i.Name,
+			&i.Quantity,
+			&i.Price,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrderServices = `-- name: ListOrderServices :many
+SELECT id, service_id, name, quantity, price
+FROM order_services WHERE order_id = $1 ORDER BY created_at, id
+`
+
+type ListOrderServicesRow struct {
+	ID        uuid.UUID
+	ServiceID uuid.UUID
+	Name      string
+	Quantity  int32
+	Price     decimal.Decimal
+}
+
+func (q *Queries) ListOrderServices(ctx context.Context, orderID uuid.UUID) ([]ListOrderServicesRow, error) {
+	rows, err := q.db.Query(ctx, listOrderServices, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOrderServicesRow
+	for rows.Next() {
+		var i ListOrderServicesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ServiceID,
+			&i.Name,
 			&i.Quantity,
 			&i.Price,
 		); err != nil {

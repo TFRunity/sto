@@ -99,7 +99,7 @@ func tryDeduct(ctx context.Context, tx pgx.Tx, command stockmessage.Deduction) (
 			return false, savepoint.Rollback(ctx)
 		}
 		if err := q.RecordDeductedItem(ctx, db.RecordDeductedItemParams{
-			SagaID: command.SagaID, ItemID: item.ID, Quantity: int32(item.Quantity),
+			SagaID: command.SagaID, ItemID: item.ID, Quantity: item.Quantity,
 		}); err != nil {
 			return false, err
 		}

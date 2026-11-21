@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -45,6 +46,13 @@ type LoginRequest struct {
 	Phone    string `json:"phone"`
 }
 
+// PersonSummary defines model for PersonSummary.
+type PersonSummary struct {
+	Id    openapi_types.UUID `json:"id"`
+	Name  string             `json:"name"`
+	Phone string             `json:"phone"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Name string `json:"name"`
@@ -69,11 +77,24 @@ type TokenResponse struct {
 	Token string `json:"token"`
 }
 
+// ResourceId defines model for ResourceId.
+type ResourceId = openapi_types.UUID
+
 // UnexpectedError Конверт ошибки (ADR-032)
 type UnexpectedError = Error
 
 // ValidationFailed Конверт ошибки (ADR-032)
 type ValidationFailed = Error
+
+// GetPeopleByIDsParams defines parameters for GetPeopleByIDs.
+type GetPeopleByIDsParams struct {
+	Ids []openapi_types.UUID `form:"ids" json:"ids"`
+}
+
+// SearchClientsParams defines parameters for SearchClients.
+type SearchClientsParams struct {
+	Q string `form:"q" json:"q"`
+}
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
@@ -89,6 +110,15 @@ type ServerInterface interface {
 	// Регистрация клиента
 	// (POST /register)
 	Register(w http.ResponseWriter, r *http.Request)
+	// Краткие данные пользователей, включая удалённых
+	// (GET /users)
+	GetPeopleByIDs(w http.ResponseWriter, r *http.Request, params GetPeopleByIDsParams)
+	// Живые инженеры для сводки нагрузки
+	// (GET /users/engineers-load)
+	ListEngineersForLoad(w http.ResponseWriter, r *http.Request)
+	// Поиск клиентов по имени или телефону
+	// (GET /users/search)
+	SearchClients(w http.ResponseWriter, r *http.Request, params SearchClientsParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -119,6 +149,88 @@ func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Register(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPeopleByIDs operation middleware
+func (siw *ServerInterfaceWrapper) GetPeopleByIDs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPeopleByIDsParams
+
+	// ------------- Required query parameter "ids" -------------
+
+	if paramValue := r.URL.Query().Get("ids"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ids"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "ids", r.URL.Query(), &params.Ids)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ids", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPeopleByIDs(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListEngineersForLoad operation middleware
+func (siw *ServerInterfaceWrapper) ListEngineersForLoad(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListEngineersForLoad(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchClients operation middleware
+func (siw *ServerInterfaceWrapper) SearchClients(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchClientsParams
+
+	// ------------- Required query parameter "q" -------------
+
+	if paramValue := r.URL.Query().Get("q"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchClients(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -250,6 +362,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc("POST "+options.BaseURL+"/login", wrapper.Login)
 	m.HandleFunc("POST "+options.BaseURL+"/register", wrapper.Register)
+	m.HandleFunc("GET "+options.BaseURL+"/users", wrapper.GetPeopleByIDs)
+	m.HandleFunc("GET "+options.BaseURL+"/users/engineers-load", wrapper.ListEngineersForLoad)
+	m.HandleFunc("GET "+options.BaseURL+"/users/search", wrapper.SearchClients)
 
 	return m
 }
@@ -352,6 +467,119 @@ func (response RegisterdefaultJSONResponse) VisitRegisterResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type GetPeopleByIDsRequestObject struct {
+	Params GetPeopleByIDsParams
+}
+
+type GetPeopleByIDsResponseObject interface {
+	VisitGetPeopleByIDsResponse(w http.ResponseWriter) error
+}
+
+type GetPeopleByIDs200JSONResponse []PersonSummary
+
+func (response GetPeopleByIDs200JSONResponse) VisitGetPeopleByIDsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPeopleByIDs400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response GetPeopleByIDs400JSONResponse) VisitGetPeopleByIDsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPeopleByIDsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetPeopleByIDsdefaultJSONResponse) VisitGetPeopleByIDsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListEngineersForLoadRequestObject struct {
+}
+
+type ListEngineersForLoadResponseObject interface {
+	VisitListEngineersForLoadResponse(w http.ResponseWriter) error
+}
+
+type ListEngineersForLoad200JSONResponse []PersonSummary
+
+func (response ListEngineersForLoad200JSONResponse) VisitListEngineersForLoadResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListEngineersForLoaddefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListEngineersForLoaddefaultJSONResponse) VisitListEngineersForLoadResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type SearchClientsRequestObject struct {
+	Params SearchClientsParams
+}
+
+type SearchClientsResponseObject interface {
+	VisitSearchClientsResponse(w http.ResponseWriter) error
+}
+
+type SearchClients200JSONResponse []openapi_types.UUID
+
+func (response SearchClients200JSONResponse) VisitSearchClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchClients400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response SearchClients400JSONResponse) VisitSearchClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchClients422JSONResponse Error
+
+func (response SearchClients422JSONResponse) VisitSearchClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchClientsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response SearchClientsdefaultJSONResponse) VisitSearchClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Вход по телефону и паролю
@@ -360,6 +588,15 @@ type StrictServerInterface interface {
 	// Регистрация клиента
 	// (POST /register)
 	Register(ctx context.Context, request RegisterRequestObject) (RegisterResponseObject, error)
+	// Краткие данные пользователей, включая удалённых
+	// (GET /users)
+	GetPeopleByIDs(ctx context.Context, request GetPeopleByIDsRequestObject) (GetPeopleByIDsResponseObject, error)
+	// Живые инженеры для сводки нагрузки
+	// (GET /users/engineers-load)
+	ListEngineersForLoad(ctx context.Context, request ListEngineersForLoadRequestObject) (ListEngineersForLoadResponseObject, error)
+	// Поиск клиентов по имени или телефону
+	// (GET /users/search)
+	SearchClients(ctx context.Context, request SearchClientsRequestObject) (SearchClientsResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -453,39 +690,129 @@ func (sh *strictHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetPeopleByIDs operation middleware
+func (sh *strictHandler) GetPeopleByIDs(w http.ResponseWriter, r *http.Request, params GetPeopleByIDsParams) {
+	var request GetPeopleByIDsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPeopleByIDs(ctx, request.(GetPeopleByIDsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPeopleByIDs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPeopleByIDsResponseObject); ok {
+		if err := validResponse.VisitGetPeopleByIDsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListEngineersForLoad operation middleware
+func (sh *strictHandler) ListEngineersForLoad(w http.ResponseWriter, r *http.Request) {
+	var request ListEngineersForLoadRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListEngineersForLoad(ctx, request.(ListEngineersForLoadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListEngineersForLoad")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListEngineersForLoadResponseObject); ok {
+		if err := validResponse.VisitListEngineersForLoadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchClients operation middleware
+func (sh *strictHandler) SearchClients(w http.ResponseWriter, r *http.Request, params SearchClientsParams) {
+	var request SearchClientsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchClients(ctx, request.(SearchClientsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchClients")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchClientsResponseObject); ok {
+		if err := validResponse.VisitSearchClientsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"H4sIAAAAAAAC/9RaW28bxxX+K4NpHyJgRVJSrhT6kDRxqsBADF+SB0vQrsiRuCm5u55dKlYFAhQZXwoZ",
+	"UW0ILeAidd0C6UNfKFq0aEmkgPyCM3/Bv6Q4Z3bJXXIluRbloi+2dnbnXOZ85zrc5AW34rmOcAKf5ze5",
+	"Z0mrIgIh6em68N2qLIiFIj7ZDs9zzwpK3OCOVRE8z+0iN7gUd6q2FEWeD2RVGNwvlETFwh2rrqxYAc/z",
+	"apW+DDY83OUH0nbWeK1Ww82+5zq+IH63HHHXE4VAFL+Q0pW4VHCdQDgB/ml5XtkuWIHtOtnvfNfBtSGv",
+	"X0uxyvP8V9mhQln91s9qasSvKPyCtD0kwvMcnqk69NUD6EKHQV89hC7swSF02Xum7QRCOlZ5WeBu02DQ",
+	"YqrJvrQC8b21wV7Xd5lZdaxqUHKl/QdRNA1mrrpyxS4WhYMPVc8PpLAqAwLDlcCuCLcamFO8ZvBvrLJd",
+	"JLWuWHZZFC9fbXN9wHJ5lXiapE/iBKCt7kEf9qGnttU9BvvQgp5+mGdwgq/w8GAPetBXW6pBe5hJ2mZW",
+	"bVEu+iZH5qE8KO7AriN2eAp96EEbOqquGiOW+PTz69O5udkpbnBPup6Qga3hIiJi5x7CZ25xg9dqcaze",
+	"DrcvDWDprnwnCgFaZLgnvznCs+AWRYr8z1UDWrAHXThSj6AHLbXD4BhapEdPQ4w+6dDqDsMDo+M7hBZ7",
+	"z/RKriOWA+v3Gjrj9jHY6/rPeATirlXxyihvbM+4bxlcW4AQVCzaSMsqX0voMrZlRKm/JdAALTiCLsJA",
+	"3YcudNkv/yYUHEGHvb7/hMGJqkOXfKkHrV+OQsPNfmywa9Mzc1PzTDXwc/UIDqGPrpSiZlxBjEa+/70r",
+	"izzPA9ddLrvOGje03jw/tGUtxYQV4fvWWpqpduEIz78OLTigf/egrxok9yG05hn0MBacaNPAgdpG1VVD",
+	"PdKLKP8B9PUidOBI/ZgS2ZJII9AMZUqD3FV3zXauiztV4Qen22zVKvti1A2GpxSLuIPFFGSEB7h5jtT6",
+	"M2NIKk3ua0L6rnOjWqlYMsVd7OIb5IEonWy+tahElYhEW9JkvS7WbD8Q8u2O+XQZY+c/grWfEEr75Dc9",
+	"xBV02EezDPagBa8wzrXZrZtXpj/WwRe/OsYwwVYKcsMLIgeaQ7f/7ww7IsZfoQ8vUIZ5pprQ00hHx4Ue",
+	"BqI6dGAfffwldKGto30q1KEDr6J4PGcw+NN0bm5qXJAR4yTscg6chibSZcE4ogIX492Yjl99e9NgpNYh",
+	"hZZsGR3KTDulqi/k8hsBc0SRaKMRCpGmwE188zbSs9/dmP3gwzwz/eqKyX7DQmYGK5Qtu8IoVxxB12Cm",
+	"uOvpdP0RYgtR9epc0U8TGLOzKFSlHWzcwISppVwRlhTy02pQGj5diY7qq29v8vQ6KszfO9BRDbWldpIB",
+	"H9qD2klDaCZnsAjhGR6WCSicZjjUqRQEni5jbGfVTcH3M9WEPTwd9QALFHS6A2hRQsLKZJth3lJN1WDq",
+	"AYoIHThgzprt3KXMNRDLzFqenX1d/9mcmh+sqi3ymGNM3uizSLWjfkAnUluLDu0xGXT1mz6uQlfVVVN/",
+	"3kYCyLMNXbVFjjVCQzVxoUkFVOjys+HJzH08lVl0vpZFIX2GtRYmLPVHaA2OGA7ZgrMunMCVG5i6SGu1",
+	"A8eqqX40MNSgrkmG0GJa6syiE7cc1SLQhiNowT6ltkfqPi79A55rW77Eo22r7TDx92K2HucdO2toQw81",
+	"pMcenecrXR/V1UM8K9Vg34iSXSiLzKKz6CRKDwqOFKHIuK/QzePVoknlmjksFDMMnlI07UBPNdD8+GkD",
+	"2monFZgn0F90wroVU7U5z8wwV4d18f6ZNYMR1gz6q2HpAC2tzC4J8ghDMJGL1X59DKjmIp/5IJfLfJBb",
+	"5OaUQWjVskNX24wCcF/V1TYRuHVr4fMIKh8iQtBX7ICqwhs3v2afXlvgBl8X0tcOksvMZHIYnVxPOJZn",
+	"8zyfy+QycxSNgxL5fLZo+aUV16I8VjN4tmhLUQhcmXUJfuFq1BWdsuoLuW4XhJ/dtIu10YbydnqlPvwk",
+	"G2s4a0sJwusaHWMMo/WsLyxZKJ36GuXJut87Qvol25uIZKHXDViGz5NSnRIY0XH9ICXo/QQd6MIBYRu7",
+	"L+0bUaJWP6CPUFjCDKH9W38CJ+h32gHorcZ1GD+7cIwe06OAht7RVw3tP6ppDNcXHWiTNx+TR3eHxUoG",
+	"4wViG6sLROsguVGMiGWtQXiSYlUKv6SBjOmSegKcOui6OBwyCD+ImrKJ9MeJmrtWq42OMkbHE7O53MR4",
+	"J+uEtNHEP9UWnEBHPYzMFvbj6Mfv53KnMRhInB2bK9DGmXcwXrAd6uyWC1IUhRPYVtnXgXQMnXCk8ZQE",
+	"ZDReIH0xaOvmdNWqloPz9R6dIsWLHJ6/vWRwP2pXODzRTDTWk+JhXk4IR42eteZHtaDPl5B2MhTqh6wf",
+	"WMHI0oTiQoxatmA5BVGeNFEsV1cRE2LSlLGUnTBNOxAVf8I0PWtjwhSjvDhpskE447ggTRm2XWekmydY",
+	"xsILnP9gRduHA/xTPcaiOvJds1C2hRNEpdjMJ1PzjFrfl5QkOqpOHrWP9TF04FAXNbpYb0e+jgUaZhcG",
+	"j2E3w+B5WHY1deU5YNqIksyg74siJHvP9DGqOwUxHWlmTqVll6jdvKQEMzpweKMcM3MJ7M9IM7FKOWZX",
+	"6F0wzXzyDtJMfGiall5UUzcsCK8eQuvthx1Tl5eB/k5u1Q2bAhquUl83tAu0Tkk8sagSf5xUptGs8pt8",
+	"TZDSSd/5UgTXhOuVxWcbC5/71EokuNF10Z2qkBvx+yL/zAujQTA/d2JYsZ0F/fHM4K0lpYVj/qUL1m0D",
+	"Kc6CZXLwWRsTYtzTdqMLlKjAOVJN7JFx6ULedjm4fEpobGALrpvbMelTHMbAXvsQayX1QN9zNGnnkXoc",
+	"XR6dgmX6OytwKiOE9KfLrlU8FXtXbT/4Ivr0iiuv4sf/n1a/HOP9WQc36IzkX7UdjSnUlk65+nYHhzcv",
+	"aGh1gAtn2mjQaafb5ga9/i1VAm8YFu6cGRQq1t2rwlnDYeRsLkeuP3gen3tOzPnPDUH/O4d/f3b2HaRX",
+	"bedlvHlbka4V3hHToBLvM3t0o5kctV4eoJ9BH3MkHCYzYx/aunWjCa2eRIRd5WgzdwqmRwZLiYHRBHJo",
+	"gl624K4LueyV3MCdOG2i6l8S2ewm/b984UMxUn9HEhG/0K9JlkYAlLzHuL2EoQFLpEjqqizzPMdBOK8t",
+	"DcAx1vicUp91Y+1GYsJ/C8E1NdRNg61mjBH+CzYt+oqZyHXVPd3VtGniEIsbB9AN79yTrPTFQIxXOIlI",
+	"YfYvcoce5XJ1X8egOLfWCOnBpUKM+nDkmcJgl34K0qLrg4gRXRygKz6IcUedVT0MIodjOoXXADG2IR4R",
+	"nf8ZALXFmlCvJAAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

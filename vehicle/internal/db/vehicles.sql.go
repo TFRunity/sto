@@ -65,3 +65,60 @@ func (q *Queries) GetVehicle(ctx context.Context, id uuid.UUID) (GetVehicleRow, 
 	)
 	return i, err
 }
+
+const getVehiclesByIDs = `-- name: GetVehiclesByIDs :many
+SELECT id, number FROM vehicles WHERE id = ANY($1::uuid[])
+`
+
+type GetVehiclesByIDsRow struct {
+	ID     uuid.UUID
+	Number string
+}
+
+// include-deleted: номера ТС из истории заказов.
+func (q *Queries) GetVehiclesByIDs(ctx context.Context, ids []uuid.UUID) ([]GetVehiclesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, getVehiclesByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetVehiclesByIDsRow
+	for rows.Next() {
+		var i GetVehiclesByIDsRow
+		if err := rows.Scan(&i.ID, &i.Number); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchVehicles = `-- name: SearchVehicles :many
+SELECT id FROM vehicles
+WHERE number ILIKE '%' || $1::text || '%' ESCAPE '!'
+ORDER BY id LIMIT 201
+`
+
+// include-deleted: директор ищет ТС из истории заказов.
+func (q *Queries) SearchVehicles(ctx context.Context, pattern string) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, searchVehicles, pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

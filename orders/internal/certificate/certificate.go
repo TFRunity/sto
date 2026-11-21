@@ -11,10 +11,12 @@ import (
 )
 
 type Snapshot struct {
-	OrderID   uuid.UUID `json:"order_id"`
-	CreatedAt string    `json:"created_at"`
-	Items     []Item    `json:"items"`
-	Total     string    `json:"total"`
+	OrderID    uuid.UUID `json:"order_id"`
+	ClientName string    `json:"client_name"`
+	Engineers  []string  `json:"engineers"`
+	CreatedAt  string    `json:"created_at"`
+	Items      []Item    `json:"items"`
+	Total      string    `json:"total"`
 }
 
 type Item struct {

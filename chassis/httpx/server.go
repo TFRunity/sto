@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Run добавляет проверку /healthz и завершает HTTP-сервер при отмене контекста.
 func Run(ctx context.Context, addr string, app http.Handler, logger *slog.Logger) error {
 	srv := newServer(addr, withHealthz(app))
 	serverErr := startInBackground(srv)

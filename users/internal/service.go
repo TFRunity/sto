@@ -28,6 +28,7 @@ type Service struct {
 	dummyHash []byte
 }
 
+// NewService создаёт сервис регистрации и входа. Фиктивный хеш нужен для входа с неизвестным телефоном.
 func NewService(users UserStore, jwtSecret []byte, jwtTTL time.Duration) (*Service, error) {
 	dummyHash, err := bcrypt.GenerateFromPassword([]byte("dummy-password"), bcryptCost)
 	if err != nil {
@@ -36,6 +37,7 @@ func NewService(users UserStore, jwtSecret []byte, jwtTTL time.Duration) (*Servi
 	return &Service{users: users, jwtSecret: jwtSecret, jwtTTL: jwtTTL, dummyHash: dummyHash}, nil
 }
 
+// Register создаёт клиента с хешем пароля и выдаёт первый токен.
 func (s *Service) Register(ctx context.Context, name string, phone string, password string) (uuid.UUID, string, error) {
 	if len(password) > maxPasswordBytes {
 		return uuid.Nil, "", ErrPasswordTooLong
@@ -57,6 +59,7 @@ func (s *Service) Register(ctx context.Context, name string, phone string, passw
 	return user.ID, token, err
 }
 
+// Login проверяет пароль и выдаёт токен с ролью из базы.
 func (s *Service) Login(ctx context.Context, phone string, password string) (string, error) {
 	user, err := s.users.GetByPhone(ctx, phone)
 	if errors.Is(err, ErrUserNotFound) {
@@ -85,6 +88,7 @@ func (s *Service) issueToken(user User) (string, error) {
 	return token, nil
 }
 
+// spendSameTime выполняет bcrypt и при неизвестном телефоне, чтобы не пропускать дорогой шаг проверки.
 func (s *Service) spendSameTime(password string) {
 	_ = bcrypt.CompareHashAndPassword(s.dummyHash, []byte(password))
 }

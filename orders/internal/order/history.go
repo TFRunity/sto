@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ListOrders выбирает инженерный пул или историю клиента по роли и фильтрам.
 func (h handler) ListOrders(ctx context.Context, req api.ListOrdersRequestObject) (api.ListOrdersResponseObject, error) {
 	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {

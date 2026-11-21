@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	errOrderConflict     = errors.New("order state does not allow the operation")
 	errOrderNotFound     = errors.New("order not found")
 	errOrderNotClaimable = errors.New("order cannot be claimed")
 )
@@ -55,10 +56,10 @@ func insertOrderWithEngineer(ctx context.Context, queries *db.Queries, clientID,
 
 func (r repository) addItem(ctx context.Context, orderID uuid.UUID, item orderItem) (uuid.UUID, error) {
 	id, err := r.queries.AddOrderItem(ctx, db.AddOrderItemParams{
-		OrderID: orderID, ItemID: item.itemID, Quantity: item.quantity, Price: item.price,
+		OrderID: orderID, ItemID: item.itemID, Name: item.name, Quantity: item.quantity, Price: item.price,
 	})
-	if postgres.IsConstraintViolation(err, "23503", "order_items_order_id_fkey") {
-		return uuid.Nil, errOrderNotFound
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, r.orderConflict(ctx, orderID)
 	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("add order item: %w", err)
@@ -66,30 +67,41 @@ func (r repository) addItem(ctx context.Context, orderID uuid.UUID, item orderIt
 	return id, nil
 }
 
-func (r repository) get(ctx context.Context, id uuid.UUID) (db.GetOrderRow, []orderItem, error) {
-	// Заказ, подтверждение оплаты и позиции читаем из одного снимка.
-	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
-	if err != nil {
-		return db.GetOrderRow{}, nil, fmt.Errorf("begin order read: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
+type orderSnapshot struct {
+	header   db.GetOrderRow
+	items    []orderItem
+	services []db.ListOrderServicesRow
+}
 
-	queries := r.queries.WithTx(tx)
-	row, err := queries.GetOrder(ctx, id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return db.GetOrderRow{}, nil, errOrderNotFound
-	}
+// get reads the order state and both kinds of positions from one database snapshot.
+func (r repository) get(ctx context.Context, id uuid.UUID) (orderSnapshot, error) {
+	var snapshot orderSnapshot
+	var items []db.ListOrderItemsRow
+	err := postgres.InReadSnapshot(ctx, r.pool, func(tx pgx.Tx) error {
+		queries := r.queries.WithTx(tx)
+		var err error
+		snapshot.header, err = queries.GetOrder(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errOrderNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("read order: %w", err)
+		}
+		items, err = queries.ListOrderItems(ctx, id)
+		if err != nil {
+			return fmt.Errorf("list order items: %w", err)
+		}
+		snapshot.services, err = queries.ListOrderServices(ctx, id)
+		if err != nil {
+			return fmt.Errorf("list order services: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return db.GetOrderRow{}, nil, fmt.Errorf("read order: %w", err)
+		return orderSnapshot{}, err
 	}
-	rows, err := queries.ListOrderItems(ctx, id)
-	if err != nil {
-		return db.GetOrderRow{}, nil, fmt.Errorf("list order items: %w", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return db.GetOrderRow{}, nil, fmt.Errorf("commit order read: %w", err)
-	}
-	return row, mapOrderItems(rows), nil
+	snapshot.items = mapOrderItems(items)
+	return snapshot, nil
 }
 
 func mapOrderItems(rows []db.ListOrderItemsRow) []orderItem {
@@ -98,6 +110,7 @@ func mapOrderItems(rows []db.ListOrderItemsRow) []orderItem {
 		items = append(items, orderItem{
 			id:       item.ID,
 			itemID:   item.ItemID,
+			name:     item.Name,
 			quantity: item.Quantity,
 			price:    item.Price,
 		})
@@ -175,4 +188,50 @@ func (r repository) listClientOrderHistory(ctx context.Context, clientID uuid.UU
 		return nil, fmt.Errorf("list client order history: %w", err)
 	}
 	return rows, nil
+}
+
+func (r repository) changeStage(ctx context.Context, id uuid.UUID, stage string) error {
+	changed, err := r.queries.ChangeOrderStage(ctx, db.ChangeOrderStageParams{ID: id, Stage: stage})
+	if err != nil {
+		return fmt.Errorf("change order stage: %w", err)
+	}
+	if changed == 0 {
+		return r.orderConflict(ctx, id)
+	}
+	return nil
+}
+
+func (r repository) cancel(ctx context.Context, id uuid.UUID) error {
+	changed, err := r.queries.CancelOrder(ctx, id)
+	if err != nil {
+		return fmt.Errorf("cancel order: %w", err)
+	}
+	if changed == 0 {
+		return r.orderConflict(ctx, id)
+	}
+	return nil
+}
+
+func (r repository) addService(ctx context.Context, orderID, serviceID uuid.UUID, quantity int32, service catalogEntry) (uuid.UUID, error) {
+	id, err := r.queries.AddOrderService(ctx, db.AddOrderServiceParams{
+		OrderID: orderID, ServiceID: serviceID, Name: service.name, Price: service.price, Quantity: quantity,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, r.orderConflict(ctx, orderID)
+	}
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("add order service: %w", err)
+	}
+	return id, nil
+}
+
+func (r repository) orderConflict(ctx context.Context, id uuid.UUID) error {
+	_, err := r.queries.GetOrder(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errOrderNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("read order after rejected update: %w", err)
+	}
+	return errOrderConflict
 }

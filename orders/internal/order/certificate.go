@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/orders/internal/api"
@@ -15,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// GetCertificate возвращает готовый PDF владельцу заказа. Повторная загрузка читает те же байты.
 func (h handler) GetCertificate(ctx context.Context, req api.GetCertificateRequestObject) (api.GetCertificateResponseObject, error) {
 	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
@@ -30,28 +32,42 @@ func (h handler) GetCertificate(ctx context.Context, req api.GetCertificateReque
 	return api.GetCertificate200ApplicationpdfResponse{Body: bytes.NewReader(pdf), ContentLength: int64(len(pdf))}, nil
 }
 
-// NewCertificateSource reuses the order snapshot, stored prices, and Inventory client.
-func NewCertificateSource(pool *pgxpool.Pool, inventoryURL url.URL) certificate.LoadSnapshot {
-	source := certificateSource{repo: repository{pool: pool, queries: db.New(pool)}, inventory: newInventoryClient(inventoryURL)}
+// NewCertificateSource loads order lines and the names needed for the certificate.
+func NewCertificateSource(pool *pgxpool.Pool, inventoryURL, usersURL url.URL) certificate.LoadSnapshot {
+	source := certificateSource{
+		repo:      repository{pool: pool, queries: db.New(pool)},
+		inventory: newCatalogClient(inventoryURL, "inventory"),
+		usersURL:  usersURL, http: &http.Client{Timeout: 3 * time.Second},
+	}
 	return source.load
 }
 
 type certificateSource struct {
 	repo      repository
-	inventory inventoryClient
+	inventory catalogClient
+	usersURL  url.URL
+	http      *http.Client
 }
 
 func (s certificateSource) load(ctx context.Context, id uuid.UUID) (certificate.Snapshot, error) {
-	row, items, err := s.repo.get(ctx, id)
+	snapshot, err := s.repo.get(ctx, id)
 	if err != nil {
 		return certificate.Snapshot{}, err
 	}
-	positions, err := s.loadPositions(ctx, items)
+	positions, err := s.loadPositions(ctx, snapshot.items)
+	if err != nil {
+		return certificate.Snapshot{}, err
+	}
+	for _, service := range snapshot.services {
+		positions = append(positions, certificate.Item{Name: service.Name, Quantity: service.Quantity, Price: service.Price.StringFixed(2)})
+	}
+	clientName, engineers, err := s.loadNames(ctx, id, snapshot.header.ClientID)
 	if err != nil {
 		return certificate.Snapshot{}, err
 	}
 	return certificate.Snapshot{
-		OrderID: id, CreatedAt: row.CreatedAt.Time.Format("02.01.2006"), Items: positions, Total: total(items).StringFixed(2),
+		ClientName: clientName, Engineers: engineers,
+		OrderID: id, CreatedAt: snapshot.header.CreatedAt.Time.Format("02.01.2006"), Items: positions, Total: total(snapshot.items, snapshot.services).StringFixed(2),
 	}, nil
 }
 
@@ -60,9 +76,11 @@ func (s certificateSource) loadPositions(ctx context.Context, items []orderItem)
 	names := make(map[uuid.UUID]string)
 	for _, item := range items {
 		name, known := names[item.itemID]
-		if !known {
+		if item.name != nil {
+			name = *item.name
+		} else if !known {
 			product, err := s.inventory.lookup(ctx, item.itemID)
-			if err != nil && !errors.Is(err, errItemNotFound) {
+			if err != nil && !errors.Is(err, errCatalogEntryNotFound) {
 				return nil, err
 			}
 			name = product.name
@@ -75,4 +93,41 @@ func (s certificateSource) loadPositions(ctx context.Context, items []orderItem)
 		positions = append(positions, certificate.Item{Name: name, Quantity: item.quantity, Price: item.price.StringFixed(2)})
 	}
 	return positions, nil
+}
+
+// loadNames читает список исполнителей и отправляет один запрос Users вне транзакции.
+func (s certificateSource) loadNames(ctx context.Context, orderID, clientID uuid.UUID) (string, []string, error) {
+	engineers, err := s.repo.queries.ListCertificateEngineerIDs(ctx, orderID)
+	if err != nil {
+		return "", nil, err
+	}
+	params := url.Values{"ids": {clientID.String()}}
+	for _, id := range engineers {
+		params.Add("ids", id.String())
+	}
+	type person struct {
+		ID   uuid.UUID `json:"id"`
+		Name string    `json:"name"`
+	}
+	people, _, err := httpx.GetJSON[[]person](ctx, s.http, s.usersURL, "/users", params)
+	if err != nil {
+		return "", nil, err
+	}
+	names := make(map[uuid.UUID]string, len(people))
+	for _, person := range people {
+		names[person.ID] = person.Name
+	}
+	engineerNames := make([]string, 0, len(engineers))
+	for _, engineer := range engineers {
+		engineerNames = append(engineerNames, displayName(names, engineer))
+	}
+	return displayName(names, clientID), engineerNames, nil
+}
+
+func displayName(names map[uuid.UUID]string, id uuid.UUID) string {
+	if name := names[id]; name != "" {
+		return name
+	}
+	// Engineer-created orders can refer to a client ID that Users has never seen.
+	return id.String()
 }

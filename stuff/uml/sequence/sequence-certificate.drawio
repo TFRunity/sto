@@ -91,7 +91,7 @@
             <mxPoint x="420" y="375" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="6. HTTP: имена исполнителей, товаров, услуг (вне транзакции)">
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="6. GET /users?ids= — имена клиента и исполнителей одним запросом">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="160" y="420" as="sourcePoint" />
             <mxPoint x="680" y="420" as="targetPoint" />

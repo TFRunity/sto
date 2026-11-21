@@ -12,6 +12,49 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const createItem = `-- name: CreateItem :one
+INSERT INTO inventory (name, price, quantity)
+VALUES ($1, $2, $3) RETURNING id, name, price, quantity
+`
+
+type CreateItemParams struct {
+	Name     string
+	Price    decimal.Decimal
+	Quantity int64
+}
+
+type CreateItemRow struct {
+	ID       uuid.UUID
+	Name     string
+	Price    decimal.Decimal
+	Quantity int64
+}
+
+func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (CreateItemRow, error) {
+	row := q.db.QueryRow(ctx, createItem, arg.Name, arg.Price, arg.Quantity)
+	var i CreateItemRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Price,
+		&i.Quantity,
+	)
+	return i, err
+}
+
+const deleteItem = `-- name: DeleteItem :execrows
+UPDATE inventory SET deleted_at = now(), updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) DeleteItem(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteItem, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getItem = `-- name: GetItem :one
 SELECT id, name, price
 FROM inventory
@@ -28,5 +71,79 @@ func (q *Queries) GetItem(ctx context.Context, id uuid.UUID) (GetItemRow, error)
 	row := q.db.QueryRow(ctx, getItem, id)
 	var i GetItemRow
 	err := row.Scan(&i.ID, &i.Name, &i.Price)
+	return i, err
+}
+
+const listItems = `-- name: ListItems :many
+SELECT id, name, price, quantity FROM inventory
+WHERE deleted_at IS NULL ORDER BY name, id
+`
+
+type ListItemsRow struct {
+	ID       uuid.UUID
+	Name     string
+	Price    decimal.Decimal
+	Quantity int64
+}
+
+func (q *Queries) ListItems(ctx context.Context) ([]ListItemsRow, error) {
+	rows, err := q.db.Query(ctx, listItems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemsRow
+	for rows.Next() {
+		var i ListItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Price,
+			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateItem = `-- name: UpdateItem :one
+UPDATE inventory SET name = $2, price = $3, quantity = $4, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, name, price, quantity
+`
+
+type UpdateItemParams struct {
+	ID       uuid.UUID
+	Name     string
+	Price    decimal.Decimal
+	Quantity int64
+}
+
+type UpdateItemRow struct {
+	ID       uuid.UUID
+	Name     string
+	Price    decimal.Decimal
+	Quantity int64
+}
+
+func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) (UpdateItemRow, error) {
+	row := q.db.QueryRow(ctx, updateItem,
+		arg.ID,
+		arg.Name,
+		arg.Price,
+		arg.Quantity,
+	)
+	var i UpdateItemRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Price,
+		&i.Quantity,
+	)
 	return i, err
 }

@@ -12,8 +12,12 @@
 <h1>Справка об оплате</h1>
 <p>Заказ № {{.OrderID}}</p>
 <p>Дата создания заказа: {{.CreatedAt}}</p>
+<p>Клиент: {{.ClientName}}</p>
+{{if .Engineers}}
+<p>Исполнители: {{range $i, $name := .Engineers}}{{if $i}}, {{end}}{{$name}}{{end}}</p>
+{{end}}
 <table>
-  <thead><tr><th>Товар</th><th class="amount">Количество</th><th class="amount">Цена, руб.</th></tr></thead>
+  <thead><tr><th>Позиция</th><th class="amount">Количество</th><th class="amount">Цена, руб.</th></tr></thead>
   <tbody>
   {{range .Items}}
   <tr><td>{{.Name}}</td><td class="amount">{{.Quantity}}</td><td class="amount">{{.Price}}</td></tr>

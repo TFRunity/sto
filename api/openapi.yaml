@@ -34,6 +34,315 @@ security:
   - bearerAuth: []
 
 paths:
+  /dashboard:
+    get:
+      tags: [gateway]
+      operationId: getDashboard
+      summary: Сводка директора
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectorDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: '`upstream_error` — источник недоступен'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '504':
+          description: '`upstream_timeout` — истёк общий дедлайн'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /director/orders:
+    get:
+      tags: [gateway]
+      operationId: listDirectorOrders
+      summary: Поиск заказов директора
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [requested, active, paid, cancelled, awaiting_payment]
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectorOrderPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: '`search_too_broad` — уточните запрос'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: '`upstream_error` — источник недоступен'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '504':
+          description: '`upstream_timeout` — истёк общий дедлайн'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/stats:
+    get:
+      tags: [orders]
+      operationId: getOrderStats
+      summary: Метрики и последние заказы
+      security: []
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderStatsSource'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /internal/orders:
+    get:
+      tags: [orders]
+      operationId: listOrdersForDirector
+      summary: Страница заказов для Gateway
+      security: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [requested, active, paid, cancelled, awaiting_payment]
+        - name: client_ids
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items:
+              type: string
+              format: uuid
+        - name: vehicle_ids
+          in: query
+          schema:
+            type: array
+            maxItems: 200
+            items:
+              type: string
+              format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectorOrderPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /users/engineers-load:
+    get:
+      tags: [users]
+      operationId: listEngineersForLoad
+      summary: Живые инженеры для сводки нагрузки
+      security: []
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonSummary'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /users/search:
+    get:
+      tags: [users]
+      operationId: searchClients
+      summary: Поиск клиентов по имени или телефону
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '422':
+          description: '`search_too_broad` — уточните запрос'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /users:
+    get:
+      tags: [users]
+      operationId: getPeopleByIDs
+      summary: Краткие данные пользователей, включая удалённых
+      security: []
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: array
+            minItems: 1
+            items:
+              type: string
+              format: uuid
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonSummary'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /internal/vehicles/search:
+    get:
+      tags: [vehicle]
+      operationId: searchVehicles
+      summary: Поиск ТС по номеру
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '422':
+          description: '`search_too_broad` — уточните запрос'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /internal/vehicles:
+    get:
+      tags: [vehicle]
+      operationId: getVehiclesByIDs
+      summary: Номера ТС, включая удалённые
+      security: []
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 200
+            items:
+              type: string
+              format: uuid
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VehicleSummary'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /register:
     post:
       tags: [users]
@@ -120,6 +429,7 @@ paths:
           schema:
             type: string
             enum: [requested]
+            x-enum-varnames: [ListOrdersParamsStatusRequested]
         - name: client_id
           in: query
           schema:
@@ -238,6 +548,133 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /orders/{id}/stage:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    patch:
+      tags: [orders]
+      operationId: changeOrderStage
+      summary: Изменить этап работ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeOrderStageRequest'
+      responses:
+        '200':
+          description: Этап изменён
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`order_not_found` — заказ не найден'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`order_not_paid` — выдача требует подтверждённой оплаты'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    patch:
+      tags: [orders]
+      operationId: cancelOrder
+      summary: Отменить заказ
+      responses:
+        '200':
+          description: Заказ отменён
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`order_not_found` — заказ не найден'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`order_not_cancellable` — статус заказа не допускает отмену'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/services:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    post:
+      tags: [orders]
+      operationId: addOrderService
+      summary: Добавить услугу по текущей цене каталога
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddOrderServiceRequest'
+      responses:
+        '201':
+          description: Услуга добавлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderService'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`order_not_found` или `service_not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`order_not_editable` — заказ не в работе'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: '`upstream_error` — Services недоступен'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /orders/{id}/items:
     parameters:
       - $ref: '#/components/parameters/ResourceId'
@@ -245,7 +682,7 @@ paths:
       tags: [orders]
       operationId: addOrderItem
       summary: Добавление товарной позиции
-      description: Цена запрашивается в Inventory и сохраняется в позиции.
+      description: Для активного заказа. Название и цена запрашиваются в Inventory и сохраняются в позиции.
       requestBody:
         required: true
         content:
@@ -263,6 +700,12 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '404':
           description: '`order_not_found` или `item_not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`order_not_editable` — заказ не в работе'
           content:
             application/json:
               schema:
@@ -319,6 +762,62 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /inventory:
+    get:
+      tags: [inventory]
+      operationId: listItems
+      summary: Список активных позиций каталога
+      responses:
+        '200':
+          description: Каталог
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryEntry'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    post:
+      tags: [inventory]
+      operationId: createItem
+      summary: Добавить товар
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryInput'
+      responses:
+        '201':
+          description: Позиция создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /inventory/{id}:
     parameters:
       - $ref: '#/components/parameters/ResourceId'
@@ -339,6 +838,213 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '404':
           description: '`item_not_found` — товар отсутствует или удалён'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+    put:
+      tags: [inventory]
+      operationId: updateItem
+      summary: Заменить данные позиции
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryInput'
+      responses:
+        '200':
+          description: Позиция обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEntry'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`item_not_found` — товар не найден'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    delete:
+      tags: [inventory]
+      operationId: deleteItem
+      summary: Удалить позицию из каталога
+      responses:
+        '204':
+          description: Позиция удалена
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`item_not_found` — товар не найден'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /services:
+    get:
+      tags: [services]
+      operationId: listServices
+      summary: Список активных позиций каталога
+      responses:
+        '200':
+          description: Каталог
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceEntry'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    post:
+      tags: [services]
+      operationId: createService
+      summary: Добавить услугу
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceInput'
+      responses:
+        '201':
+          description: Позиция создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceEntry'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /services/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    put:
+      tags: [services]
+      operationId: updateService
+      summary: Заменить данные позиции
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceInput'
+      responses:
+        '200':
+          description: Позиция обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceEntry'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`service_not_found` — услуга не найдена'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    delete:
+      tags: [services]
+      operationId: deleteService
+      summary: Удалить позицию из каталога
+      responses:
+        '204':
+          description: Позиция удалена
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступ запрещён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`service_not_found` — услуга не найдена'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /internal/services/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [services]
+      operationId: getService
+      summary: Прочитать живую услугу по ID
+      security: []
+      responses:
+        '200':
+          description: Услуга найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceEntry'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          description: '`service_not_found` — услуга не найдена'
           content:
             application/json:
               schema:
@@ -883,7 +1589,7 @@ components:
 
     Order:
       type: object
-      required: [id, client_id, vehicle_id, status, stage, items, total, payment_confirmed]
+      required: [id, client_id, vehicle_id, status, stage, items, services, total, payment_confirmed]
       properties:
         id:
           type: string
@@ -909,11 +1615,251 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrderItem'
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderService'
         total:
           $ref: '#/components/schemas/Money'
         payment_confirmed:
           type: boolean
           description: Есть завершённая сага оплаты.
+
+    ChangeOrderStageRequest:
+      type: object
+      required: [stage]
+      properties:
+        stage:
+          type: string
+          enum: [принят, в_работе, готов, выдан]
+
+    AddOrderServiceRequest:
+      type: object
+      required: [service_id, quantity]
+      properties:
+        service_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483647
+
+    OrderService:
+      type: object
+      required: [id, service_id, name, price, quantity]
+      properties:
+        id:
+          type: string
+          format: uuid
+        service_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        price:
+          $ref: '#/components/schemas/CatalogPrice'
+        quantity:
+          type: integer
+          format: int32
+
+    CatalogPrice:
+      type: string
+      description: Цена в рублях с двумя знаками после точки.
+      pattern: '^[0-9]{1,10}[.][0-9]{2}$'
+      example: "1500.50"
+
+    InventoryInput:
+      type: object
+      required: [name, price, quantity]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        price:
+          $ref: '#/components/schemas/CatalogPrice'
+        quantity:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+
+    InventoryEntry:
+      type: object
+      required: [id, name, price, quantity]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        price:
+          $ref: '#/components/schemas/CatalogPrice'
+        quantity:
+          type: integer
+          format: int64
+          minimum: 0
+
+    ServiceInput:
+      type: object
+      required: [name, price]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        price:
+          $ref: '#/components/schemas/CatalogPrice'
+
+    ServiceEntry:
+      type: object
+      required: [id, name, price]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        price:
+          $ref: '#/components/schemas/CatalogPrice'
+
+    PersonSummary:
+      type: object
+      required: [id, name, phone]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+
+    VehicleSummary:
+      type: object
+      required: [id, number]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+
+    DirectorOrder:
+      type: object
+      required: [id, client_id, vehicle_id, status, stage, created_at, total]
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        engineer_id:
+          type: string
+          format: uuid
+        client_name:
+          type: string
+        client_phone:
+          type: string
+        vehicle_number:
+          type: string
+        engineer_name:
+          type: string
+        status:
+          type: string
+        stage:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        total:
+          type: string
+
+    DirectorOrderPage:
+      type: object
+      required: [orders, page, has_next]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectorOrder'
+        page:
+          type: integer
+          format: int32
+        has_next:
+          type: boolean
+
+    EngineerCount:
+      type: object
+      required: [id, active_orders]
+      properties:
+        id:
+          type: string
+          format: uuid
+        active_orders:
+          type: integer
+          format: int64
+
+    EngineerLoad:
+      type: object
+      required: [id, name, active_orders]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        active_orders:
+          type: integer
+          format: int64
+
+    OrderStats:
+      type: object
+      required: [today_orders, active_orders, awaiting_payment, today_revenue, recent_orders]
+      properties:
+        today_orders:
+          type: integer
+          format: int64
+        active_orders:
+          type: integer
+          format: int64
+        awaiting_payment:
+          type: integer
+          format: int64
+        today_revenue:
+          type: string
+        recent_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectorOrder'
+
+    OrderStatsSource:
+      type: object
+      required: [stats, assigned_counts]
+      properties:
+        stats:
+          $ref: '#/components/schemas/OrderStats'
+        assigned_counts:
+          type: array
+          items:
+            $ref: '#/components/schemas/EngineerCount'
+
+    DirectorDashboard:
+      type: object
+      required: [orders, engineers]
+      properties:
+        orders:
+          $ref: '#/components/schemas/OrderStats'
+        engineers:
+          type: array
+          items:
+            $ref: '#/components/schemas/EngineerLoad'
 
     InventoryItem:
       type: object

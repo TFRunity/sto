@@ -10,6 +10,7 @@ import (
 	"github.com/AlexeBabanov/sto/orders/internal/saga"
 )
 
+// PayOrder принимает оплату. Подтверждение списания клиент узнаёт из карточки заказа.
 func (h handler) PayOrder(ctx context.Context, req api.PayOrderRequestObject) (api.PayOrderResponseObject, error) {
 	identity, ok := httpx.IdentityFromContext(ctx)
 	if !ok {

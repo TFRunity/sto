@@ -16,6 +16,7 @@ type Handler struct {
 	photos photoStorage
 }
 
+// NewHandler подключает базу ТС и файловое хранилище фото.
 func NewHandler(conn db.DBTX, photoDir string) *Handler {
 	return &Handler{
 		repo:   repository{queries: db.New(conn)},
@@ -23,6 +24,7 @@ func NewHandler(conn db.DBTX, photoDir string) *Handler {
 	}
 }
 
+// CreateVehicle записывает ТС за текущим владельцем после нормализации номера.
 func (h *Handler) CreateVehicle(ctx context.Context, req api.CreateVehicleRequestObject) (api.CreateVehicleResponseObject, error) {
 	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
@@ -45,6 +47,7 @@ func (h *Handler) CreateVehicle(ctx context.Context, req api.CreateVehicleReques
 	return api.CreateVehicle201JSONResponse{VehicleId: id}, nil
 }
 
+// GetVehicle собирает карточку из данных ТС и ссылок на доступные фото.
 func (h *Handler) GetVehicle(ctx context.Context, req api.GetVehicleRequestObject) (api.GetVehicleResponseObject, error) {
 	row, err := h.accessibleVehicle(ctx, req.Id)
 	if errors.Is(err, errVehicleNotFound) {

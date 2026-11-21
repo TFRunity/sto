@@ -19,6 +19,7 @@ func NewRepository(conn db.DBTX) *Repository {
 	return &Repository{q: db.New(conn)}
 }
 
+// CreateClient вставляет клиента. Конфликт уникального телефона становится ошибкой регистрации.
 func (r *Repository) CreateClient(ctx context.Context, u User) (User, error) {
 	row, err := r.q.CreateClient(ctx, db.CreateClientParams{
 		ID:           u.ID,
@@ -36,6 +37,7 @@ func (r *Repository) CreateClient(ctx context.Context, u User) (User, error) {
 	return toUser(row), nil
 }
 
+// GetByPhone читает живого пользователя для проверки пароля при входе.
 func (r *Repository) GetByPhone(ctx context.Context, phone string) (User, error) {
 	row, err := r.q.GetUserByPhone(ctx, phone)
 	if errors.Is(err, pgx.ErrNoRows) {

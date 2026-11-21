@@ -91,7 +91,7 @@ VALUES ($1, $2, $3)
 type RecordDeductedItemParams struct {
 	SagaID   uuid.UUID
 	ItemID   uuid.UUID
-	Quantity int32
+	Quantity int64
 }
 
 func (q *Queries) RecordDeductedItem(ctx context.Context, arg RecordDeductedItemParams) error {
@@ -104,6 +104,7 @@ UPDATE inventory AS i SET quantity = i.quantity + a.quantity, updated_at = now()
 FROM stock_attempt_items AS a WHERE a.saga_id = $1 AND i.id = a.item_id
 `
 
+// include-deleted: вернуть ранее списанное, даже если товар сняли с продажи.
 func (q *Queries) RestoreStock(ctx context.Context, sagaID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, restoreStock, sagaID)
 	return err

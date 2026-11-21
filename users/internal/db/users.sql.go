@@ -48,6 +48,37 @@ func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Use
 	return i, err
 }
 
+const getPeopleByIDs = `-- name: GetPeopleByIDs :many
+SELECT id, name, phone FROM users WHERE id = ANY($1::uuid[])
+`
+
+type GetPeopleByIDsRow struct {
+	ID    uuid.UUID
+	Name  string
+	Phone string
+}
+
+// include-deleted: подписи к историческим заказам и справкам.
+func (q *Queries) GetPeopleByIDs(ctx context.Context, ids []uuid.UUID) ([]GetPeopleByIDsRow, error) {
+	rows, err := q.db.Query(ctx, getPeopleByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPeopleByIDsRow
+	for rows.Next() {
+		var i GetPeopleByIDsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Phone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByPhone = `-- name: GetUserByPhone :one
 SELECT id, name, phone, password_hash, role, work_started_at, created_at, updated_at, deleted_at
 FROM users
@@ -71,4 +102,66 @@ func (q *Queries) GetUserByPhone(ctx context.Context, phone string) (User, error
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const listEngineersForLoad = `-- name: ListEngineersForLoad :many
+SELECT id, name, phone FROM users
+WHERE role = 'engineer' AND deleted_at IS NULL
+ORDER BY name, id
+`
+
+type ListEngineersForLoadRow struct {
+	ID    uuid.UUID
+	Name  string
+	Phone string
+}
+
+func (q *Queries) ListEngineersForLoad(ctx context.Context) ([]ListEngineersForLoadRow, error) {
+	rows, err := q.db.Query(ctx, listEngineersForLoad)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEngineersForLoadRow
+	for rows.Next() {
+		var i ListEngineersForLoadRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Phone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchClients = `-- name: SearchClients :many
+SELECT id FROM users
+WHERE role = 'client' AND (
+    name ILIKE '%' || $1::text || '%' ESCAPE '!'
+    OR phone ILIKE '%' || $1::text || '%' ESCAPE '!'
+)
+ORDER BY id LIMIT 201
+`
+
+// include-deleted: директор ищет клиентов из истории заказов.
+func (q *Queries) SearchClients(ctx context.Context, pattern string) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, searchClients, pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

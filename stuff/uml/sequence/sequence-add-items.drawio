@@ -73,7 +73,7 @@
             <mxPoint x="100" y="200" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. Выбирает позицию → POST /orders/{id}/items (item_id, qty)">
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. Выбирает позицию → POST /orders/{id}/items или /orders/{id}/services">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="100" y="250" as="sourcePoint" />
             <mxPoint x="330" y="250" as="targetPoint" />
@@ -85,7 +85,7 @@
             <mxPoint x="790" y="290" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="6. GET /inventory/{id} | /services/{id} — цена (до транзакции)">
+        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="6. GET /inventory/{id} или /internal/services/{id} — цена (до транзакции)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="790" y="335" as="sourcePoint" />
             <mxPoint x="560" y="335" as="targetPoint" />
@@ -97,7 +97,7 @@
             <mxPoint x="790" y="400" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="a12" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="8. INSERT order_items / order_services&lt;br&gt;(order_id, item_id, qty, price) — цена фиксируется (ADR-034)" vertex="1">
+        <mxCell id="a12" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="8. INSERT order_items / order_services&lt;br&gt;В активном заказе сохраняются название и цена позиции" vertex="1">
           <mxGeometry x="798" y="415" width="10" height="34" as="geometry" />
         </mxCell>
         <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;align=center;verticalAlign=bottom;" value="9. 201 Created">

@@ -67,7 +67,7 @@
             <mxPoint x="520" y="190" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. GET /vehicles/search?q= (номер, нормализованный)">
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. GET /internal/vehicles/search?q= (номер, нормализованный)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="230" as="sourcePoint" />
             <mxPoint x="740" y="230" as="targetPoint" />
@@ -88,7 +88,7 @@
         <mxCell id="a8" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="6. оба списка пусты → сразу 200 (пустая страница), в Orders не идём" vertex="1">
           <mxGeometry x="308" y="320" width="10" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="m9" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="7. GET /orders?status=&amp;client_ids=&amp;vehicle_ids=&amp;page=">
+        <mxCell id="m9" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="7. GET /internal/orders?status=&amp;client_ids=&amp;vehicle_ids=&amp;page=">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="410" as="sourcePoint" />
             <mxPoint x="960" y="410" as="targetPoint" />
@@ -97,7 +97,7 @@
         <mxCell id="a10" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="8. SELECT … фильтр status&lt;br&gt;AND (client_id = ANY($1)&lt;br&gt;OR vehicle_id = ANY($2))&lt;br&gt;ORDER BY created_at DESC&lt;br&gt;LIMIT / OFFSET" vertex="1">
           <mxGeometry x="968" y="425" width="10" height="76" as="geometry" />
         </mxCell>
-        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="9. 200 OK (страница заказов: только id)">
+        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="9. 200 OK (страница заказов: ID, статус, этап и сумма)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="960" y="510" as="sourcePoint" />
             <mxPoint x="300" y="510" as="targetPoint" />
@@ -109,7 +109,7 @@
             <mxPoint x="520" y="575" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="11. GET /vehicles?ids= (номера ТС)">
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="11. GET /internal/vehicles?ids= (номера ТС)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="610" as="sourcePoint" />
             <mxPoint x="740" y="610" as="targetPoint" />

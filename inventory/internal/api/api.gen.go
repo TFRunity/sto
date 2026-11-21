@@ -24,6 +24,13 @@ import (
 	decimal "github.com/shopspring/decimal"
 )
 
+const (
+	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
+// CatalogPrice Цена в рублях с двумя знаками после точки.
+type CatalogPrice = string
+
 // Error Конверт ошибки (ADR-032)
 type Error struct {
 	Error ErrorBody `json:"error"`
@@ -41,6 +48,25 @@ type ErrorBody struct {
 	Message string `json:"message"`
 }
 
+// InventoryEntry defines model for InventoryEntry.
+type InventoryEntry struct {
+	Id   openapi_types.UUID `json:"id"`
+	Name string             `json:"name"`
+
+	// Price Цена в рублях с двумя знаками после точки.
+	Price    CatalogPrice `json:"price"`
+	Quantity int64        `json:"quantity"`
+}
+
+// InventoryInput defines model for InventoryInput.
+type InventoryInput struct {
+	Name string `json:"name"`
+
+	// Price Цена в рублях с двумя знаками после точки.
+	Price    CatalogPrice `json:"price"`
+	Quantity int32        `json:"quantity"`
+}
+
 // InventoryItem defines model for InventoryItem.
 type InventoryItem struct {
 	Id   openapi_types.UUID `json:"id"`
@@ -56,17 +82,38 @@ type Money = decimal.Decimal
 // ResourceId defines model for ResourceId.
 type ResourceId = openapi_types.UUID
 
+// Unauthorized Конверт ошибки (ADR-032)
+type Unauthorized = Error
+
 // UnexpectedError Конверт ошибки (ADR-032)
 type UnexpectedError = Error
 
 // ValidationFailed Конверт ошибки (ADR-032)
 type ValidationFailed = Error
 
+// CreateItemJSONRequestBody defines body for CreateItem for application/json ContentType.
+type CreateItemJSONRequestBody = InventoryInput
+
+// UpdateItemJSONRequestBody defines body for UpdateItem for application/json ContentType.
+type UpdateItemJSONRequestBody = InventoryInput
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Список активных позиций каталога
+	// (GET /inventory)
+	ListItems(w http.ResponseWriter, r *http.Request)
+	// Добавить товар
+	// (POST /inventory)
+	CreateItem(w http.ResponseWriter, r *http.Request)
+	// Удалить позицию из каталога
+	// (DELETE /inventory/{id})
+	DeleteItem(w http.ResponseWriter, r *http.Request, id ResourceId)
 	// Имя и цена товара
 	// (GET /inventory/{id})
 	GetItem(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Заменить данные позиции
+	// (PUT /inventory/{id})
+	UpdateItem(w http.ResponseWriter, r *http.Request, id ResourceId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -77,6 +124,77 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListItems operation middleware
+func (siw *ServerInterfaceWrapper) ListItems(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListItems(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateItem operation middleware
+func (siw *ServerInterfaceWrapper) CreateItem(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateItem(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteItem operation middleware
+func (siw *ServerInterfaceWrapper) DeleteItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteItem(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetItem operation middleware
 func (siw *ServerInterfaceWrapper) GetItem(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +212,37 @@ func (siw *ServerInterfaceWrapper) GetItem(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetItem(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateItem operation middleware
+func (siw *ServerInterfaceWrapper) UpdateItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateItem(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -223,14 +372,195 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/inventory", wrapper.ListItems)
+	m.HandleFunc("POST "+options.BaseURL+"/inventory", wrapper.CreateItem)
+	m.HandleFunc("DELETE "+options.BaseURL+"/inventory/{id}", wrapper.DeleteItem)
 	m.HandleFunc("GET "+options.BaseURL+"/inventory/{id}", wrapper.GetItem)
+	m.HandleFunc("PUT "+options.BaseURL+"/inventory/{id}", wrapper.UpdateItem)
 
 	return m
 }
 
+type UnauthorizedJSONResponse Error
+
 type UnexpectedErrorJSONResponse Error
 
 type ValidationFailedJSONResponse Error
+
+type ListItemsRequestObject struct {
+}
+
+type ListItemsResponseObject interface {
+	VisitListItemsResponse(w http.ResponseWriter) error
+}
+
+type ListItems200JSONResponse []InventoryEntry
+
+func (response ListItems200JSONResponse) VisitListItemsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListItems400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response ListItems400JSONResponse) VisitListItemsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListItems401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListItems401JSONResponse) VisitListItemsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListItems403JSONResponse Error
+
+func (response ListItems403JSONResponse) VisitListItemsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListItemsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListItemsdefaultJSONResponse) VisitListItemsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateItemRequestObject struct {
+	Body *CreateItemJSONRequestBody
+}
+
+type CreateItemResponseObject interface {
+	VisitCreateItemResponse(w http.ResponseWriter) error
+}
+
+type CreateItem201JSONResponse InventoryEntry
+
+func (response CreateItem201JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateItem400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response CreateItem400JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateItem401JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateItem403JSONResponse Error
+
+func (response CreateItem403JSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateItemdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateItemdefaultJSONResponse) VisitCreateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type DeleteItemRequestObject struct {
+	Id ResourceId `json:"id"`
+}
+
+type DeleteItemResponseObject interface {
+	VisitDeleteItemResponse(w http.ResponseWriter) error
+}
+
+type DeleteItem204Response struct {
+}
+
+func (response DeleteItem204Response) VisitDeleteItemResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteItem400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response DeleteItem400JSONResponse) VisitDeleteItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteItem401JSONResponse) VisitDeleteItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteItem403JSONResponse Error
+
+func (response DeleteItem403JSONResponse) VisitDeleteItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteItem404JSONResponse Error
+
+func (response DeleteItem404JSONResponse) VisitDeleteItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteItemdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeleteItemdefaultJSONResponse) VisitDeleteItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
 
 type GetItemRequestObject struct {
 	Id ResourceId `json:"id"`
@@ -279,11 +609,89 @@ func (response GetItemdefaultJSONResponse) VisitGetItemResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type UpdateItemRequestObject struct {
+	Id   ResourceId `json:"id"`
+	Body *UpdateItemJSONRequestBody
+}
+
+type UpdateItemResponseObject interface {
+	VisitUpdateItemResponse(w http.ResponseWriter) error
+}
+
+type UpdateItem200JSONResponse InventoryEntry
+
+func (response UpdateItem200JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateItem400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response UpdateItem400JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateItem401JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateItem403JSONResponse Error
+
+func (response UpdateItem403JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateItem404JSONResponse Error
+
+func (response UpdateItem404JSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateItemdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response UpdateItemdefaultJSONResponse) VisitUpdateItemResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Список активных позиций каталога
+	// (GET /inventory)
+	ListItems(ctx context.Context, request ListItemsRequestObject) (ListItemsResponseObject, error)
+	// Добавить товар
+	// (POST /inventory)
+	CreateItem(ctx context.Context, request CreateItemRequestObject) (CreateItemResponseObject, error)
+	// Удалить позицию из каталога
+	// (DELETE /inventory/{id})
+	DeleteItem(ctx context.Context, request DeleteItemRequestObject) (DeleteItemResponseObject, error)
 	// Имя и цена товара
 	// (GET /inventory/{id})
 	GetItem(ctx context.Context, request GetItemRequestObject) (GetItemResponseObject, error)
+	// Заменить данные позиции
+	// (PUT /inventory/{id})
+	UpdateItem(ctx context.Context, request UpdateItemRequestObject) (UpdateItemResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -315,6 +723,87 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
+// ListItems operation middleware
+func (sh *strictHandler) ListItems(w http.ResponseWriter, r *http.Request) {
+	var request ListItemsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListItems(ctx, request.(ListItemsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListItems")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListItemsResponseObject); ok {
+		if err := validResponse.VisitListItemsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateItem operation middleware
+func (sh *strictHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
+	var request CreateItemRequestObject
+
+	var body CreateItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateItem(ctx, request.(CreateItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateItemResponseObject); ok {
+		if err := validResponse.VisitCreateItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteItem operation middleware
+func (sh *strictHandler) DeleteItem(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request DeleteItemRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteItem(ctx, request.(DeleteItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteItemResponseObject); ok {
+		if err := validResponse.VisitDeleteItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetItem operation middleware
 func (sh *strictHandler) GetItem(w http.ResponseWriter, r *http.Request, id ResourceId) {
 	var request GetItemRequestObject
@@ -341,37 +830,81 @@ func (sh *strictHandler) GetItem(w http.ResponseWriter, r *http.Request, id Reso
 	}
 }
 
+// UpdateItem operation middleware
+func (sh *strictHandler) UpdateItem(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request UpdateItemRequestObject
+
+	request.Id = id
+
+	var body UpdateItemJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateItem(ctx, request.(UpdateItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateItemResponseObject); ok {
+		if err := validResponse.VisitUpdateItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

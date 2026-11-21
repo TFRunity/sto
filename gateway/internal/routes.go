@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	roleDirector = "director"
 	roleEngineer = "engineer"
 	roleClient   = "client"
 )
@@ -27,8 +28,13 @@ var routes = []route{
 	// Запись позиций и создание заказа доступны инженеру. Исключения проверяются по методу.
 	{prefix: "/orders", upstream: "orders", roles: []string{roleEngineer}},
 	{prefix: "/vehicles", upstream: "vehicle"},
+	{prefix: "/inventory", upstream: "inventory"},
+	{prefix: "/services", upstream: "services"},
+	{prefix: "/dashboard", upstream: "director", roles: []string{roleDirector}},
+	{prefix: "/director/orders", upstream: "director", roles: []string{roleDirector}},
 }
 
+// NewRouter принимает внешние пути с /api и передаёт маршрутизацию по путям из OpenAPI.
 func NewRouter(secret []byte, proxies map[string]http.Handler, logger *slog.Logger) http.Handler {
 	app := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleRequest(w, r, secret, proxies, logger)
@@ -92,8 +98,14 @@ func decideRequest(r *http.Request, route route, identity Identity) error {
 	switch route.prefix {
 	case "/orders":
 		roles = orderRoles(r, roles)
+	case "/dashboard", "/director/orders":
+		if r.Method != http.MethodGet || r.URL.Path != route.prefix {
+			roles = nil
+		}
 	case "/vehicles":
 		roles = vehicleRoles(r)
+	case "/inventory", "/services":
+		roles = catalogRoles(r, route.prefix)
 	}
 	if slices.Contains(roles, identity.Role) {
 		return nil
@@ -143,6 +155,9 @@ func forwardRequest(w http.ResponseWriter, r *http.Request, proxy http.Handler, 
 }
 
 func orderRoles(r *http.Request, fallback []string) []string {
+	if r.URL.Path == "/orders/stats" {
+		return nil
+	}
 	if r.Method == http.MethodPost && r.URL.Path == "/orders" {
 		return []string{roleEngineer, roleClient}
 	}
@@ -160,4 +175,21 @@ func orderRoles(r *http.Request, fallback []string) []string {
 		return []string{roleEngineer, roleClient}
 	}
 	return fallback
+}
+
+func catalogRoles(r *http.Request, prefix string) []string {
+	if r.URL.Path == prefix {
+		switch r.Method {
+		case http.MethodGet:
+			return []string{roleEngineer, roleDirector}
+		case http.MethodPost:
+			return []string{roleDirector}
+		}
+	}
+	id, found := strings.CutPrefix(r.URL.Path, prefix+"/")
+	if found && id != "" && !strings.Contains(id, "/") &&
+		(r.Method == http.MethodPut || r.Method == http.MethodDelete) {
+		return []string{roleDirector}
+	}
+	return nil
 }

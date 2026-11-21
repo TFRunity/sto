@@ -26,3 +26,17 @@ SELECT p.file_key
 FROM vehicle_photos AS p
 JOIN vehicles AS v ON v.id = p.vehicle_id
 WHERE p.id = sqlc.arg(photo_id) AND p.vehicle_id = sqlc.arg(vehicle_id) AND v.deleted_at IS NULL;
+
+-- Фото удалённых ТС намеренно исключаются. Если один ключ встречается
+-- в нескольких строках, для сохранения файла достаточно одной живой ссылки.
+
+-- name: ListLivePhotoKeys :many
+-- Only keys reachable from live vehicles protect files from cleanup.
+SELECT p.file_key
+FROM vehicle_photos AS p
+JOIN vehicles AS v ON v.id = p.vehicle_id
+WHERE v.deleted_at IS NULL
+UNION ALL
+SELECT cover_photo_url
+FROM vehicles
+WHERE deleted_at IS NULL AND cover_photo_url IS NOT NULL;

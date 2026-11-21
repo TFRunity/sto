@@ -56,6 +56,38 @@ func (q *Queries) GetVehiclePhotoKey(ctx context.Context, arg GetVehiclePhotoKey
 	return file_key, err
 }
 
+const listLivePhotoKeys = `-- name: ListLivePhotoKeys :many
+SELECT p.file_key
+FROM vehicle_photos AS p
+JOIN vehicles AS v ON v.id = p.vehicle_id
+WHERE v.deleted_at IS NULL
+UNION ALL
+SELECT cover_photo_url
+FROM vehicles
+WHERE deleted_at IS NULL AND cover_photo_url IS NOT NULL
+`
+
+// Only keys reachable from live vehicles protect files from cleanup.
+func (q *Queries) ListLivePhotoKeys(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listLivePhotoKeys)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var file_key string
+		if err := rows.Scan(&file_key); err != nil {
+			return nil, err
+		}
+		items = append(items, file_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVehiclePhotoIDs = `-- name: ListVehiclePhotoIDs :many
 SELECT p.id
 FROM vehicle_photos AS p

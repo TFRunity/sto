@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 )
 
 type photoStorage struct {
 	dir string
+	mu  sync.Mutex
 }
 
 var (
@@ -19,8 +21,13 @@ var (
 	errPhotoNotFound = errors.New("vehicle photo not found")
 )
 
-// save writes the JPEG before persisting its key.
-func (s photoStorage) save(jpeg []byte, persist func(string) error) error {
+// save сначала записывает JPEG и только потом сохраняет ключ в PostgreSQL.
+// Уборщик должен учитывать весь этот промежуток: до persist новый файл
+// в каталоге уже есть, а среди ключей в базе его ещё нет.
+func (s *photoStorage) save(jpeg []byte, persist func(string) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	key := uuid.NewString() + ".jpg"
 	path := filepath.Join(s.dir, key)
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
@@ -45,10 +52,17 @@ func removeFailedPhoto(path string, cause error) error {
 	return cause
 }
 
-func (s photoStorage) open(key string) (*os.File, int64, error) {
+func isPhotoKey(key string) bool {
 	name, ok := strings.CutSuffix(key, ".jpg")
+	if !ok {
+		return false
+	}
 	id, err := uuid.Parse(name)
-	if !ok || err != nil || id.String() != name {
+	return err == nil && id.String() == name
+}
+
+func (s *photoStorage) open(key string) (*os.File, int64, error) {
+	if !isPhotoKey(key) {
 		return nil, 0, errors.New("invalid stored vehicle photo key")
 	}
 	file, err := os.Open(filepath.Join(s.dir, key))

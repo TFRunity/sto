@@ -51,7 +51,8 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("load vehicle OpenAPI spec: %w", err)
 	}
 	options := httpx.NewStrictErrors(logger)
-	strict := api.NewStrictHandlerWithOptions(vehicle.NewHandler(pool, cfg.PhotoDir), nil, api.StrictHTTPServerOptions(options))
+	handler := vehicle.NewHandler(pool, cfg.PhotoDir)
+	strict := api.NewStrictHandlerWithOptions(handler, nil, api.StrictHTTPServerOptions(options))
 	routes := api.Handler(strict)
 	mux := http.NewServeMux()
 	// Orders вызывает этот маршрут внутри Compose. Gateway его не публикует.
@@ -60,5 +61,16 @@ func run(ctx context.Context) error {
 	mux.Handle("GET /internal/vehicles", routes)
 	mux.Handle("/", httpx.RequireIdentity(routes, logger))
 	app := httpx.Validator(spec, logger)(mux)
+	cleanupCtx, cancelCleanup := context.WithCancel(ctx)
+	cleanupDone := make(chan struct{})
+	go func() {
+		defer close(cleanupDone)
+		handler.RunPhotoCleanup(cleanupCtx, logger)
+	}()
+	// Wait for cleanup before closing the pool it uses.
+	defer func() {
+		cancelCleanup()
+		<-cleanupDone
+	}()
 	return httpx.Run(ctx, cfg.HTTPAddr, vehicle.LimitPhotoUpload(app, options.ResponseErrorHandlerFunc), logger)
 }

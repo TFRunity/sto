@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" compressed="false">
+  <diagram id="reading-order" name="Порядок чтения">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageWidth="850" pageHeight="1250">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="В каком порядке читать проект СТО" style="text;html=1;align=left;verticalAlign=middle;fontSize=26;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="25" width="710" height="50" />
+        </mxCell>
+        <mxCell id="step-1" value="&lt;b&gt;1. Границы проекта&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#334155&quot;&gt;PLAN.md → architecture.drawio&lt;/span&gt;&lt;br&gt;Найди Gateway, Vehicle, Orders и Inventory. У каждого сервиса своя роль." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=18;fontSize=15;fillColor=#EFF6FF;strokeColor=#93C5FD;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="95" width="710" height="105" />
+        </mxCell>
+        <mxCell id="step-2" value="&lt;b&gt;2. Контракт запроса&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#334155&quot;&gt;api/openapi.yaml → POST /vehicles&lt;/span&gt;&lt;br&gt;Найди поля запроса и operationId createVehicle." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=18;fontSize=15;fillColor=#EFF6FF;strokeColor=#93C5FD;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="245" width="710" height="105" />
+        </mxCell>
+        <mxCell id="edge-2" edge="1" parent="1" source="step-1" target="step-2" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=2;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-3" value="&lt;b&gt;3. Как запрос попадает в Vehicle&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#334155&quot;&gt;gateway/internal/routes.go → vehicle/internal/handler.go&lt;/span&gt;&lt;br&gt;Проследи роль клиента и вызов CreateVehicle." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=18;fontSize=15;fillColor=#EFF6FF;strokeColor=#93C5FD;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="395" width="710" height="105" />
+        </mxCell>
+        <mxCell id="edge-3" edge="1" parent="1" source="step-2" target="step-3" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=2;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-4" value="&lt;b&gt;4. Что происходит с данными&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#334155&quot;&gt;vehicle/internal/vehicle.go → repository.go → queries/vehicles.sql&lt;/span&gt;&lt;br&gt;Проследи нормализацию номера, вставку и проверку уникальности в migrations/." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=18;fontSize=15;fillColor=#EFF6FF;strokeColor=#93C5FD;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="545" width="710" height="105" />
+        </mxCell>
+        <mxCell id="edge-4" edge="1" parent="1" source="step-3" target="step-4" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=2;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-5" value="&lt;b&gt;5. Как добавить маршрут&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#334155&quot;&gt;help/project-workbook.md → раздел про make generate&lt;/span&gt;&lt;br&gt;Сверь OpenAPI и SQL с тем, какие Go-методы создают генераторы." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=18;fontSize=15;fillColor=#F0FDF4;strokeColor=#86C89B;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="695" width="710" height="105" />
+        </mxCell>
+        <mxCell id="edge-5" edge="1" parent="1" source="step-4" target="step-5" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=2;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-6" value="&lt;b&gt;6. Как взаимодействуют сервисы&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#334155&quot;&gt;orders/internal/order/booking.go → vehicle.go → claim.go&lt;/span&gt;&lt;br&gt;Сначала проследи проверку владельца в Vehicle, затем назначение инженера в Orders." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=18;fontSize=15;fillColor=#F0FDF4;strokeColor=#86C89B;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="845" width="710" height="105" />
+        </mxCell>
+        <mxCell id="edge-6" edge="1" parent="1" source="step-5" target="step-6" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=2;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="step-7" value="&lt;b&gt;7. Как работает оплата&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#334155&quot;&gt;orders/internal/saga → chassis/outbox → inventory/internal/stock&lt;/span&gt;&lt;br&gt;Проследи списание товара и отдельно разберись, что происходит после дедлайна." style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=18;fontSize=15;fillColor=#F0FDF4;strokeColor=#86C89B;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="995" width="710" height="105" />
+        </mxCell>
+        <mxCell id="edge-7" edge="1" parent="1" source="step-6" target="step-7" style="endArrow=block;endFill=1;strokeColor=#475569;strokeWidth=2;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -10,8 +10,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ru">
-      <body className="mx-auto max-w-5xl px-4 py-6 sm:px-8">
-        <Providers>{children}</Providers>
+      <body>
+        {/* Radix блокирует прокрутку на body и временно меняет его отступы. */}
+        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8">
+          <Providers>{children}</Providers>
+        </div>
       </body>
     </html>
   );

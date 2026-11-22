@@ -9,7 +9,7 @@ import { GatewayError } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 import { historyQuery, orderQuery, vehicleListQuery, vehicleQuery, type HistoryItem } from "./customer-api";
 import { BookingForm } from "./forms";
-import { VehiclePhotos } from "./vehicle-photos";
+import { VehicleCover, VehiclePhotos } from "./vehicle-photos";
 
 type Vehicle = components["schemas"]["VehicleCard"];
 
@@ -145,6 +145,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
         <h1>{vehicle.brand}</h1>
         <p>{vehicle.number}</p>
         <p className="text-sm text-muted-foreground">VIN {vehicle.vin}</p>
+        <VehicleCover id={vehicle.vehicle_id} hasCover={Boolean(vehicle.cover_photo_url)} />
         <Button asChild><Link href={`${vehiclePath(vehicle.vehicle_id)}/booking`}>Записаться на сервис</Link></Button>
       </section>
       <VehiclePhotos vehicle={vehicle} />

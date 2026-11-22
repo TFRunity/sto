@@ -73,7 +73,7 @@ export function vehiclePhotoQuery(gateway: CustomerGateway, id: string, photoId?
             params: { path: { id, photo_id: photoId } }, parseAs: "blob", signal,
           })
         : gateway.GET("/vehicles/{id}/cover_photo", {
-            params: { path: { id } }, parseAs: "blob", signal,
+            params: { path: { id } }, parseAs: "blob", cache: "no-store", signal,
           });
 
       return response.then(({ data }) => {
@@ -95,5 +95,18 @@ export function createBooking(gateway: CustomerGateway, body: components["schema
   return gateway.POST("/orders", { body }).then(({ data }) => {
     if (!data?.order_id) throw new Error("Missing order ID");
     return data.order_id;
+  });
+}
+
+export function replaceVehicleCover(gateway: CustomerGateway, id: string, photo: File) {
+  return gateway.PUT("/vehicles/{id}/cover_photo", {
+    params: { path: { id } },
+    body: { photo: photo.name },
+    bodySerializer: () => {
+      // OpenAPI описывает бинарное поле как string. В multipart передаём сам файл.
+      const form = new FormData();
+      form.set("photo", photo);
+      return form;
+    },
   });
 }

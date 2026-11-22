@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Формы СТО v1</title>
+<style>
+:root { font: 16px/1.5 system-ui, sans-serif; color: #18252f; background: #edf1f2; }
+body { margin: 2rem auto; padding: 0 1rem; max-width: 68rem; }
+main { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); align-items: start; gap: 1rem; }
+section { background: white; padding: 1.2rem; border: 1px solid #c9d4d7; border-radius: .75rem; }
+h2 { margin: 0 0 .9rem; font-size: 1.1rem; }
+p { margin: .35rem 0; }
+form, .sample { display: grid; gap: .65rem; }
+label { display: grid; gap: .2rem; }
+input, select, textarea, button { box-sizing: border-box; font: inherit; min-height: 2.75rem; padding: .4rem .6rem; border: 1px solid #899a9f; border-radius: .35rem; }
+button { background: #143e44; color: #fff; text-align: center; }
+a { color: #22545c; }
+dt { color: #47585e; } dd { margin: 0 0 .5rem; }
+.preview { display: grid; place-items: center; min-height: 6rem; background: #eef2f2; border-radius: .35rem; }
+.note, small { color: #47585e; }
+hr { border: 0; border-top: 1px solid #c9d4d7; width: 100%; }
+</style>
+<header><h1>Формы СТО v1</h1>
+<p><a href="frontend-plan.md">План и перечень всех экранов</a></p>
+<p>Статические макеты. Поля доступны для просмотра и заполнения, кнопки показывают будущие действия.</p></header>
+<main>
+<section id="login"><h2>Веб · Вход</h2><form><label>Телефон<input type="tel" autocomplete="username" placeholder="+7"></label><label>Пароль<input type="password" autocomplete="current-password"></label><button type="button">Показать пароль</button><button type="button">Войти</button><a href="web-general/web-screens.html#render-1">Создать аккаунт</a></form></section>
+<section id="vehicle-create"><h2>Клиент · Добавить ТС</h2><form><label>Госномер<input type="text" placeholder="А123ВС77"></label><label>Марка<input type="text" ></label><label>VIN<input type="text" ></label><button type="button">Добавить ТС</button></form></section>
+<section id="booking"><h2>Клиент · Записаться на сервис</h2><form><label>Автомобиль<select><option>Выберите ТС</option><option>Лада Веста · А123ВС77</option></select></label><label>Желаемая услуга<input type="text" placeholder="Замена масла"></label><label>Желаемая дата<input type="date" ></label><label>Комментарий <small>необязательно</small><textarea rows="2"></textarea></label><button type="button">Отправить заявку</button></form></section>
+<section id="cover"><h2>Клиент · Заменить обложку</h2><form><div class="preview">Предпросмотр фото</div><label>Файл JPEG или PNG<input type="file" accept="image/jpeg,image/png"></label><button type="button">Сохранить обложку</button></form></section>
+<section id="customer-order"><h2>Клиент · Детали заказа</h2><div class="sample"><p>Лада Веста · А123ВС77</p><p>В работе · Готов</p><ul><li>Масляный фильтр × 1 · 500,00 ₽</li><li>Замена масла × 1 · 1 500,00 ₽</li></ul><p><strong>Итого 2 000,00 ₽</strong></p><button type="button">Оплатить</button></div></section>
+<section id="director-order"><h2>Директор · Сводка заказа</h2><div class="sample"><dl><dt>Заказ</dt><dd>№ 1042</dd><dt>Клиент</dt><dd>Ирина Иванова · +7 900 000-00-00</dd><dt>ТС</dt><dd>А123ВС77</dd><dt>Ответственный</dt><dd>Алексей Петров</dd><dt>Статус и этап</dt><dd>Оплачен · Выдан</dd><dt>Сумма</dt><dd>2 000,00 ₽</dd></dl></div></section>
+<section id="item"><h2>Директор · Товар</h2><form><label>Название<input type="text" placeholder="Масляный фильтр"></label><label>Цена, ₽<input type="text" inputmode="decimal" placeholder="500.00"></label><label>Остаток<input type="number" min="0" step="1"></label><button type="button">Сохранить товар</button></form></section>
+<section id="service"><h2>Директор · Услуга</h2><form><label>Название<input type="text" placeholder="Замена масла"></label><label>Цена, ₽<input type="text" inputmode="decimal" placeholder="1500.00"></label><button type="button">Сохранить услугу</button></form></section>
+<section id="catalog-delete"><h2>Директор · Удаление позиции</h2><div class="sample"><p>Удалить «Масляный фильтр» из каталога? Позиция останется в ранее оформленных заказах.</p><button type="button">Оставить позицию</button><button type="button">Удалить</button></div></section>
+<section id="pool"><h2>Инженер · Пул заявок</h2><div class="sample"><p><strong>Замена масла</strong></p><p>Желаемая дата: 28 ноября</p><p>Комментарий: привезу своё масло</p><button type="button">Открыть карточку ТС</button><button type="button">Взять в работу</button></div></section>
+<section id="engineer-order"><h2>Инженер · Прямое создание заказа</h2><div class="sample"><p class="note">Макет для будущего подбора через API инженера.</p><form><label>Клиент<input type="text" placeholder="Имя или телефон"></label><label>Транспортное средство<input type="text" placeholder="Госномер"></label><button type="button">Создать заказ</button></form></div></section>
+<section id="order-line"><h2>Инженер · Добавить позицию</h2><form><label>Тип позиции<select><option>Товар</option><option>Услуга</option></select></label><label>Позиция<select><option>Масляный фильтр · остаток 7</option></select></label><label>Количество<input type="number" min="1" step="1" value="1"></label><button type="button">Добавить в заказ</button></form></section>
+<section id="order-actions"><h2>Инженер · Этап и отмена заказа</h2><form><label>Этап работ<select><option>Принят</option><option>В работе</option><option>Готов</option><option>Выдан</option></select></label><button type="button">Сохранить этап</button><hr><p>Отменить заказ? Он останется в истории со статусом «Отменён».</p><button type="button">Оставить заказ</button><button type="button">Подтвердить отмену</button></form></section>
+<section id="session"><h2>Инженер · Сессия</h2><div class="sample"><p>Роль: инженер</p><button type="button">Выйти</button></div></section>
+<section id="states"><h2>Общие состояния</h2><div class="sample"><p role="status">Загружаем данные…</p><p>Совпадений нет.</p><p>Сервис временно недоступен.</p><button type="button">Повторить загрузку</button><p>Сессия истекла. Войдите снова.</p></div></section>
+</main>
+</html>

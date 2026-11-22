@@ -1,5 +1,4 @@
 import createClient from "openapi-fetch";
-import { sessionExpired, sessionKey } from "../../features/auth/session";
 import type { components, paths } from "./schema";
 
 type ErrorBody = components["schemas"]["ErrorBody"];
@@ -60,20 +59,3 @@ export function createGatewayClient(baseUrl = "/api", fetcher?: typeof fetch) {
 
   return client;
 }
-
-export const gateway = createGatewayClient();
-gateway.use({
-  onRequest({ request, schemaPath }) {
-    if (typeof window === "undefined" || schemaPath === "/login" || schemaPath === "/register") return;
-    const token = sessionStorage.getItem(sessionKey);
-    if (token) request.headers.set("Authorization", `Bearer ${token}`);
-  },
-  onResponse({ request, response }) {
-    if (typeof window === "undefined" || response.status !== 401) return;
-    const token = sessionStorage.getItem(sessionKey);
-    if (token && request.headers.get("Authorization") === `Bearer ${token}`) {
-      sessionStorage.removeItem(sessionKey);
-      window.dispatchEvent(new Event(sessionExpired));
-    }
-  },
-});

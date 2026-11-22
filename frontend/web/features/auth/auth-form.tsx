@@ -1,70 +1,93 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { gateway, GatewayError } from "@/lib/api/client";
-import { cabinetPath, readWebRole, sessionKey } from "./session";
+import { GatewayError } from "@/lib/api/client";
+import { cabinetPath } from "./session";
+import { useSession, WebRoleError } from "./session-provider";
 
-const messages: Record<string, string> = {
-  invalid_credentials: "Проверьте телефон и пароль.",
-  phone_taken: "Этот телефон уже зарегистрирован.",
-  validation_failed: "Проверьте данные формы.",
+const fieldMessages: Record<string, string> = {
+  required: "Заполните это поле.",
+  too_long: "Пароль должен занимать не более 72 байт.",
+  format: "Проверьте формат значения.",
+  minLength: "Значение слишком короткое.",
+  maxLength: "Значение слишком длинное.",
 };
+
+function fieldError(error: GatewayError | null, name: string) {
+  if (name === "phone" && error?.code === "phone_taken") {
+    return "Этот телефон уже зарегистрирован.";
+  }
+  const reason = error?.fields?.[name];
+  return reason ? fieldMessages[reason] ?? "Проверьте значение поля." : undefined;
+}
+
+function formError(error: unknown) {
+  if (error instanceof WebRoleError) return "Веб-кабинет доступен клиенту и директору.";
+  if (error instanceof GatewayError) {
+    if (error.code === "invalid_credentials") return "Проверьте телефон и пароль.";
+    if (error.code === "phone_taken") return null;
+    if (error.code === "validation_failed") {
+      return ["name", "phone", "password"].some((name) => error.fields?.[name])
+        ? null
+        : "Проверьте данные формы.";
+    }
+  }
+  return "Не удалось связаться с сервисом. Попробуйте ещё раз.";
+}
 
 export function AuthForm({ register = false }: { register?: boolean }) {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: async ({ name, phone, password }: { name: string; phone: string; password: string }) => {
-      const { data } = register
-        ? await gateway.POST("/register", { body: { name, phone, password } })
-        : await gateway.POST("/login", { body: { phone, password } });
-      const role = data?.token && readWebRole(data.token);
-      if (!data?.token || !role) throw new Error("web_role");
-      return { token: data.token, role };
-    },
-  });
+  const auth = useSession();
+  const request = useRef<AbortController | null>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => () => request.current?.abort(), []);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mutation.isPending) return;
+    if (request.current) return;
+
     const form = new FormData(event.currentTarget);
-    mutation.mutate({
-      name: String(form.get("name") ?? "").trim(),
-      phone: String(form.get("phone") ?? "").trim(),
-      password: String(form.get("password") ?? ""),
-    }, {
-      onSuccess({ token, role }) {
-        queryClient.clear();
-        sessionStorage.setItem(sessionKey, token);
-        router.replace(cabinetPath[role]);
-      },
-    });
+    const phone = String(form.get("phone") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    const controller = new AbortController();
+    request.current = controller;
+    setPending(true);
+    setError(null);
+
+    try {
+      const session = register
+        ? await auth.register({ name: String(form.get("name") ?? "").trim(), phone, password }, controller.signal)
+        : await auth.signIn({ phone, password }, controller.signal);
+      if (!controller.signal.aborted) router.replace(cabinetPath[session.role]);
+    } catch (cause) {
+      if (!controller.signal.aborted) setError(cause);
+    } finally {
+      request.current = null;
+      if (!controller.signal.aborted) setPending(false);
+    }
   }
 
-  const error = mutation.error;
-  const fields = error instanceof GatewayError ? error.fields : undefined;
-  const phoneTaken = error instanceof GatewayError && error.code === "phone_taken";
-  const message = error instanceof GatewayError
-    ? messages[error.code ?? ""] ?? "Сервис временно недоступен. Попробуйте ещё раз."
-    : error?.message === "web_role"
-      ? "Веб-кабинет доступен клиенту и директору."
-      : "Не удалось связаться с сервисом. Попробуйте ещё раз.";
+  const gatewayError = error instanceof GatewayError ? error : null;
+  const message = error ? formError(error) : null;
 
   return (
     <main className="mx-auto max-w-sm space-y-4 rounded-lg border bg-card p-5 sm:p-6">
       <h1>{register ? "Регистрация клиента" : "Вход в СТО"}</h1>
-      <form className="space-y-4" onSubmit={submit}>
-        <fieldset className="space-y-4" disabled={mutation.isPending}>
-          {register && <Field name="name" label="Имя" autoComplete="name" invalid={Boolean(fields?.name)} />}
-          <Field name="phone" label="Телефон" type="tel" autoComplete="tel" invalid={phoneTaken || Boolean(fields?.phone)} />
-          <Field name="password" label="Пароль" type="password" autoComplete={register ? "new-password" : "current-password"} invalid={Boolean(fields?.password)} />
-          {error && <p role="alert" className="text-sm text-destructive">{message}</p>}
-          <Button type="submit">{register ? "Зарегистрироваться" : "Войти"}</Button>
+      <form className="space-y-4" onSubmit={submit} aria-busy={pending}>
+        <fieldset className="space-y-4" disabled={pending}>
+          {register && <Field name="name" label="Имя" autoComplete="name" error={fieldError(gatewayError, "name")} />}
+          <Field name="phone" label="Телефон" type="tel" autoComplete="tel" error={fieldError(gatewayError, "phone")} />
+          <Field name="password" label="Пароль" type="password" autoComplete={register ? "new-password" : "current-password"} error={fieldError(gatewayError, "password")} />
+          {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
+          <Button type="submit">
+            {pending ? "Отправляем…" : register ? "Зарегистрироваться" : "Войти"}
+          </Button>
         </fieldset>
       </form>
       <Link className="text-accent-foreground underline" href={register ? "/login" : "/register"}>
@@ -74,15 +97,15 @@ export function AuthForm({ register = false }: { register?: boolean }) {
   );
 }
 
-function Field({ name, label, type = "text", autoComplete, invalid }: {
-  name: string; label: string; type?: string; autoComplete: string; invalid: boolean;
+function Field({ name, label, type = "text", autoComplete, error }: {
+  name: string; label: string; type?: string; autoComplete: string; error?: string;
 }) {
   return (
     <div className="space-y-1">
       <label className="text-sm font-medium" htmlFor={name}>{label}</label>
       <Input id={name} name={name} type={type} autoComplete={autoComplete} required
-        aria-invalid={invalid} aria-describedby={invalid ? `${name}-error` : undefined} />
-      {invalid && <p id={`${name}-error`} className="text-sm text-destructive">Проверьте это поле.</p>}
+        aria-invalid={Boolean(error)} aria-describedby={error ? `${name}-error` : undefined} />
+      {error && <p role="alert" id={`${name}-error`} className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

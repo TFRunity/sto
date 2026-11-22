@@ -7,7 +7,17 @@ Native для инженера. Рабочий маршрут v1 проходи�
 
 [Веб клиента](web-general/web-screens.html) · [Веб директора](web-director/director-web-screens.html) · [React Native](react-native/react-native-screens.html) · [Дополнительные формы](frontend-forms.html) · [OpenAPI](../../api/openapi.yaml)
 
+## Структура приложений
+
+- `frontend/web/` — одно приложение Next.js с App Router. В `app/` живут маршруты, страницы и layout’ы клиента и директора. Например, `app/director/orders/[id]/page.tsx` открывает карточку заказа директора.
+- Внутри `frontend/web/features/` лежат компоненты и маппинг данных для экранов по фичам. В `frontend/web/lib/api/` лежит типизированный клиент к Gateway. Типы запросов и ответов генерируются из `api/openapi.yaml`.
+- `frontend/mobile/` — отдельное приложение React Native для инженера, использующее тот же контракт Gateway.
+
+Next.js отвечает за маршрутизацию и композицию страниц. Go-бэкенд отвечает за проверку прав, бизнес-правила и хранение данных. Режим сборки и развёртывания веба выбирается отдельно с учётом ADR-038. [Решение по стеку](../decisions/stack-decisions-v1.md#фронтенд-v1).
+
 ## Порядок реализации
+
+Подробные задачи и проверки вынесены в [вечера 1–7](../tasks/frontend/README.md).
 
 | Шаг | Что делаем | Как принимаем |
 | --- | --- | --- |

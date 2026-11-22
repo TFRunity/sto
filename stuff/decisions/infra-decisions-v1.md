@@ -25,6 +25,8 @@
 - **Решение:**
   - пять контейнеров Postgres — по одному на сервис с БД (у Gateway БД нет);
   - сети: `edge` (nginx ↔ Gateway), `backend` (Gateway ↔ сервисы ↔ RabbitMQ ↔ Gotenberg), по отдельной сети на каждую БД (сервис ↔ его Postgres);
+  - при подключении Next.js к Compose задать явные имена сетей Docker: `sto-edge` для `edge` и `sto-backend` для `backend`. Next.js и nginx подключаются только к `edge`, Gateway подключается к обеим сетям. Внутренние Go-сервисы остаются в `backend` и в нужных им инфраструктурных сетях;
+  - браузер обращается к API через опубликованный nginx и Gateway. Серверный код Next.js может обратиться к Gateway по `edge`. У Next.js нет общей Docker-сети с внутренними Go-сервисами. Для локального `make web` Next.js запускается на хосте;
   - `depends_on` с `condition: service_healthy` на свой Postgres и RabbitMQ;
   - `restart: unless-stopped` у всех сервисов;
   - `ports:` только у nginx (и Gateway, если нужно в разработке) — ADR-010/012.

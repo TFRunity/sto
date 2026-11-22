@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: #ececea;
+  --color-foreground: #1a1a18;
+  --color-card: #ffffff;
+  --color-primary: #1a1a18;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f5f4f0;
+  --color-secondary-foreground: #1a1a18;
+  --color-muted: #f5f4f0;
+  --color-muted-foreground: #5f5e5a;
+  --color-accent: #e6f1fb;
+  --color-accent-foreground: #185fa5;
+  --color-destructive: #a32d2d;
+  --color-border: #d3d1c7;
+  --color-input: #b4b2a9;
+  --color-ring: #185fa5;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --font-sans: system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground;
+  }
+
+  h1 {
+    @apply text-2xl font-semibold tracking-tight sm:text-3xl;
+  }
+}

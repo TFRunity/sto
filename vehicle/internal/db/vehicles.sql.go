@@ -96,6 +96,71 @@ func (q *Queries) GetVehiclesByIDs(ctx context.Context, ids []uuid.UUID) ([]GetV
 	return items, nil
 }
 
+const listClientVehicles = `-- name: ListClientVehicles :many
+SELECT id AS vehicle_id, number, brand
+FROM vehicles
+WHERE owner_id = $1 AND deleted_at IS NULL
+ORDER BY created_at DESC, id DESC
+`
+
+type ListClientVehiclesRow struct {
+	VehicleID uuid.UUID
+	Number    string
+	Brand     string
+}
+
+func (q *Queries) ListClientVehicles(ctx context.Context, ownerID uuid.UUID) ([]ListClientVehiclesRow, error) {
+	rows, err := q.db.Query(ctx, listClientVehicles, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListClientVehiclesRow
+	for rows.Next() {
+		var i ListClientVehiclesRow
+		if err := rows.Scan(&i.VehicleID, &i.Number, &i.Brand); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVehicleMakes = `-- name: ListVehicleMakes :many
+SELECT name, aliases
+FROM vehicle_makes
+WHERE deleted_at IS NULL
+ORDER BY lower(name), name
+`
+
+type ListVehicleMakesRow struct {
+	Name    string
+	Aliases []string
+}
+
+func (q *Queries) ListVehicleMakes(ctx context.Context) ([]ListVehicleMakesRow, error) {
+	rows, err := q.db.Query(ctx, listVehicleMakes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVehicleMakesRow
+	for rows.Next() {
+		var i ListVehicleMakesRow
+		if err := rows.Scan(&i.Name, &i.Aliases); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchVehicles = `-- name: SearchVehicles :many
 SELECT id FROM vehicles
 WHERE number ILIKE '%' || $1::text || '%' ESCAPE '!'

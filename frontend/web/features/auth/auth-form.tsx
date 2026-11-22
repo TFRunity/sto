@@ -1,111 +1,110 @@
 "use client";
 
+import { Eye, EyeOff, Wrench } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState } from "react";
+import { IMaskInput } from "react-imask";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GatewayError } from "@/lib/api/client";
-import { cabinetPath } from "./session";
-import { useSession, WebRoleError } from "./session-provider";
+import { preparePhoneInput, russianPhoneMask, russianPhonePlaceholder } from "@/lib/forms/masks";
+import { useAuthForm } from "./use-auth-form";
 
-const fieldMessages: Record<string, string> = {
-  required: "Заполните это поле.",
-  too_long: "Пароль должен занимать не более 72 байт.",
-  format: "Проверьте формат значения.",
-  minLength: "Значение слишком короткое.",
-  maxLength: "Значение слишком длинное.",
-};
-
-function fieldError(error: GatewayError | null, name: string) {
-  if (name === "phone" && error?.code === "phone_taken") {
-    return "Этот телефон уже зарегистрирован.";
-  }
-  const reason = error?.fields?.[name];
-  return reason ? fieldMessages[reason] ?? "Проверьте значение поля." : undefined;
-}
-
-function formError(error: unknown) {
-  if (error instanceof WebRoleError) return "Веб-кабинет доступен клиенту и директору.";
-  if (error instanceof GatewayError) {
-    if (error.code === "invalid_credentials") return "Проверьте телефон и пароль.";
-    if (error.code === "phone_taken") return null;
-    if (error.code === "validation_failed") {
-      return ["name", "phone", "password"].some((name) => error.fields?.[name])
-        ? null
-        : "Проверьте данные формы.";
-    }
-  }
-  return "Не удалось связаться с сервисом. Попробуйте ещё раз.";
-}
+const inputClass = "h-12 w-full rounded-lg border border-input bg-white px-3.5 text-base shadow-xs";
+const maskFocusClass = "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:outline-none aria-invalid:border-destructive";
 
 export function AuthForm({ register = false }: { register?: boolean }) {
-  const router = useRouter();
-  const auth = useSession();
-  const request = useRef<AbortController | null>(null);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  useEffect(() => () => request.current?.abort(), []);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (request.current) return;
-
-    const form = new FormData(event.currentTarget);
-    const phone = String(form.get("phone") ?? "").trim();
-    const password = String(form.get("password") ?? "");
-    const controller = new AbortController();
-    request.current = controller;
-    setPending(true);
-    setError(null);
-
-    try {
-      const session = register
-        ? await auth.register({ name: String(form.get("name") ?? "").trim(), phone, password }, controller.signal)
-        : await auth.signIn({ phone, password }, controller.signal);
-      if (!controller.signal.aborted) router.replace(cabinetPath[session.role]);
-    } catch (cause) {
-      if (!controller.signal.aborted) setError(cause);
-    } finally {
-      request.current = null;
-      if (!controller.signal.aborted) setPending(false);
-    }
-  }
-
-  const gatewayError = error instanceof GatewayError ? error : null;
-  const message = error ? formError(error) : null;
+  const { pending, errors, message, submit, clearField } = useAuthForm(register);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <main className="mx-auto max-w-sm space-y-4 rounded-lg border bg-card p-5 sm:p-6">
-      <h1>{register ? "Регистрация клиента" : "Вход в СТО"}</h1>
-      <form className="space-y-4" onSubmit={submit} aria-busy={pending}>
-        <fieldset className="space-y-4" disabled={pending}>
-          {register && <Field name="name" label="Имя" autoComplete="name" error={fieldError(gatewayError, "name")} />}
-          <Field name="phone" label="Телефон" type="tel" autoComplete="tel" error={fieldError(gatewayError, "phone")} />
-          <Field name="password" label="Пароль" type="password" autoComplete={register ? "new-password" : "current-password"} error={fieldError(gatewayError, "password")} />
-          {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
-          <Button type="submit">
-            {pending ? "Отправляем…" : register ? "Зарегистрироваться" : "Войти"}
-          </Button>
-        </fieldset>
-      </form>
-      <Link className="text-accent-foreground underline" href={register ? "/login" : "/register"}>
-        {register ? "Уже есть аккаунт" : "Создать аккаунт"}
-      </Link>
+    <main className="mx-auto grid min-h-[calc(100svh-3rem)] max-w-4xl items-center">
+      <div className="grid overflow-hidden rounded-2xl border bg-card shadow-sm md:grid-cols-[0.85fr_1fr]">
+        <div className="flex gap-4 bg-[#172b38] p-6 text-white md:flex-col md:justify-between md:p-9">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 place-items-center rounded-xl bg-white/10" aria-hidden="true">
+              <Wrench className="size-5" />
+            </span>
+            <span className="text-xl font-semibold">СТО</span>
+          </div>
+          <p className="hidden max-w-xs text-3xl leading-tight font-semibold md:block">
+            Автомобили, заявки и история сервиса
+          </p>
+        </div>
+
+        <div className="space-y-6 p-5 sm:p-8 md:p-10">
+          <header className="space-y-2">
+            <h1>{register ? "Регистрация клиента" : "Вход в личный кабинет"}</h1>
+            <p className="text-muted-foreground">
+              {register ? "Укажите данные, чтобы записаться на сервис." : "Введите телефон и пароль."}
+            </p>
+          </header>
+
+          <form noValidate onSubmit={submit} aria-busy={pending}>
+            <fieldset disabled={pending} className="space-y-4">
+              {register && (
+                <div className="space-y-1.5">
+                  <label className="font-medium" htmlFor="name">Имя</label>
+                  <Input id="name" name="name" required autoComplete="name" className={inputClass}
+                    placeholder="Иван Иванов" aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? "name-error" : undefined}
+                    onChange={() => clearField("name")} />
+                  <FieldFeedback name="name" error={errors.name} />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="font-medium" htmlFor="phone">Телефон</label>
+                <IMaskInput id="phone" name="phone" type="text" inputMode="tel" autoComplete="tel"
+                  required mask={russianPhoneMask} prepare={preparePhoneInput}
+                  placeholder={russianPhonePlaceholder} className={`${inputClass} ${maskFocusClass}`}
+                  aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined}
+                  onAccept={() => clearField("phone")} />
+                <FieldFeedback name="phone" error={errors.phone} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-medium" htmlFor="password">Пароль</label>
+                <div className="relative">
+                  <Input id="password" name="password" type={showPassword ? "text" : "password"}
+                    className={`${inputClass} pr-12`} required
+                    autoComplete={register ? "new-password" : "current-password"}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={errors.password ? "password-error" : register ? "password-hint" : undefined}
+                    onChange={() => clearField("password")} />
+                  <Button type="button" variant="ghost" size="icon" className="absolute top-1.5 right-1.5"
+                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                    onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                  </Button>
+                </div>
+                <FieldFeedback name="password" error={errors.password} />
+                {register && !errors.password && (
+                  <p id="password-hint" className="text-sm text-muted-foreground">Не менее 8 символов.</p>
+                )}
+              </div>
+
+              {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
+              <Button type="submit" className="h-12 w-full bg-[#172b38] text-base hover:bg-[#234558]">
+                {pending ? "Отправляем…" : register ? "Зарегистрироваться" : "Войти"}
+              </Button>
+            </fieldset>
+          </form>
+
+          <p className="border-t pt-4 text-sm text-muted-foreground">
+            {register ? "Уже зарегистрированы? " : "Впервые в СТО? "}
+            <Link className="font-semibold text-accent-foreground underline underline-offset-4"
+              href={register ? "/login" : "/register"}>
+              {register ? "Войти" : "Зарегистрироваться"}
+            </Link>
+          </p>
+        </div>
+      </div>
     </main>
   );
 }
 
-function Field({ name, label, type = "text", autoComplete, error }: {
-  name: string; label: string; type?: string; autoComplete: string; error?: string;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium" htmlFor={name}>{label}</label>
-      <Input id={name} name={name} type={type} autoComplete={autoComplete} required
-        aria-invalid={Boolean(error)} aria-describedby={error ? `${name}-error` : undefined} />
-      {error && <p role="alert" id={`${name}-error`} className="text-sm text-destructive">{error}</p>}
-    </div>
-  );
+function FieldFeedback({ name, error }: { name: string; error?: string }) {
+  return error
+    ? <p role="alert" id={`${name}-error`} className="text-sm text-destructive">{error}</p>
+    : null;
 }

@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, FlatList, StatusBar, StyleSheet, Text, TextInput, View } from "react-native";
-import type { components } from "../web/lib/api/schema";
-
-type LoginRequest = components["schemas"]["LoginRequest"];
-type TokenResponse = components["schemas"]["TokenResponse"];
-type Booking = components["schemas"]["ServiceBookingListItem"];
-
-const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2/api").replace(/\/+$/, "");
+import { EngineerApiError, loadBookingPool, loginEngineer, type Booking } from "./engineer-api";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
@@ -36,33 +30,34 @@ function EngineerLogin({ sessionMessage, onSignIn }: {
   const [error, setError] = useState(sessionMessage);
   const submitting = useRef(false);
 
-  async function signIn() {
-    if (submitting.current || !phone.trim() || !password) return;
+  function signIn() {
+    if (submitting.current) return;
+
+    const digits = phone.replace(/\D/g, "");
+    if (!/^[+\d()\s-]+$/.test(phone) || !/^[78]\d{10}$/.test(digits)) {
+      setError("Введите полный номер телефона.");
+      return;
+    }
+    if (!password) {
+      setError("Введите пароль.");
+      return;
+    }
+
     submitting.current = true;
     setBusy(true);
     setError("");
-    try {
-      const body: LoginRequest = { phone: phone.trim(), password };
-      const response = await fetch(`${baseUrl}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) {
-        setError(response.status === 401 ? "Проверьте телефон и пароль." : "Не удалось выполнить вход.");
-        return;
-      }
 
-      const { token }: TokenResponse = await response.json();
-      if (!token) throw new Error("Missing access token");
+    void loginEngineer({ phone: `+7${digits.slice(1)}`, password }).then((token) => {
       setPassword("");
       onSignIn(token);
-    } catch {
-      setError("Не удалось выполнить вход. Повторите попытку.");
-    } finally {
+    }).catch((cause: unknown) => {
+      setError(cause instanceof EngineerApiError && cause.status === 401
+        ? "Проверьте телефон и пароль."
+        : "Не удалось выполнить вход. Повторите попытку.");
+    }).finally(() => {
       submitting.current = false;
       setBusy(false);
-    }
+    });
   }
 
   return (
@@ -95,26 +90,22 @@ function BookingPool({ token, onSessionEnd }: {
   useEffect(() => {
     const controller = new AbortController();
 
-    async function load() {
-      try {
-        const response = await fetch(`${baseUrl}/orders?status=requested`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        if (response.status === 401 || response.status === 403) {
-          onSessionEnd(response.status === 401 ? "Сессия истекла. Войдите снова." : "Вход доступен только инженеру.");
-          return;
-        }
-        if (!response.ok) throw new Error("Booking pool request failed");
-        const bookings: Booking[] = await response.json();
-        if (!controller.signal.aborted) setState({ status: "ready", bookings });
-      } catch {
-        if (!controller.signal.aborted) setState({ status: "error" });
+    void loadBookingPool(token, controller.signal).then((bookings) => {
+      if (!controller.signal.aborted) setState({ status: "ready", bookings });
+    }).catch((cause: unknown) => {
+      if (controller.signal.aborted) return;
+      if (cause instanceof EngineerApiError && cause.status === 401) {
+        onSessionEnd("Сессия истекла. Войдите снова.");
+        return;
       }
-    }
+      if (cause instanceof EngineerApiError && cause.status === 403) {
+        onSessionEnd("Вход доступен только инженеру.");
+        return;
+      }
 
-    void load();
+      setState({ status: "error" });
+    });
+
     return () => controller.abort();
   }, [attempt, onSessionEnd, token]);
 

@@ -1053,6 +1053,32 @@ paths:
           $ref: '#/components/responses/UnexpectedError'
 
   /vehicles:
+    get:
+      tags: [vehicle]
+      operationId: listClientVehicles
+      summary: Список автомобилей текущего клиента
+      description: |
+        Возвращает действующие автомобили клиента, включая автомобили без заказов.
+        Клиент определяется по авторизации. Список отсортирован от новых к старым.
+      responses:
+        '200':
+          description: Автомобили клиента. Если автомобилей нет, возвращается пустой массив.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientVehicleListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Доступно только клиенту.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
     post:
       tags: [vehicle]
       operationId: createVehicle
@@ -1085,6 +1111,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /vehicles/makes:
+    get:
+      tags: [vehicle]
+      operationId: listVehicleMakes
+      summary: Справочник марок автомобилей
+      description: Доступен клиенту при добавлении автомобиля. Альтернативные написания используются для поиска.
+      responses:
+        '200':
+          description: Действующие марки в алфавитном порядке.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VehicleMake'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         default:
           $ref: '#/components/responses/UnexpectedError'
 
@@ -1356,6 +1402,27 @@ components:
         vin:
           type: string
           minLength: 1
+    VehicleMake:
+      type: object
+      required: [name, aliases]
+      properties:
+        name:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+    ClientVehicleListItem:
+      type: object
+      required: [vehicle_id, number, brand]
+      properties:
+        vehicle_id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        brand:
+          type: string
     VehicleCard:
       allOf:
         - $ref: '#/components/schemas/VehicleDetails'

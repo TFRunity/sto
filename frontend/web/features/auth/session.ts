@@ -3,6 +3,7 @@ export const cabinetPath = { client: "/customer", director: "/director" } as con
 
 export function readWebSession(token: string) {
   try {
+    // Здесь читаем роль для навигации. Подпись и право доступа проверяет Gateway.
     const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     const { role, exp } = JSON.parse(atob(payload));
     if (typeof exp !== "number" || !Number.isFinite(exp) || exp * 1000 <= Date.now()) return null;
@@ -13,3 +14,5 @@ export function readWebSession(token: string) {
     return null;
   }
 }
+
+export class WebRoleError extends Error {}

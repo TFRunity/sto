@@ -499,10 +499,35 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Список автомобилей текущего клиента
+         * @description Возвращает действующие автомобили клиента, включая автомобили без заказов.
+         *     Клиент определяется по авторизации. Список отсортирован от новых к старым.
+         */
+        get: operations["listClientVehicles"];
         put?: never;
         /** Добавить ТС для текущего клиента */
         post: operations["createVehicle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vehicles/makes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Справочник марок автомобилей
+         * @description Доступен клиенту при добавлении автомобиля. Альтернативные написания используются для поиска.
+         */
+        get: operations["listVehicleMakes"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -646,6 +671,16 @@ export interface components {
             number: string;
             brand: string;
             vin: string;
+        };
+        VehicleMake: {
+            name: string;
+            aliases: string[];
+        };
+        ClientVehicleListItem: {
+            /** Format: uuid */
+            vehicle_id: string;
+            number: string;
+            brand: string;
         };
         VehicleCard: components["schemas"]["VehicleDetails"] & {
             /** Format: uuid */
@@ -2162,6 +2197,37 @@ export interface operations {
             default: components["responses"]["UnexpectedError"];
         };
     };
+    listClientVehicles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Автомобили клиента. Если автомобилей нет, возвращается пустой массив. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientVehicleListItem"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Доступно только клиенту. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
     createVehicle: {
         parameters: {
             query?: never;
@@ -2198,6 +2264,28 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    listVehicleMakes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Действующие марки в алфавитном порядке. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleMake"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             default: components["responses"]["UnexpectedError"];
         };
     };

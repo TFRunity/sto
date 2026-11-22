@@ -25,7 +25,7 @@ export function Cabinet({ role, children }: { role: WebRole; children: ReactNode
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
         <nav aria-label={labels[role]}>
           <Link className="font-medium underline-offset-4 hover:underline" href={cabinetPath[role]}>
-            {labels[role]}
+            {role === "client" ? "Мои заказы" : labels[role]}
           </Link>
         </nav>
         <Button variant="outline" onClick={signOut}>Выйти</Button>

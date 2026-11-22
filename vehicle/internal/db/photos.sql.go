@@ -57,6 +57,7 @@ func (q *Queries) GetVehiclePhotoKey(ctx context.Context, arg GetVehiclePhotoKey
 }
 
 const listLivePhotoKeys = `-- name: ListLivePhotoKeys :many
+
 SELECT p.file_key
 FROM vehicle_photos AS p
 JOIN vehicles AS v ON v.id = p.vehicle_id
@@ -67,6 +68,8 @@ FROM vehicles
 WHERE deleted_at IS NULL AND cover_photo_url IS NOT NULL
 `
 
+// Фото удалённых ТС намеренно исключаются. Если один ключ встречается
+// в нескольких строках, для сохранения файла достаточно одной живой ссылки.
 // Only keys reachable from live vehicles protect files from cleanup.
 func (q *Queries) ListLivePhotoKeys(ctx context.Context) ([]string, error) {
 	rows, err := q.db.Query(ctx, listLivePhotoKeys)

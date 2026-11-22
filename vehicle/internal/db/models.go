@@ -21,6 +21,12 @@ type Vehicle struct {
 	CoverPhotoUrl pgtype.Text
 }
 
+type VehicleMake struct {
+	Name      string
+	Aliases   []string
+	DeletedAt pgtype.Timestamptz
+}
+
 type VehiclePhoto struct {
 	ID        uuid.UUID
 	VehicleID uuid.UUID

@@ -1,3 +1,5 @@
+import { CustomerHistory } from "@/features/customer/screens";
+
 export default function CustomerPage() {
-  return <h1>Кабинет клиента</h1>;
+  return <CustomerHistory />;
 }

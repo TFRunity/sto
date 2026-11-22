@@ -118,6 +118,9 @@ func decideRequest(r *http.Request, route route, identity Identity) error {
 }
 
 func vehicleRoles(r *http.Request) []string {
+	if r.Method == http.MethodGet && (r.URL.Path == "/vehicles" || r.URL.Path == "/vehicles/makes") {
+		return []string{roleClient}
+	}
 	if r.Method == http.MethodPost && r.URL.Path == "/vehicles" {
 		return []string{roleClient}
 	}

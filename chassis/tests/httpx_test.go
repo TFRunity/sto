@@ -1,4 +1,4 @@
-package httpx_test
+package tests
 
 import (
 	"encoding/json"

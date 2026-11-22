@@ -1,7 +1,7 @@
-package internal
+package tests
 
 import (
-	"errors"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -9,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AlexeBabanov/sto/chassis/httpx"
-	"github.com/AlexeBabanov/sto/gateway/internal/api"
+	"github.com/AlexeBabanov/sto/gateway/internal"
 )
 
 func TestDashboardCancelsSiblingWhenSourceFails(t *testing.T) {
@@ -38,12 +37,27 @@ func TestDashboardCancelsSiblingWhenSourceFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := director{client: orders.Client(), orders: *ordersURL, users: *usersURL, logger: slog.Default()}
-	response, err := h.GetDashboard(t.Context(), api.GetDashboardRequestObject{})
+	handler, err := internal.NewDirector(*ordersURL, *usersURL, url.URL{}, slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/dashboard", nil)
+	handler.ServeHTTP(response, request)
 
-	var apiError *httpx.Error
-	if response != nil || !errors.As(err, &apiError) || apiError.Status != http.StatusBadGateway || apiError.Code != "upstream_error" {
-		t.Fatalf("expected an upstream error without a partial dashboard, got %v, %v", response, err)
+	if response.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502, got %d: %s", response.Code, response.Body)
+	}
+	var body struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if body.Error.Code != "upstream_error" {
+		t.Fatalf("expected upstream_error, got %q", body.Error.Code)
 	}
 	select {
 	case <-cancelled:

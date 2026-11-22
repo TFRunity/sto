@@ -1,4 +1,4 @@
-package internal
+package tests
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AlexeBabanov/sto/users/internal"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -33,22 +34,22 @@ const (
 // ---------------------------------------------------------------------------
 
 type fakeStore struct {
-	byPhone map[string]User
+	byPhone map[string]internal.User
 }
 
-func (s *fakeStore) CreateClient(_ context.Context, u User) (User, error) {
+func (s *fakeStore) CreateClient(_ context.Context, u internal.User) (internal.User, error) {
 	if _, taken := s.byPhone[u.Phone]; taken {
-		return User{}, ErrPhoneTaken
+		return internal.User{}, internal.ErrPhoneTaken
 	}
-	u.Role = RoleClient // как в SQL: роль ставит запрос, а не сервис
+	u.Role = internal.RoleClient // как в SQL: роль ставит запрос, а не сервис
 	s.byPhone[u.Phone] = u
 	return u, nil
 }
 
-func (s *fakeStore) GetByPhone(_ context.Context, phone string) (User, error) {
+func (s *fakeStore) GetByPhone(_ context.Context, phone string) (internal.User, error) {
 	u, ok := s.byPhone[phone]
 	if !ok {
-		return User{}, ErrUserNotFound
+		return internal.User{}, internal.ErrUserNotFound
 	}
 	return u, nil
 }
@@ -58,34 +59,34 @@ func (s *fakeStore) GetByPhone(_ context.Context, phone string) (User, error) {
 // ---------------------------------------------------------------------------
 
 type fixture struct {
-	svc      *Service
+	svc      *internal.Service
 	store    *fakeStore
-	client   User
-	engineer User
+	client   internal.User
+	engineer internal.User
 }
 
 func setup(t *testing.T) fixture {
 	t.Helper()
 
-	client := existingUser(t, clientPhone, clientPassword, RoleClient)
-	engineer := existingUser(t, engineerPhone, engineerPassword, RoleEngineer)
-	store := &fakeStore{byPhone: map[string]User{
+	client := existingUser(t, clientPhone, clientPassword, internal.RoleClient)
+	engineer := existingUser(t, engineerPhone, engineerPassword, internal.RoleEngineer)
+	store := &fakeStore{byPhone: map[string]internal.User{
 		client.Phone:   client,
 		engineer.Phone: engineer,
 	}}
 
-	svc, err := NewService(store, []byte(testSecret), testTTL)
+	svc, err := internal.NewService(store, []byte(testSecret), testTTL)
 	require.NoError(t, err)
 
 	return fixture{svc: svc, store: store, client: client, engineer: engineer}
 }
 
 // MinCost: тесту нужен валидный хеш, а не стойкий.
-func existingUser(t *testing.T, phone, password string, role Role) User {
+func existingUser(t *testing.T, phone, password string, role internal.Role) internal.User {
 	t.Helper()
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	require.NoError(t, err)
-	return User{ID: uuid.New(), Name: "Тест", Phone: phone, PasswordHash: string(hash), Role: role}
+	return internal.User{ID: uuid.New(), Name: "Тест", Phone: phone, PasswordHash: string(hash), Role: role}
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +94,7 @@ func existingUser(t *testing.T, phone, password string, role Role) User {
 // ---------------------------------------------------------------------------
 
 // checkToken разбирает токен так же, как это будет делать Gateway (ADR-023).
-func checkToken(t *testing.T, token string, wantID uuid.UUID, wantRole Role) {
+func checkToken(t *testing.T, token string, wantID uuid.UUID, wantRole internal.Role) {
 	t.Helper()
 
 	claims := jwt.MapClaims{}
@@ -129,8 +130,8 @@ func TestRegister(t *testing.T) {
 	}{
 		{name: "успех", phone: newPhone, password: "correct-password"},
 		{name: "пароль ровно 72 байта кириллицей", phone: newPhone, password: strings.Repeat("я", 36)},
-		{name: "пароль 73 байта кириллицей", phone: newPhone, password: strings.Repeat("я", 36) + "a", wantErr: ErrPasswordTooLong},
-		{name: "телефон занят", phone: clientPhone, password: "correct-password", wantErr: ErrPhoneTaken},
+		{name: "пароль 73 байта кириллицей", phone: newPhone, password: strings.Repeat("я", 36) + "a", wantErr: internal.ErrPasswordTooLong},
+		{name: "телефон занят", phone: clientPhone, password: "correct-password", wantErr: internal.ErrPhoneTaken},
 	}
 
 	for _, tt := range tests {
@@ -145,9 +146,9 @@ func TestRegister(t *testing.T) {
 			}
 			saved := f.store.byPhone[tt.phone]
 			assert.Equal(t, id, saved.ID)
-			assert.True(t, passwordMatches(saved.PasswordHash, tt.password),
+			assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(saved.PasswordHash), []byte(tt.password)),
 				"сохранённый хеш не подходит к паролю")
-			checkToken(t, token, id, RoleClient)
+			checkToken(t, token, id, internal.RoleClient)
 		})
 	}
 }
@@ -163,13 +164,13 @@ func TestLogin(t *testing.T) {
 		name     string
 		phone    string
 		password string
-		wantUser User
+		wantUser internal.User
 		wantErr  error
 	}{
 		{name: "успех, клиент", phone: clientPhone, password: clientPassword, wantUser: f.client},
 		{name: "успех, роль берётся из базы", phone: engineerPhone, password: engineerPassword, wantUser: f.engineer},
-		{name: "неверный пароль", phone: clientPhone, password: "wrong-password", wantErr: ErrInvalidCredentials},
-		{name: "неизвестный телефон", phone: newPhone, password: clientPassword, wantErr: ErrInvalidCredentials},
+		{name: "неверный пароль", phone: clientPhone, password: "wrong-password", wantErr: internal.ErrInvalidCredentials},
+		{name: "неизвестный телефон", phone: newPhone, password: clientPassword, wantErr: internal.ErrInvalidCredentials},
 	}
 
 	for _, tt := range tests {

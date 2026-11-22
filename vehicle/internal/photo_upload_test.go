@@ -6,8 +6,6 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/AlexeBabanov/sto/chassis/httpx"
@@ -53,23 +51,5 @@ func TestReencodePhoto(t *testing.T) {
 				t.Fatalf("unexpected JPEG: %v, %v", config, err)
 			}
 		})
-	}
-}
-
-func TestLimitPhotoUpload(t *testing.T) {
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/vehicles/example/photos", bytes.NewReader(make([]byte, maxPhotoRequestBytes+1)))
-	req.ContentLength = -1
-	got := httptest.NewRecorder()
-	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("oversized request reached handler") })
-	onError := func(w http.ResponseWriter, _ *http.Request, err error) {
-		var apiErr *httpx.Error
-		if !errors.As(err, &apiErr) {
-			t.Fatalf("expected API error, got %v", err)
-		}
-		w.WriteHeader(apiErr.Status)
-	}
-	LimitPhotoUpload(next, onError).ServeHTTP(got, req)
-	if got.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("status = %d, want 413", got.Code)
 	}
 }

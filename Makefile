@@ -36,6 +36,7 @@ OAPI_CODEGEN ?= go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@
 GOLANGCI     ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 
 SVC   ?=
+WEB_PORT ?= 3001
 INFRA := users-db orders-db inventory-db rabbitmq gotenberg
 
 # Хостовые адреса для make run (ADR-040). Остальное (JWT_SECRET, LOG_LEVEL, …) — из .env.
@@ -94,7 +95,7 @@ up:
 	docker compose up -d --build $(SVC)
 
 web:
-	npm --prefix frontend/web run dev
+	npm --prefix frontend/web run dev -- --port $(WEB_PORT)
 
 build-web:
 	npm --prefix frontend/web run build -- --webpack

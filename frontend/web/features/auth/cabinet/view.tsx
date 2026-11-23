@@ -23,10 +23,20 @@ export function Cabinet({ role, children }: { role: WebRole; children: ReactNode
   return (
     <>
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
-        <nav aria-label={labels[role]}>
+        <nav aria-label={labels[role]} className="flex flex-wrap items-center gap-4">
           <Link className="font-medium underline-offset-4 hover:underline" href={cabinetPath[role]}>
-            {role === "client" ? "Мои заказы" : labels[role]}
+            {role === "client" ? "Мои заказы" : "Дашборд"}
           </Link>
+          {role === "director" && (
+            <>
+              <Link className="font-medium underline-offset-4 hover:underline" href="/director/orders">
+                Заказы
+              </Link>
+              <Link className="font-medium underline-offset-4 hover:underline" href="/director/catalog">
+                Каталог
+              </Link>
+            </>
+          )}
         </nav>
         <Button variant="outline" onClick={signOut}>Выйти</Button>
       </header>

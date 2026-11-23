@@ -64,14 +64,14 @@ cp .env.example .env
 make up
 ```
 
-The API is available at `http://sto.localhost/api/`. To run the web client in development mode, you need Node.js and npm.
+Open `http://sto.localhost/` for the web client. nginx serves the application and proxies API requests under `/api/` to Gateway. To run the web client in development mode with hot reload, you need Node.js and npm.
 
 ```sh
 npm ci --prefix frontend/web
 make web
 ```
 
-The web client is available at `http://localhost:3000` and sends API requests through the local nginx instance. See the [technician app README](frontend/mobile/README.md) for Android setup.
+The development web client is available at `http://localhost:3001` and sends API requests through the local nginx instance. Use `make web WEB_PORT=3002` to choose another port. See the [technician app README](frontend/mobile/README.md) for Android setup.
 
 ## 📚 Documentation
 

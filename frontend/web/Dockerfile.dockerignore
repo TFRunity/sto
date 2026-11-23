@@ -1,0 +1,9 @@
+**
+!common/
+!common/**
+!web/
+!web/**
+**/.env*
+**/node_modules
+**/.next
+**/*.tsbuildinfo

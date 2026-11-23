@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  output: "standalone",
+  outputFileTracingRoot: resolve(__dirname, ".."),
   turbopack: { root: resolve(__dirname, "..") },
   async rewrites() {
     if (process.env.NODE_ENV !== "development") return [];

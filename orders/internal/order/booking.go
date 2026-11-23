@@ -50,7 +50,7 @@ func decodeBooking(request *api.CreateOrderRequest) (api.CreateServiceBookingReq
 		}
 		year, month, day := time.Now().In(location).Date()
 		today := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
-		if body.Date.Time.Before(today) {
+	if body.Date.Before(today) {
 			fields["date"] = "past_date"
 		}
 	}

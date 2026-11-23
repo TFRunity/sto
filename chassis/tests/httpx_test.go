@@ -80,7 +80,7 @@ func TestRequireIdentity(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusNoContent)
 			}), logger)
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			req.Header.Set("X-User-Id", tc.id)
 			req.Header.Set("X-User-Role", tc.role)
 			w := httptest.NewRecorder()

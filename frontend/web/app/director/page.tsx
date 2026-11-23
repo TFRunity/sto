@@ -1,3 +1,5 @@
+import { DirectorDashboard } from "@/features/director/dashboard/view";
+
 export default function DirectorPage() {
-  return <h1>Кабинет директора</h1>;
+  return <DirectorDashboard />;
 }

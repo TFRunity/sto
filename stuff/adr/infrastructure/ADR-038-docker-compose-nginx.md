@@ -17,7 +17,7 @@ Dockerfile у каждого из шести сервисов**; контекс�
 
 **Compose (I-02):**
 - пять контейнеров PostgreSQL — по одному на сервис с БД (ADR-001);
-- сети: `edge` (nginx ↔ Gateway), `backend` (Gateway ↔ сервисы ↔
+- сети: `edge` (nginx ↔ Next.js и Gateway), `backend` (Gateway ↔ сервисы ↔
   RabbitMQ ↔ Gotenberg), отдельная сеть на каждую БД (сервис ↔ его
   Postgres);
 - `depends_on` с `condition: service_healthy` на свой Postgres
@@ -52,7 +52,9 @@ configs:
 **Gotenberg:** см. ADR-027.
 
 **nginx (I-06, P-15):**
-- единственная точка входа; один origin: статика веба (`/`) и API
+- конфигурация входит в образ nginx, который Compose собирает из
+  `deploy/nginx`; изменение конфига применяется через `make up SVC=nginx`;
+- единственная точка входа; один origin: веб (`/` → Next.js standalone) и API
   (`/api/` → Gateway) — поэтому **CORS не нужен** ни в nginx, ни в
   Gateway; в разработке dev-сервер фронта проксирует `/api`;
 - пока только HTTP; веб — по имени `sto.localhost` (браузеры резолвят

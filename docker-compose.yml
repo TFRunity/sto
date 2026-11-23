@@ -30,16 +30,24 @@ x-postgres: &postgres
 services:
   # ── периметр ─────────────────────────────────────────────────────────
   nginx:
-    image: nginx:1.28-alpine
+    build:
+      context: ./deploy/nginx
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - ./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks: [edge]
     depends_on:
       gateway:
         condition: service_started
+      web:
+        condition: service_started
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    networks: [edge]
 
   gateway:
     <<: *service

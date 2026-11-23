@@ -1,5 +1,5 @@
 import { createGatewayClient } from "@/lib/api/client";
-import type { components } from "@/lib/api/schema";
+import type { components } from "@shared/api/schema";
 import { acceptSession } from "@/common/session/session";
 
 type Schemas = components["schemas"];

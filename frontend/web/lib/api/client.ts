@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch";
-import type { components, paths } from "./schema";
+import type { components, paths } from "@shared/api/schema";
 
 type ErrorBody = components["schemas"]["ErrorBody"];
 

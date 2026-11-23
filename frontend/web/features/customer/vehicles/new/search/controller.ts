@@ -1,4 +1,4 @@
-import { createSearchMatcher } from "@/common/utils/search";
+import { createSearchMatcher } from "@shared/search/utils";
 import type { VehicleMake } from "../controller";
 
 export function matchMakes(makes: VehicleMake[], input: string) {

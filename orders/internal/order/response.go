@@ -13,6 +13,7 @@ import (
 type itemJSON struct {
 	ID       uuid.UUID `json:"id"`
 	ItemID   uuid.UUID `json:"item_id"`
+	Name     *string   `json:"name,omitempty"`
 	Quantity int32     `json:"quantity"`
 	Price    string    `json:"price"`
 }
@@ -21,6 +22,7 @@ func itemResponse(item orderItem) itemJSON {
 	return itemJSON{
 		ID:       item.id,
 		ItemID:   item.itemID,
+		Name:     item.name,
 		Quantity: item.quantity,
 		Price:    item.price.StringFixed(2),
 	}

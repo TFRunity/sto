@@ -442,7 +442,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Список активных позиций каталога */
+        /**
+         * Список активных позиций каталога
+         * @description Доступен клиенту для подсказок при записи, инженеру и директору.
+         */
         get: operations["listServices"];
         put?: never;
         /** Добавить услугу */
@@ -762,7 +765,7 @@ export interface components {
             service: string;
             /**
              * Format: date
-             * @description Желаемая дата визита без времени и часового пояса.
+             * @description Желаемая дата визита без времени. Сегодня или позже по календарю Europe/Moscow.
              */
             date: string;
             /** @description Дополнительная информация от клиента. */
@@ -813,6 +816,8 @@ export interface components {
             id: string;
             /** Format: uuid */
             item_id: string;
+            /** @description Название товара на момент добавления позиции. Может отсутствовать у старых позиций. */
+            name?: string;
             /** Format: int32 */
             quantity: number;
             price: components["schemas"]["Money"];

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSession } from "@/common/session/view";
 import { Button } from "@/components/ui/button";
-import type { components } from "@/lib/api/schema";
+import type { components } from "@shared/api/schema";
 import { ReadState, link, panel } from "../shared/view";
 
 import { vehicleBookingPath } from "../shared/routes";

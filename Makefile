@@ -13,7 +13,9 @@
 #   make logs SVC=orders · make ps · make down
 #
 # Веб на хосте: make web          Next.js dev server (после установки зависимостей)
+# Сборка веба:  make build-web    Production-сборка Next.js через Webpack
 # Android:      make mobile       Expo (после установки зависимостей)
+# Типы клиентов: make generate-frontend-api
 #
 # Сервис на хосте (ADR-040): сначала make infra, потом
 #   make run SVC=users            go run с переменными из .env и хостовыми адресами
@@ -54,7 +56,7 @@ RUN_ENV_inventory := HTTP_ADDR=127.0.0.1:8083 \
 	DATABASE_URL="postgres://$$INVENTORY_DB_USER:$$INVENTORY_DB_PASSWORD@127.0.0.1:5435/inventory?sslmode=disable" \
 	RABBITMQ_URL="$(AMQP_URL)"
 
-.PHONY: generate build test lint up infra stop logs ps down run dev web mobile
+.PHONY: generate generate-frontend-api build build-web test lint up infra stop logs ps down run dev web mobile
 
 # sqlc — модули с sqlc.yaml; oapi-codegen — модули с oapi-codegen.yaml
 # (конфиг генерации по своей части api/openapi.yaml, ADR-028).
@@ -67,6 +69,9 @@ generate:
 			echo "oapi-codegen: $$m"; (cd $$m && $(OAPI_CODEGEN) -config oapi-codegen.yaml ../api/openapi.yaml); \
 		fi; \
 	done
+
+generate-frontend-api:
+	npm --prefix frontend/web run generate:api
 
 build:
 	@set -e; for m in $(TARGETS); do \
@@ -90,6 +95,9 @@ up:
 
 web:
 	npm --prefix frontend/web run dev
+
+build-web:
+	npm --prefix frontend/web run build -- --webpack
 
 mobile:
 	npm --prefix frontend/mobile run android

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import type { components } from "@/lib/api/schema";
+import type { components } from "@shared/api/schema";
 import { Photo } from "../../shared/vehicles/view";
 
 export function VehiclePhotos({ vehicle }: { vehicle: components["schemas"]["VehicleCard"] }) {

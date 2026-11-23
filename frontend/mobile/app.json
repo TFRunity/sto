@@ -8,6 +8,14 @@
     ],
     "android": {
       "package": "ru.sto.engineer"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "recordAudioAndroid": false
+        }
+      ]
+    ]
   }
 }

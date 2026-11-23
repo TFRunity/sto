@@ -5,7 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "generate:api": "openapi-typescript ../../api/openapi.yaml -o lib/api/schema.d.ts"
+    "generate:api": "openapi-typescript ../../api/openapi.yaml -o ../common/api/schema.d.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.0.0",

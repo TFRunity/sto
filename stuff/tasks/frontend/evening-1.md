@@ -32,6 +32,7 @@ Tailwind CSS и четыре компонента shadcn/ui подключены
 
 **Проверка:** Повторная генерация даёт тот же результат. Статус HTTP и `error.code` доступны вызывающему коду.
 
-Команда из корня STO — `npm --prefix frontend/web run generate:api`. Повторная
+Команда из корня STO — `make generate-frontend-api`.
+Она обновляет общий для двух клиентов файл `frontend/common/api/schema.d.ts`. Повторная
 генерация дала идентичный файл. На подменённых ответах проверены успешный
 запрос, ошибка валидации с `status`, `code` и `fields` и HTML-ответ nginx с HTTP 502.

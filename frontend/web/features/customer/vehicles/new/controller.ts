@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { GatewayClient } from "@/lib/api/client";
-import type { components } from "@/lib/api/schema";
+import type { components } from "@shared/api/schema";
 import { customerVehicleListKey } from "../../shared/vehicles/controller";
 
 export type VehicleMake = components["schemas"]["VehicleMake"];

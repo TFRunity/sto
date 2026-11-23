@@ -1648,6 +1648,9 @@ components:
         item_id:
           type: string
           format: uuid
+        name:
+          type: string
+          description: Название товара на момент добавления позиции. Может отсутствовать у старых позиций.
         quantity:
           type: integer
           format: int32

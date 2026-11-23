@@ -2,17 +2,17 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { formatRubles } from "@shared/money/utils";
+import { orderStageLabels } from "@shared/orders/labels";
 import { useSession } from "@/common/session/view";
-import type { components } from "@/lib/api/schema";
+import type { components } from "@shared/api/schema";
 import { ReadState, link, panel } from "../shared/view";
 
 import { vehiclePath } from "../shared/routes";
 import { vehicleQuery } from "../shared/vehicles/controller";
 import { vehicleLabel } from "../shared/utils";
-import { OrderStatus, stageLabels } from "../shared/orders/view";
+import { OrderStatus } from "../shared/orders/view";
 import { orderQuery } from "./controller";
-
-const money = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" });
 
 export function OrderScreen({ id }: { id: string }) {
   const { gateway } = useSession();
@@ -41,18 +41,18 @@ function OrderCard({ order }: { order: components["schemas"]["Order"] }) {
       <Link className={link} href={vehiclePath(order.vehicle_id)}>
         {vehicle ? vehicleLabel(vehicle) : "Карточка ТС"}
       </Link>
-      {order.status !== "requested" && <p>Этап: {stageLabels[order.stage]}</p>}
+      {order.status !== "requested" && <p>Этап: {orderStageLabels[order.stage]}</p>}
       {(order.items.length > 0 || order.services.length > 0) && (
         <ul className="divide-y">
           {order.items.map((item) => (
-            <li key={item.id} className="py-2">Товар × {item.quantity} · {money.format(Number(item.price))} за шт.</li>
+            <li key={item.id} className="py-2">{item.name || "Товар"} × {item.quantity} · {formatRubles(item.price)} за шт.</li>
           ))}
           {order.services.map((service) => (
-            <li key={service.id} className="py-2">{service.name} × {service.quantity} · {money.format(Number(service.price))} за ед.</li>
+            <li key={service.id} className="py-2">{service.name} × {service.quantity} · {formatRubles(service.price)} за ед.</li>
           ))}
         </ul>
       )}
-      <p className="font-semibold">Итого {money.format(Number(order.total))}</p>
+      <p className="font-semibold">Итого {formatRubles(order.total)}</p>
     </section>
   );
 }

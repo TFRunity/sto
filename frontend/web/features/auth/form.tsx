@@ -6,7 +6,7 @@ import { preparePhoneInput, russianPhoneMask, russianPhonePlaceholder } from "@/
 import { readFormText } from "@/common/utils/form-data";
 import { validationMessages } from "@/common/utils/validation-messages";
 import { GatewayError } from "@/lib/api/client";
-import { normalizeRussianPhone } from "../../../common/phone/utils";
+import { normalizeRussianPhone } from "@shared/phone/utils";
 import { WebRoleError } from "@/common/session/session";
 
 export type AuthField = "name" | "phone" | "password";

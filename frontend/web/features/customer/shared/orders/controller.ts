@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { GatewayClient } from "@/lib/api/client";
-import type { components } from "@/lib/api/schema";
+import type { components } from "@shared/api/schema";
 
 export type HistoryItem = components["schemas"]["OrderHistoryItem"];
 

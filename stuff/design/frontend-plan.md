@@ -10,7 +10,9 @@ Native для инженера. Рабочий маршрут v1 проходи�
 ## Структура приложений
 
 - `frontend/web/` — одно приложение Next.js с App Router. В `app/` живут маршруты, страницы и layout’ы клиента и директора. Например, `app/director/orders/[id]/page.tsx` открывает карточку заказа директора.
-- Внутри `frontend/web/features/` лежат компоненты и маппинг данных для экранов по фичам. В `frontend/web/lib/api/` лежит типизированный клиент к Gateway. Типы запросов и ответов генерируются из `api/openapi.yaml`.
+- Внутри `frontend/web/features/` лежат компоненты и маппинг данных для экранов по фичам. В `frontend/web/lib/api/` лежит типизированный клиент к Gateway.
+- Общие типы запросов и ответов веба и React Native генерируются из `api/openapi.yaml` в `frontend/common/api/schema.d.ts`. Команда из корня проекта — `make generate-frontend-api`.
+- Production-сборка веба из корня проекта — `make build-web`.
 - Файлы сценариев в `features/` называем по [соглашению об именах файлов](../decisions/stack-decisions-v1.md#имена-файлов-в-features).
 - `frontend/mobile/` — отдельное приложение React Native для инженера, использующее тот же контракт Gateway.
 

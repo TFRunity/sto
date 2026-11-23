@@ -184,6 +184,9 @@ func catalogRoles(r *http.Request, prefix string) []string {
 	if r.URL.Path == prefix {
 		switch r.Method {
 		case http.MethodGet:
+			if prefix == "/services" {
+				return []string{roleClient, roleEngineer, roleDirector}
+			}
 			return []string{roleEngineer, roleDirector}
 		case http.MethodPost:
 			return []string{roleDirector}

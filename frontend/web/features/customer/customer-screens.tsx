@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/session-provider";
 import { GatewayError } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
-import { historyQuery, orderQuery, vehicleListQuery, vehicleQuery, type HistoryItem } from "./customer-api";
-import { BookingForm } from "./forms";
-import { VehicleCover, VehiclePhotos } from "./vehicle-photos";
+import { historyQuery, orderQuery, type HistoryItem } from "./orders-api";
+import { vehicleListQuery, vehicleQuery } from "./vehicle-api";
+import { newVehiclePath, orderPath, vehicleBookingPath, vehiclePath } from "./customer-routes";
+import { vehicleLabel } from "./vehicle-label";
+import { BookingForm } from "./booking-form";
+import { VehicleCover, VehicleCoverPhoto, VehiclePhotos } from "./vehicle-photos";
 
 type Vehicle = components["schemas"]["VehicleCard"];
 
@@ -24,8 +27,6 @@ const statusColors = {
 
 const panel = "rounded-xl border bg-card p-4 sm:p-5";
 const link = "font-medium text-accent-foreground underline-offset-4 hover:underline";
-const vehiclePath = (id: string) => `/customer/vehicles/${id}`;
-const orderPath = (id: string) => `/customer/orders/${id}`;
 const dateFormat = new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium" });
 const money = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" });
 
@@ -63,7 +64,7 @@ function OrderList({ orders, vehicles }: { orders: HistoryItem[]; vehicles?: Rea
           <li key={order.id} className={`${panel} flex flex-wrap items-start justify-between gap-3`}>
             <div className="space-y-1">
               <Link href={orderPath(order.id)} className={link}>
-                {vehicle ? `${vehicle.brand} · ${vehicle.number}` : `Заказ ${order.id.slice(0, 8)}`}
+                {vehicle ? vehicleLabel(vehicle) : `Заказ ${order.id.slice(0, 8)}`}
               </Link>
               <p className="text-sm text-muted-foreground">
                 {dateFormat.format(new Date(order.created_at))}
@@ -106,13 +107,13 @@ export function CustomerHistory({ choosing = false }: { choosing?: boolean }) {
           {(vehicleList.data ?? []).map((vehicle) => {
             const path = vehiclePath(vehicle.vehicle_id);
             return (
-              <Link key={vehicle.vehicle_id} href={choosing ? `${path}/booking` : path} className={`${panel} hover:border-ring`}>
+              <Link key={vehicle.vehicle_id} href={choosing ? vehicleBookingPath(vehicle.vehicle_id) : path} className={`${panel} hover:border-ring`}>
                 <span className="block font-medium">{vehicle.brand}</span>
                 <span className="text-sm text-muted-foreground">{vehicle.number}</span>
               </Link>
             );
           })}
-          <Link href="/customer/vehicles/new" className="rounded-xl border border-dashed border-input p-4 font-medium hover:border-ring">
+          <Link href={newVehiclePath} className="rounded-xl border border-dashed border-input p-4 font-medium hover:border-ring">
             Добавить ТС
           </Link>
         </div>
@@ -130,7 +131,14 @@ export function VehicleScreen({ id, booking = false }: { id: string; booking?: b
       <Link href={booking ? vehiclePath(id) : "/customer"} className={link}>Назад</Link>
       <ReadState pending={vehicle.isPending} error={vehicle.error} retry={() => void vehicle.refetch()}>
         {vehicle.data && (booking
-          ? <BookingForm vehicleId={id} vehicleLabel={`${vehicle.data.brand} · ${vehicle.data.number}`} />
+          ? (
+            <div className="mx-auto max-w-lg space-y-4">
+              {vehicle.data.cover_photo_url && (
+                <div><VehicleCoverPhoto id={id} /></div>
+              )}
+              <BookingForm vehicleId={id} vehicleLabel={vehicleLabel(vehicle.data)} />
+            </div>
+          )
           : <VehicleCard vehicle={vehicle.data} />)}
       </ReadState>
     </div>
@@ -146,7 +154,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
         <p>{vehicle.number}</p>
         <p className="text-sm text-muted-foreground">VIN {vehicle.vin}</p>
         <VehicleCover id={vehicle.vehicle_id} hasCover={Boolean(vehicle.cover_photo_url)} />
-        <Button asChild><Link href={`${vehiclePath(vehicle.vehicle_id)}/booking`}>Записаться на сервис</Link></Button>
+        <Button asChild><Link href={vehicleBookingPath(vehicle.vehicle_id)}>Записаться на сервис</Link></Button>
       </section>
       <VehiclePhotos vehicle={vehicle} />
       <section className={`${panel} space-y-3`}>
@@ -184,7 +192,7 @@ function OrderCard({ order }: { order: components["schemas"]["Order"] }) {
         <Status status={order.status} />
       </div>
       <Link className={link} href={vehiclePath(order.vehicle_id)}>
-        {vehicle ? `${vehicle.brand} · ${vehicle.number}` : "Карточка ТС"}
+        {vehicle ? vehicleLabel(vehicle) : "Карточка ТС"}
       </Link>
       {order.status !== "requested" && <p>Этап: {stageLabels[order.stage]}</p>}
       {(order.items.length > 0 || order.services.length > 0) && (

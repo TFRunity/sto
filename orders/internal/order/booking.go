@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
+	_ "time/tzdata"
 
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/orders/internal/api"
@@ -41,6 +43,16 @@ func decodeBooking(request *api.CreateOrderRequest) (api.CreateServiceBookingReq
 	}
 	if body.Date.IsZero() {
 		fields["date"] = "required"
+	} else {
+		location, err := time.LoadLocation("Europe/Moscow")
+		if err != nil {
+			return api.CreateServiceBookingRequest{}, err
+		}
+		year, month, day := time.Now().In(location).Date()
+		today := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+		if body.Date.Time.Before(today) {
+			fields["date"] = "past_date"
+		}
 	}
 	if body.VehicleId == uuid.Nil {
 		fields["vehicle_id"] = "required"

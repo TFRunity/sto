@@ -2,11 +2,13 @@
 
 import { useId, useState, type KeyboardEvent } from "react";
 import { Input } from "@/components/ui/input";
-import type { VehicleMake } from "./customer-api";
-import { matchMakes } from "./vehicle-makes";
 
-export function VehicleMakeField({ makes, error, disabled }: {
-  makes: VehicleMake[];
+export function SuggestionField({ name, label, placeholder, findOptions, noMatches, error, disabled }: {
+  name: string;
+  label: string;
+  placeholder: string;
+  findOptions: (input: string) => string[];
+  noMatches?: string;
   error?: string;
   disabled?: boolean;
 }) {
@@ -14,11 +16,11 @@ export function VehicleMakeField({ makes, error, disabled }: {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const options = matchMakes(makes, value);
+  const options = findOptions(value);
   const expanded = open && !disabled && options.length > 0;
 
-  function select(make: VehicleMake) {
-    setValue(make.name);
+  function select(option: string) {
+    setValue(option);
     setOpen(false);
     setActive(-1);
   }
@@ -42,10 +44,10 @@ export function VehicleMakeField({ makes, error, disabled }: {
 
   return (
     <div className="space-y-1">
-      <label className="text-sm font-medium" htmlFor={id}>Марка</label>
+      <label className="text-sm font-medium" htmlFor={id}>{label}</label>
       <Input
         id={id}
-        name="brand"
+        name={name}
         role="combobox"
         autoComplete="off"
         aria-autocomplete="list"
@@ -55,7 +57,7 @@ export function VehicleMakeField({ makes, error, disabled }: {
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
         value={value}
-        placeholder="Начните вводить марку"
+        placeholder={placeholder}
         disabled={disabled}
         required
         onFocus={() => setOpen(true)}
@@ -71,24 +73,24 @@ export function VehicleMakeField({ makes, error, disabled }: {
         onKeyDown={handleKeyDown}
       />
       {expanded && (
-        <ul id={`${id}-options`} role="listbox" aria-label="Марки автомобилей"
+        <ul id={`${id}-options`} role="listbox" aria-label={label}
           className="max-h-48 overflow-y-auto rounded-md border bg-card p-1 shadow-sm">
-          {options.map((make, index) => (
-            <li id={`${id}-option-${index}`} key={make.name} role="option"
+          {options.map((option, index) => (
+            <li id={`${id}-option-${index}`} key={option} role="option"
               aria-selected={active === index}
               className="cursor-pointer rounded px-3 py-2 hover:bg-accent aria-selected:bg-accent"
               onMouseDown={(event) => {
                 // Фокус остаётся в поле, пока пользователь выбирает вариант мышью.
                 event.preventDefault();
               }}
-              onClick={() => select(make)}>
-              {make.name}
+              onClick={() => select(option)}>
+              {option}
             </li>
           ))}
         </ul>
       )}
-      {open && !disabled && makes.length > 0 && options.length === 0 && (
-        <p role="status" className="text-sm text-muted-foreground">Подходящих марок нет.</p>
+      {open && !disabled && noMatches && options.length === 0 && (
+        <p role="status" className="text-sm text-muted-foreground">{noMatches}</p>
       )}
       {error && <p role="alert" id={`${id}-error`} className="text-sm text-destructive">{error}</p>}
     </div>

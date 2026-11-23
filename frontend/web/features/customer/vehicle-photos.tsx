@@ -2,21 +2,26 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useObjectUrl } from "@/common/hooks/use-object-url";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/features/auth/session-provider";
 import type { components } from "@/lib/api/schema";
-import { vehiclePhotoQuery } from "./customer-api";
-import { usePhotoUrl } from "./use-photo-url";
+import { coverImageAccept, coverImageFormatHint } from "./cover-image";
+import { vehiclePhotoQuery } from "./vehicle-api";
 import { useVehicleCover } from "./use-vehicle-cover";
+
+export function VehicleCoverPhoto({ id }: { id: string }) {
+  return <Photo id={id} label="Обложка автомобиля" className="max-h-48 w-full rounded-md object-contain" />;
+}
 
 export function VehicleCover({ id, hasCover }: { id: string; hasCover: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="space-y-3">
-      {hasCover && <Photo id={id} label="Обложка автомобиля" className="max-h-48 w-full rounded-md object-contain" />}
+      {hasCover && <VehicleCoverPhoto id={id} />}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">{hasCover ? "Заменить обложку" : "Добавить обложку"}</Button>
@@ -29,7 +34,7 @@ export function VehicleCover({ id, hasCover }: { id: string; hasCover: boolean }
 
 function CoverEditor({ id, onSaved }: { id: string; onSaved: () => void }) {
   const { file, pending, error, selectFile, save } = useVehicleCover(id, onSaved);
-  const preview = usePhotoUrl(file);
+  const preview = useObjectUrl(file);
 
   return (
     <DialogContent
@@ -38,7 +43,7 @@ function CoverEditor({ id, onSaved }: { id: string; onSaved: () => void }) {
       onInteractOutside={(event) => { if (pending) event.preventDefault(); }}
     >
       <DialogTitle>Обложка автомобиля</DialogTitle>
-      <DialogDescription>Выберите фото в формате JPEG или PNG.</DialogDescription>
+      <DialogDescription>{coverImageFormatHint}</DialogDescription>
       <form className="space-y-4" aria-busy={pending} onSubmit={(event) => {
         event.preventDefault();
         save();
@@ -46,7 +51,7 @@ function CoverEditor({ id, onSaved }: { id: string; onSaved: () => void }) {
         <fieldset disabled={pending} className="space-y-3">
           <div className="space-y-1.5">
             <label htmlFor="cover-photo" className="text-sm font-medium">Файл</label>
-            <Input id="cover-photo" type="file" accept="image/jpeg,image/png"
+            <Input id="cover-photo" type="file" accept={coverImageAccept}
               onChange={(event) => selectFile(event.currentTarget.files?.[0])} />
           </div>
           {preview && <img src={preview} alt="Предпросмотр обложки" className="max-h-52 w-full rounded-md object-contain" />}
@@ -93,7 +98,7 @@ function Photo({ id, photoId, label, className = "max-h-[70vh] w-full rounded-md
 }) {
   const { gateway } = useSession();
   const query = useQuery(vehiclePhotoQuery(gateway, id, photoId));
-  const url = usePhotoUrl(query.data);
+  const url = useObjectUrl(query.data);
 
   if (query.isError) return (
     <div className="space-y-2">

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, FlatList, StatusBar, StyleSheet, Text, TextInput, View } from "react-native";
+import { normalizeRussianPhone } from "../common/phone/utils";
 import { EngineerApiError, loadBookingPool, loginEngineer, type Booking } from "./engineer-api";
 
 export default function App() {
@@ -33,8 +34,8 @@ function EngineerLogin({ sessionMessage, onSignIn }: {
   function signIn() {
     if (submitting.current) return;
 
-    const digits = phone.replace(/\D/g, "");
-    if (!/^[+\d()\s-]+$/.test(phone) || !/^[78]\d{10}$/.test(digits)) {
+    const normalizedPhone = normalizeRussianPhone(phone);
+    if (!normalizedPhone) {
       setError("Введите полный номер телефона.");
       return;
     }
@@ -47,7 +48,7 @@ function EngineerLogin({ sessionMessage, onSignIn }: {
     setBusy(true);
     setError("");
 
-    void loginEngineer({ phone: `+7${digits.slice(1)}`, password }).then((token) => {
+    void loginEngineer({ phone: normalizedPhone, password }).then((token) => {
       setPassword("");
       onSignIn(token);
     }).catch((cause: unknown) => {

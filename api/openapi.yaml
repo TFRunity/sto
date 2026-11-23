@@ -911,6 +911,7 @@ paths:
       tags: [services]
       operationId: listServices
       summary: Список активных позиций каталога
+      description: Доступен клиенту для подсказок при записи, инженеру и директору.
       responses:
         '200':
           description: Каталог
@@ -1561,7 +1562,7 @@ components:
         date:
           type: string
           format: date
-          description: Желаемая дата визита без времени и часового пояса.
+          description: Желаемая дата визита без времени. Сегодня или позже по календарю Europe/Moscow.
         comment:
           type: string
           description: Дополнительная информация от клиента.

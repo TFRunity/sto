@@ -1,14 +1,11 @@
-import type { useSession } from "@/features/auth/session-provider";
+import type { GatewayClient } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
-export type CustomerGateway = ReturnType<typeof useSession>["gateway"];
-export type HistoryItem = components["schemas"]["OrderHistoryItem"];
 export type VehicleMake = components["schemas"]["VehicleMake"];
 
-export const customerOrderHistoryKey = ["customer", "orders"] as const;
 export const customerVehicleListKey = ["customer", "vehicles"] as const;
 
-export function vehicleListQuery(gateway: CustomerGateway) {
+export function vehicleListQuery(gateway: GatewayClient) {
   return {
     queryKey: customerVehicleListKey,
     queryFn: ({ signal }: { signal: AbortSignal }) => gateway.GET("/vehicles", { signal })
@@ -16,7 +13,7 @@ export function vehicleListQuery(gateway: CustomerGateway) {
   };
 }
 
-export function vehicleMakesQuery(gateway: CustomerGateway) {
+export function vehicleMakesQuery(gateway: GatewayClient) {
   return {
     queryKey: ["customer", "vehicle-makes"],
     staleTime: 60 * 60 * 1000,
@@ -25,7 +22,7 @@ export function vehicleMakesQuery(gateway: CustomerGateway) {
   };
 }
 
-export function vehicleQuery(gateway: CustomerGateway, id: string) {
+export function vehicleQuery(gateway: GatewayClient, id: string) {
   return {
     queryKey: ["customer", "vehicle", id],
     queryFn: ({ signal }: { signal: AbortSignal }) => gateway.GET("/vehicles/{id}", {
@@ -38,33 +35,7 @@ export function vehicleQuery(gateway: CustomerGateway, id: string) {
   };
 }
 
-export function historyQuery(gateway: CustomerGateway, vehicleId?: string) {
-  return {
-    queryKey: [...customerOrderHistoryKey, vehicleId ?? "all"],
-    queryFn: ({ signal }: { signal: AbortSignal }) => gateway.GET("/orders", {
-      params: { query: { client_id: "me", vehicle_id: vehicleId } },
-      signal,
-    }).then(({ data }) => {
-      // Этот маршрут также отдаёт пул инженера; запись в истории имеет этап работ.
-      return (data ?? []).filter((entry): entry is HistoryItem => "stage" in entry);
-    }),
-  };
-}
-
-export function orderQuery(gateway: CustomerGateway, id: string) {
-  return {
-    queryKey: ["customer", "order", id],
-    queryFn: ({ signal }: { signal: AbortSignal }) => gateway.GET("/orders/{id}", {
-      params: { path: { id } },
-      signal,
-    }).then(({ data }) => {
-      if (!data) throw new Error("Order is missing");
-      return data;
-    }),
-  };
-}
-
-export function vehiclePhotoQuery(gateway: CustomerGateway, id: string, photoId?: string) {
+export function vehiclePhotoQuery(gateway: GatewayClient, id: string, photoId?: string) {
   return {
     queryKey: ["customer", "vehicle", id, "photo", photoId ?? "cover"],
     queryFn: ({ signal }: { signal: AbortSignal }) => {
@@ -84,21 +55,14 @@ export function vehiclePhotoQuery(gateway: CustomerGateway, id: string, photoId?
   };
 }
 
-export function createVehicle(gateway: CustomerGateway, body: components["schemas"]["VehicleDetails"]) {
+export function createVehicle(gateway: GatewayClient, body: components["schemas"]["VehicleDetails"]) {
   return gateway.POST("/vehicles", { body }).then(({ data }) => {
     if (!data?.vehicle_id) throw new Error("Missing vehicle ID");
     return data.vehicle_id;
   });
 }
 
-export function createBooking(gateway: CustomerGateway, body: components["schemas"]["CreateServiceBookingRequest"]) {
-  return gateway.POST("/orders", { body }).then(({ data }) => {
-    if (!data?.order_id) throw new Error("Missing order ID");
-    return data.order_id;
-  });
-}
-
-export function replaceVehicleCover(gateway: CustomerGateway, id: string, photo: File) {
+export function replaceVehicleCover(gateway: GatewayClient, id: string, photo: File) {
   return gateway.PUT("/vehicles/{id}/cover_photo", {
     params: { path: { id } },
     body: { photo: photo.name },

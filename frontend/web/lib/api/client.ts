@@ -59,3 +59,5 @@ export function createGatewayClient(baseUrl = "/api", fetcher?: typeof fetch) {
 
   return client;
 }
+
+export type GatewayClient = ReturnType<typeof createGatewayClient>;

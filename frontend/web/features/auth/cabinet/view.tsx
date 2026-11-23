@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { cabinetPath, type WebRole } from "./session";
-import { useSession } from "./session-provider";
+import { cabinetPath, type WebRole } from "@/common/session/session";
+import { useSession } from "@/common/session/view";
 
 const labels = { client: "Кабинет клиента", director: "Кабинет директора" };
 

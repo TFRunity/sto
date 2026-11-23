@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import type { GatewayClient } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
@@ -18,22 +19,6 @@ export function historyQuery(gateway: GatewayClient, vehicleId?: string) {
   };
 }
 
-export function orderQuery(gateway: GatewayClient, id: string) {
-  return {
-    queryKey: ["customer", "order", id],
-    queryFn: ({ signal }: { signal: AbortSignal }) => gateway.GET("/orders/{id}", {
-      params: { path: { id } },
-      signal,
-    }).then(({ data }) => {
-      if (!data) throw new Error("Order is missing");
-      return data;
-    }),
-  };
-}
-
-export function createBooking(gateway: GatewayClient, body: components["schemas"]["CreateServiceBookingRequest"]) {
-  return gateway.POST("/orders", { body }).then(({ data }) => {
-    if (!data?.order_id) throw new Error("Missing order ID");
-    return data.order_id;
-  });
+export function useHistory(gateway: GatewayClient, vehicleId?: string, enabled = true) {
+  return useQuery({ ...historyQuery(gateway, vehicleId), enabled });
 }

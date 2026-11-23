@@ -1,4 +1,10 @@
 import type { GatewayClient } from "@/lib/api/client";
+import { createSearchMatcher } from "@/common/utils/search";
+
+export function matchServiceNames(names: string[], input: string) {
+  const matches = createSearchMatcher(input, "substring");
+  return names.filter((name) => matches(name)).slice(0, 20);
+}
 
 export function bookingServiceNamesQuery(gateway: GatewayClient) {
   return {

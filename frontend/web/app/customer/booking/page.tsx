@@ -1,5 +1,5 @@
-import { CustomerHistory } from "@/features/customer/customer-screens";
+import { CustomerOverview } from "@/features/customer/overview/view";
 
 export default function BookingPage() {
-  return <CustomerHistory choosing />;
+  return <CustomerOverview choosing />;
 }

@@ -1,7 +1,4 @@
 import type { GatewayClient } from "@/lib/api/client";
-import type { components } from "@/lib/api/schema";
-
-export type VehicleMake = components["schemas"]["VehicleMake"];
 
 export const customerVehicleListKey = ["customer", "vehicles"] as const;
 
@@ -9,15 +6,6 @@ export function vehicleListQuery(gateway: GatewayClient) {
   return {
     queryKey: customerVehicleListKey,
     queryFn: ({ signal }: { signal: AbortSignal }) => gateway.GET("/vehicles", { signal })
-      .then(({ data }) => data ?? []),
-  };
-}
-
-export function vehicleMakesQuery(gateway: GatewayClient) {
-  return {
-    queryKey: ["customer", "vehicle-makes"],
-    staleTime: 60 * 60 * 1000,
-    queryFn: ({ signal }: { signal: AbortSignal }) => gateway.GET("/vehicles/makes", { signal })
       .then(({ data }) => data ?? []),
   };
 }
@@ -53,24 +41,4 @@ export function vehiclePhotoQuery(gateway: GatewayClient, id: string, photoId?: 
       });
     },
   };
-}
-
-export function createVehicle(gateway: GatewayClient, body: components["schemas"]["VehicleDetails"]) {
-  return gateway.POST("/vehicles", { body }).then(({ data }) => {
-    if (!data?.vehicle_id) throw new Error("Missing vehicle ID");
-    return data.vehicle_id;
-  });
-}
-
-export function replaceVehicleCover(gateway: GatewayClient, id: string, photo: File) {
-  return gateway.PUT("/vehicles/{id}/cover_photo", {
-    params: { path: { id } },
-    body: { photo: photo.name },
-    bodySerializer: () => {
-      // OpenAPI описывает бинарное поле как string. В multipart передаём сам файл.
-      const form = new FormData();
-      form.set("photo", photo);
-      return form;
-    },
-  });
 }

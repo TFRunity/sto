@@ -4,16 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
-import { createSessionGateway, register, signIn } from "./auth-api";
-import { restoreSession, saveSession, watchSessionExpiry } from "./browser-session";
-
-type Session = NonNullable<ReturnType<typeof restoreSession>>;
+import { createSessionGateway } from "./controller";
+import { restoreSession, saveSession, watchSessionExpiry, type Session } from "./session";
 
 const SessionContext = createContext<{
   session: Session | null | undefined;
   gateway: ReturnType<typeof createSessionGateway>;
-  signIn: typeof signIn;
-  register: typeof register;
+  startSession(session: Session): void;
   signOut(): void;
 } | null>(null);
 
@@ -51,17 +48,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () => updateSession(null),
   ), [updateSession]);
 
-  function startSession(next: Session) {
-    updateSession(next);
-    return next;
-  }
-
   return (
     <SessionContext value={{
       session,
       gateway,
-      signIn: (body, signal) => signIn(body, signal).then(startSession),
-      register: (body, signal) => register(body, signal).then(startSession),
+      startSession: updateSession,
       signOut: () => updateSession(null),
     }}>
       {children}

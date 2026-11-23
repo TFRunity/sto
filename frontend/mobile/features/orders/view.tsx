@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, ScrollView, Text, TextInput, View } from "react-native";
 import { formatRubles } from "../../../common/money/utils";
 import { orderStageLabels, orderStatusLabels } from "../../../common/orders/labels";
+import { isPaymentPending } from "../../../common/orders/payment";
 import { EngineerApiError, sessionErrorMessage } from "../../common/api/controller";
 import { useLoad } from "../../common/hooks/use-load";
 import { styles } from "../../common/styles";
@@ -20,6 +21,7 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
   const load = useCallback((signal: AbortSignal) => loadOrder(token, id, signal), [id, token]);
   const { state, reload } = useLoad(load, onSessionEnd);
   const order = state.status === "ready" ? state.data : undefined;
+  const confirming = order && isPaymentPending(order);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const writeRequest = useRef<AbortController | null>(null);
@@ -74,7 +76,9 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
         </>
       ) : order ? (
         <>
-          <Text>Статус: {orderStatusLabels[order.status]}</Text>
+          <Text accessibilityLiveRegion="polite">
+            Статус: {confirming ? "Оплата подтверждается" : orderStatusLabels[order.status]}
+          </Text>
           <Text>Этап: {orderStageLabels[order.stage]}</Text>
           <Button title="Карточка ТС" onPress={() => onVehicleOpened(order.vehicle_id)} disabled={saving} />
           <OrderPositions order={order} />
@@ -83,7 +87,7 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
             <PositionEditor token={token} saving={saving} onSave={save} onSessionEnd={onSessionEnd} />
           )}
           {availableStages(order).filter((stage) => stage !== order.stage).map((stage) => (
-            <Button key={stage} title={`Этап: ${orderStageLabels[stage]}`} disabled={saving}
+            <Button key={stage} title={stage === "выдан" ? "Выдать автомобиль" : `Этап: ${orderStageLabels[stage]}`} disabled={saving}
               onPress={() => save({ action: "stage", body: { stage } })} />
           ))}
           {canCancelOrder(order) && (
@@ -95,7 +99,7 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
             }} />
           )}
           {saving && <Text accessibilityLiveRegion="polite">Сохраняем изменения…</Text>}
-          {notice && <Button title="Обновить заказ" onPress={reload} disabled={saving} />}
+          <Button title="Обновить заказ" onPress={reload} disabled={saving} />
         </>
       ) : <Text accessibilityLiveRegion="polite">Загружаем заказ…</Text>}
     </ScrollView>

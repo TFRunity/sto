@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { GatewayClient } from "@/lib/api/client";
 import type { components } from "@shared/api/schema";
+import { isPaymentPending } from "@shared/orders/payment";
 
 export type HistoryItem = components["schemas"]["OrderHistoryItem"];
 
@@ -16,6 +17,9 @@ export function historyQuery(gateway: GatewayClient, vehicleId?: string) {
       // Этот маршрут также отдаёт пул инженера; запись в истории имеет этап работ.
       return (data ?? []).filter((entry): entry is HistoryItem => "stage" in entry);
     }),
+    refetchInterval: ({ state }: { state: { data: HistoryItem[] | undefined } }) =>
+      state.data?.some((order) => order.status === "paid" &&
+        (isPaymentPending(order) || order.stage !== "выдан")) ? 5_000 : false,
   };
 }
 

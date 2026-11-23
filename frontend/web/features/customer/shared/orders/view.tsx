@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { orderStageLabels, orderStatusLabels } from "@shared/orders/labels";
+import { isPaymentPending } from "@shared/orders/payment";
 import { orderPath, vehiclePath } from "../routes";
 import { link, panel } from "../view";
 import { vehicleLabel, type VehicleLabelData } from "../utils";
@@ -12,8 +13,13 @@ const statusColors = {
   cancelled: "bg-[#fcebeb] text-destructive",
 };
 
-export function OrderStatus({ status }: { status: HistoryItem["status"] }) {
-  return <span className={`rounded-md px-2.5 py-1 text-sm ${statusColors[status]}`}>{orderStatusLabels[status]}</span>;
+export function OrderStatus({ order }: { order: Pick<HistoryItem, "status" | "payment_confirmed"> }) {
+  const pending = isPaymentPending(order);
+  return (
+    <span aria-live="polite" className={`rounded-md px-2.5 py-1 text-sm ${statusColors[pending ? "active" : order.status]}`}>
+      {pending ? "Оплата подтверждается" : orderStatusLabels[order.status]}
+    </span>
+  );
 }
 
 const dateFormat = new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium" });
@@ -35,7 +41,7 @@ export function OrderList({ orders, vehicles }: { orders: HistoryItem[]; vehicle
               </p>
               <Link href={vehiclePath(order.vehicle_id)} className={`text-sm ${link}`}>Карточка ТС</Link>
             </div>
-            <OrderStatus status={order.status} />
+            <OrderStatus order={order} />
           </li>
         );
       })}

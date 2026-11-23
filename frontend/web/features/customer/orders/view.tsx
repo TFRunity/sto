@@ -2,8 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { formatRubles } from "@shared/money/utils";
 import { orderStageLabels } from "@shared/orders/labels";
+import { isPaymentConfirmed, isPaymentPending } from "@shared/orders/payment";
 import { useSession } from "@/common/session/view";
 import type { components } from "@shared/api/schema";
 import { ReadState, link, panel } from "../shared/view";
@@ -12,31 +14,32 @@ import { vehiclePath } from "../shared/routes";
 import { vehicleQuery } from "../shared/vehicles/controller";
 import { vehicleLabel } from "../shared/utils";
 import { OrderStatus } from "../shared/orders/view";
-import { orderQuery } from "./controller";
+import { isOrderInaccessible, orderQuery, useDownloadCertificate, usePayOrder } from "./controller";
 
 export function OrderScreen({ id }: { id: string }) {
   const { gateway } = useSession();
   const order = useQuery(orderQuery(gateway, id));
+  const inaccessible = isOrderInaccessible(order.error);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <Link href="/customer" className={link}>Мои заказы</Link>
-      <ReadState pending={order.isPending} error={order.error} retry={() => void order.refetch()}>
-        {order.data && <OrderCard order={order.data} />}
-      </ReadState>
+      <ReadState pending={order.isPending} error={order.error} retry={() => void order.refetch()} />
+      {order.data && !inaccessible && <OrderCard key={id} order={order.data} canPay={!order.isError} />}
     </div>
   );
 }
 
-function OrderCard({ order }: { order: components["schemas"]["Order"] }) {
+function OrderCard({ order, canPay }: { order: components["schemas"]["Order"]; canPay: boolean }) {
   const { gateway } = useSession();
   const { data: vehicle } = useQuery(vehicleQuery(gateway, order.vehicle_id));
+  const payment = usePayOrder(gateway, order.id);
 
   return (
     <section className={`${panel} space-y-4`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1>Детали заказа</h1>
-        <OrderStatus status={order.status} />
+        <OrderStatus order={order} />
       </div>
       <Link className={link} href={vehiclePath(order.vehicle_id)}>
         {vehicle ? vehicleLabel(vehicle) : "Карточка ТС"}
@@ -53,6 +56,50 @@ function OrderCard({ order }: { order: components["schemas"]["Order"] }) {
         </ul>
       )}
       <p className="font-semibold">Итого {formatRubles(order.total)}</p>
+      {payment.isPending && !isPaymentPending(order) && (
+        <p role="status">Отправляем оплату…</p>
+      )}
+      {order.status === "active" && !payment.isPending && (
+        <div className="space-y-2">
+          {payment.isSuccess && canPay && <p role="alert">Оплата не подтвердилась. Можно попробовать снова.</p>}
+          {payment.isError && <p role="alert">Не удалось отправить оплату. Попробуйте снова.</p>}
+          <Button disabled={!canPay} onClick={() => payment.mutate()}>Оплатить</Button>
+        </div>
+      )}
+      {isPaymentConfirmed(order) && <CertificateDownload id={order.id} />}
     </section>
+  );
+}
+
+function CertificateDownload({ id }: { id: string }) {
+  const { gateway } = useSession();
+  const certificate = useDownloadCertificate(gateway, id);
+
+  function download() {
+    certificate.mutate(undefined, {
+      onSuccess(pdf) {
+        if (!pdf) return;
+        const url = URL.createObjectURL(pdf);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `Справка-${id}.pdf`;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      },
+    });
+  }
+
+  const unavailable = certificate.data === null;
+
+  return (
+    <div className="space-y-2">
+      {unavailable && <p role="status">Справка пока недоступна.</p>}
+      {certificate.isError && <p role="alert">Не удалось скачать справку. Попробуйте снова.</p>}
+      <Button variant="outline" disabled={certificate.isPending} onClick={download}>
+        {certificate.isPending ? "Загружаем справку…" : unavailable ? "Проверить справку снова" : "Скачать справку (PDF)"}
+      </Button>
+    </div>
   );
 }

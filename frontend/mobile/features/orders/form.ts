@@ -1,10 +1,11 @@
+import { isPaymentConfirmed } from "../../../common/orders/payment";
 import type { Order, OrderWrite } from "./controller";
 import type { PositionKind } from "./search/form";
 
 export function availableStages(order: Order): Order["stage"][] {
   if (order.status !== "active" && order.status !== "paid") return [];
   const workStages: Order["stage"][] = ["принят", "в_работе", "готов"];
-  return order.status === "paid" && order.payment_confirmed ? [...workStages, "выдан"] : workStages;
+  return isPaymentConfirmed(order) ? [...workStages, "выдан"] : workStages;
 }
 
 export function canCancelOrder(order: Order) {

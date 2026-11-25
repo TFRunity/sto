@@ -50,7 +50,7 @@ nginx forwards `/api/*` requests to Gateway, which authenticates requests to pro
 | [Services](services/) | Service catalog |
 | [chassis](chassis/) | Shared HTTP, RabbitMQ, and outbox libraries |
 
-Each domain service has its own PostgreSQL database. Orders coordinates the payment saga using RabbitMQ and a transactional outbox. On the success path, Inventory deducts the parts from stock and Gotenberg generates the PDF certificate. If the saga fails, it rolls back the payment.
+Each domain service has its own PostgreSQL database. Orders records the payment when the customer marks the order as paid, then asks Inventory to deduct the parts through RabbitMQ and a transactional outbox. Successful deduction enables vehicle handover and queues the PDF certificate. A stock shortage leaves the payment recorded and lets the technician retry after replenishment.
 
 ## 🚀 Local Setup
 

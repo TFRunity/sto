@@ -9,11 +9,50 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const canRetryStockDeduction = `-- name: CanRetryStockDeduction :one
+SELECT EXISTS (
+    SELECT 1 FROM saga_state AS failed_attempt
+    WHERE failed_attempt.order_id = $1 AND failed_attempt.current_step = 'failed'
+) AND NOT EXISTS (
+    SELECT 1 FROM saga_state AS blocking_attempt
+    WHERE blocking_attempt.order_id = $1
+      AND blocking_attempt.current_step IN ('verifying_stock', 'completed')
+) AS can_retry
+`
+
+func (q *Queries) CanRetryStockDeduction(ctx context.Context, orderID uuid.UUID) (*bool, error) {
+	row := q.db.QueryRow(ctx, canRetryStockDeduction, orderID)
+	var can_retry *bool
+	err := row.Scan(&can_retry)
+	return can_retry, err
+}
+
+const confirmOrderPayment = `-- name: ConfirmOrderPayment :one
+UPDATE orders
+SET status = 'paid', paid_at = now(), updated_at = now()
+WHERE id = $1 AND client_id = $2 AND status = 'active'
+RETURNING paid_at
+`
+
+type ConfirmOrderPaymentParams struct {
+	ID       uuid.UUID
+	ClientID uuid.UUID
+}
+
+func (q *Queries) ConfirmOrderPayment(ctx context.Context, arg ConfirmOrderPaymentParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, confirmOrderPayment, arg.ID, arg.ClientID)
+	var paid_at pgtype.Timestamptz
+	err := row.Scan(&paid_at)
+	return paid_at, err
+}
 
 const createCertificate = `-- name: CreateCertificate :exec
 INSERT INTO certificates (order_id, status, next_attempt_at)
 VALUES ($1, 'pending', now())
+ON CONFLICT (order_id) DO NOTHING
 `
 
 func (q *Queries) CreateCertificate(ctx context.Context, orderID uuid.UUID) error {
@@ -21,18 +60,18 @@ func (q *Queries) CreateCertificate(ctx context.Context, orderID uuid.UUID) erro
 	return err
 }
 
-const createSaga = `-- name: CreateSaga :exec
+const createStockAttempt = `-- name: CreateStockAttempt :exec
 INSERT INTO saga_state (saga_id, order_id, current_step, deadline)
-VALUES ($1, $2, 'verifying_stock', clock_timestamp() + interval '10 seconds')
+VALUES ($1, $2, 'verifying_stock', 'infinity'::timestamptz)
 `
 
-type CreateSagaParams struct {
+type CreateStockAttemptParams struct {
 	SagaID  uuid.UUID
 	OrderID uuid.UUID
 }
 
-func (q *Queries) CreateSaga(ctx context.Context, arg CreateSagaParams) error {
-	_, err := q.db.Exec(ctx, createSaga, arg.SagaID, arg.OrderID)
+func (q *Queries) CreateStockAttempt(ctx context.Context, arg CreateStockAttemptParams) error {
+	_, err := q.db.Exec(ctx, createStockAttempt, arg.SagaID, arg.OrderID)
 	return err
 }
 
@@ -47,6 +86,23 @@ func (q *Queries) ExpireSaga(ctx context.Context, sagaID uuid.UUID) (int64, erro
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getConfirmedPaymentTime = `-- name: GetConfirmedPaymentTime :one
+SELECT paid_at FROM orders
+WHERE id = $1 AND client_id = $2 AND status = 'paid' AND paid_at IS NOT NULL
+`
+
+type GetConfirmedPaymentTimeParams struct {
+	ID       uuid.UUID
+	ClientID uuid.UUID
+}
+
+func (q *Queries) GetConfirmedPaymentTime(ctx context.Context, arg GetConfirmedPaymentTimeParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getConfirmedPaymentTime, arg.ID, arg.ClientID)
+	var paid_at pgtype.Timestamptz
+	err := row.Scan(&paid_at)
+	return paid_at, err
 }
 
 const getSaga = `-- name: GetSaga :one
@@ -126,27 +182,21 @@ func (q *Queries) ListExpiredSagas(ctx context.Context) ([]ListExpiredSagasRow, 
 	return items, nil
 }
 
-const payOrder = `-- name: PayOrder :execrows
-UPDATE orders SET status = 'paid', updated_at = now()
-WHERE id = $1 AND client_id = $2 AND status = 'active'
+const lockPaidOrderForStockRetry = `-- name: LockPaidOrderForStockRetry :one
+SELECT id FROM orders
+WHERE id = $1 AND status = 'paid' AND paid_at IS NOT NULL
+FOR UPDATE
 `
 
-type PayOrderParams struct {
-	ID       uuid.UUID
-	ClientID uuid.UUID
-}
-
-func (q *Queries) PayOrder(ctx context.Context, arg PayOrderParams) (int64, error) {
-	result, err := q.db.Exec(ctx, payOrder, arg.ID, arg.ClientID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+func (q *Queries) LockPaidOrderForStockRetry(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockPaidOrderForStockRetry, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
 const restoreActiveOrder = `-- name: RestoreActiveOrder :exec
 UPDATE orders SET status = 'active', updated_at = now()
-WHERE id = $1 AND status = 'paid'
+WHERE id = $1 AND status = 'paid' AND paid_at IS NULL
 `
 
 func (q *Queries) RestoreActiveOrder(ctx context.Context, id uuid.UUID) error {

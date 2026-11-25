@@ -366,8 +366,27 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Начать оплату заказа клиента */
+        /** Отметить свой заказ оплаченным */
         post: operations["payOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/{id}/stock/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Повторить отклонённое списание по оплаченному заказу (инженер) */
+        post: operations["retryOrderStock"];
         delete?: never;
         options?: never;
         head?: never;
@@ -796,7 +815,7 @@ export interface components {
             status: "requested" | "active" | "paid" | "cancelled";
             /** @enum {string} */
             stage: "принят" | "в_работе" | "готов" | "выдан";
-            /** @description Есть завершённая сага оплаты. */
+            /** @description Факт оплаты подтверждён. Для отметки v3 не зависит от списания. */
             payment_confirmed: boolean;
             /** Format: date-time */
             created_at: string;
@@ -841,8 +860,19 @@ export interface components {
             items: components["schemas"]["OrderItem"][];
             services: components["schemas"]["OrderService"][];
             total: components["schemas"]["Money"];
-            /** @description Есть завершённая сага оплаты. */
+            /** @description Факт оплаты подтверждён. Для отметки v3 не зависит от списания. */
             payment_confirmed: boolean;
+            /**
+             * @description Состояние списания по оплаченному заказу. Может отсутствовать в ответе v1.
+             * @enum {string}
+             */
+            stock_status?: "pending" | "deducted" | "rejected";
+        };
+        MarkOrderPaidResponse: {
+            /** @enum {string} */
+            status: "paid";
+            /** Format: date-time */
+            paid_at: string;
         };
         ChangeOrderStageRequest: {
             /** @enum {string} */
@@ -1580,7 +1610,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description `order_not_paid` — выдача требует подтверждённой оплаты */
+            /** @description `order_not_paid` — выдача требует подтверждённой оплаты и завершённого списания */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1773,14 +1803,46 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Оплата принята в обработку */
+            /** @description Оплата подтверждена. Повтор возвращает исходное время отметки. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkOrderPaidResponse"];
+                };
+            };
+            /** @description Заказ недоступен для оплаты */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    retryOrderStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Новая попытка списания принята */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Заказ недоступен для оплаты */
+            /** @description `stock_retry_unavailable` — списание нельзя повторить в текущем состоянии */
             409: {
                 headers: {
                     [name: string]: unknown;

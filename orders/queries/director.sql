@@ -32,13 +32,16 @@ SELECT count(*) FILTER (WHERE o.created_at >= (b.day AT TIME ZONE 'Europe/Moscow
        COALESCE(sum(
            COALESCE((SELECT sum(quantity * price) FROM order_items WHERE order_id = o.id), 0)
            + COALESCE((SELECT sum(quantity * price) FROM order_services WHERE order_id = o.id), 0)
-       ) FILTER (WHERE o.status = 'paid' AND EXISTS (
-           SELECT 1 FROM saga_state
-           WHERE order_id = o.id AND current_step = 'completed'
-             AND updated_at >= (b.day AT TIME ZONE 'Europe/Moscow')
-             AND updated_at < ((b.day + interval '1 day') AT TIME ZONE 'Europe/Moscow')
-       )), 0)::numeric AS today_revenue
-FROM orders AS o CROSS JOIN bounds AS b;
+       ) FILTER (WHERE o.status = 'paid'
+           AND COALESCE(o.paid_at, legacy.confirmed_at) >= (b.day AT TIME ZONE 'Europe/Moscow')
+           AND COALESCE(o.paid_at, legacy.confirmed_at) < ((b.day + interval '1 day') AT TIME ZONE 'Europe/Moscow')
+       ), 0)::numeric AS today_revenue
+FROM orders AS o CROSS JOIN bounds AS b
+LEFT JOIN (
+    SELECT order_id, min(updated_at) AS confirmed_at
+    FROM saga_state WHERE current_step = 'completed'
+    GROUP BY order_id
+) AS legacy ON o.id = legacy.order_id AND o.paid_at IS NULL;
 
 -- name: CountActiveOrdersByEngineer :many
 SELECT engineer_id, count(*) AS active_orders FROM orders

@@ -34,16 +34,17 @@ func (item itemJSON) VisitAddOrderItemResponse(w http.ResponseWriter) error {
 }
 
 type orderJSON struct {
-	ID               uuid.UUID          `json:"id"`
-	ClientID         uuid.UUID          `json:"client_id"`
-	VehicleID        uuid.UUID          `json:"vehicle_id"`
-	EngineerID       *uuid.UUID         `json:"engineer_id,omitempty"`
-	Status           api.OrderStatus    `json:"status"`
-	Stage            api.OrderStage     `json:"stage"`
-	PaymentConfirmed bool               `json:"payment_confirmed"`
-	Items            []itemJSON         `json:"items"`
-	Services         []api.OrderService `json:"services"`
-	Total            string             `json:"total"`
+	ID               uuid.UUID            `json:"id"`
+	ClientID         uuid.UUID            `json:"client_id"`
+	VehicleID        uuid.UUID            `json:"vehicle_id"`
+	EngineerID       *uuid.UUID           `json:"engineer_id,omitempty"`
+	Status           api.OrderStatus      `json:"status"`
+	Stage            api.OrderStage       `json:"stage"`
+	PaymentConfirmed bool                 `json:"payment_confirmed"`
+	StockStatus      api.OrderStockStatus `json:"stock_status,omitempty"`
+	Items            []itemJSON           `json:"items"`
+	Services         []api.OrderService   `json:"services"`
+	Total            string               `json:"total"`
 }
 
 func orderResponse(row db.GetOrderRow, items []orderItem, services []db.ListOrderServicesRow) orderJSON {
@@ -65,7 +66,8 @@ func orderResponse(row db.GetOrderRow, items []orderItem, services []db.ListOrde
 		EngineerID:       row.EngineerID,
 		Status:           api.OrderStatus(row.Status),
 		Stage:            api.OrderStage(row.Stage),
-		PaymentConfirmed: row.PaymentConfirmed,
+		PaymentConfirmed: row.PaymentConfirmed != nil && *row.PaymentConfirmed,
+		StockStatus:      api.OrderStockStatus(row.StockStatus),
 		Items:            positions,
 		Services:         servicePositions,
 		Total:            total(items, services).StringFixed(2),

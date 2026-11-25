@@ -34,6 +34,7 @@ type Order struct {
 	Comment          *string
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	PaidAt           pgtype.Timestamptz
 }
 
 type OrderEngineer struct {

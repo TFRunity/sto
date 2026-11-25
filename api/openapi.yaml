@@ -581,7 +581,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '409':
-          description: '`order_not_paid` — выдача требует подтверждённой оплаты'
+          description: '`order_not_paid` — выдача требует подтверждённой оплаты и завершённого списания'
           content:
             application/json:
               schema:
@@ -725,12 +725,35 @@ paths:
     post:
       tags: [orders]
       operationId: payOrder
-      summary: Начать оплату заказа клиента
+      summary: Отметить свой заказ оплаченным
       responses:
-        '202':
-          description: Оплата принята в обработку
+        '200':
+          description: Оплата подтверждена. Повтор возвращает исходное время отметки.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkOrderPaidResponse'
         '409':
           description: Заказ недоступен для оплаты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/stock/retry:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    post:
+      tags: [orders]
+      operationId: retryOrderStock
+      summary: Повторить отклонённое списание по оплаченному заказу (инженер)
+      responses:
+        '202':
+          description: Новая попытка списания принята
+        '409':
+          description: '`stock_retry_unavailable` — списание нельзя повторить в текущем состоянии'
           content:
             application/json:
               schema:
@@ -1612,7 +1635,7 @@ components:
           enum: [принят, в_работе, готов, выдан]
         payment_confirmed:
           type: boolean
-          description: Есть завершённая сага оплаты.
+          description: Факт оплаты подтверждён. Для отметки v3 не зависит от списания.
         created_at:
           type: string
           format: date-time
@@ -1694,7 +1717,22 @@ components:
           $ref: '#/components/schemas/Money'
         payment_confirmed:
           type: boolean
-          description: Есть завершённая сага оплаты.
+          description: Факт оплаты подтверждён. Для отметки v3 не зависит от списания.
+        stock_status:
+          type: string
+          enum: [pending, deducted, rejected]
+          description: Состояние списания по оплаченному заказу. Может отсутствовать в ответе v1.
+
+    MarkOrderPaidResponse:
+      type: object
+      required: [status, paid_at]
+      properties:
+        status:
+          type: string
+          enum: [paid]
+        paid_at:
+          type: string
+          format: date-time
 
     ChangeOrderStageRequest:
       type: object

@@ -34,8 +34,8 @@ func (s *Service) HandleReply(ctx context.Context, event string, body []byte, lo
 }
 
 // applyReply находит попытку по saga_id, проверяет order_id и через replyStep
-// выбирает переход. Справку или возврат заказа в active выполняет только после
-// успешного transition. Эти записи коммитятся вместе со сменой шага.
+// выбирает переход. Успешное списание ставит справку в очередь. При отказе
+// только заказ из старой попытки v1 может вернуться в active.
 func applyReply(ctx context.Context, q *db.Queries, event string, attempt stockmessage.Attempt) (bool, error) {
 	row, err := q.GetSaga(ctx, attempt.SagaID)
 	if errors.Is(err, pgx.ErrNoRows) {

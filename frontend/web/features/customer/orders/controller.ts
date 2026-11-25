@@ -42,6 +42,7 @@ export function usePayOrder(gateway: GatewayClient, id: string) {
       await client.invalidateQueries({ queryKey });
     },
     onError: async () => {
+      void client.invalidateQueries({ queryKey: customerOrderHistoryKey });
       await client.invalidateQueries({ queryKey });
     },
   });

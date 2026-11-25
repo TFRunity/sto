@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatRubles } from "@shared/money/utils";
 import { orderStageLabels } from "@shared/orders/labels";
-import { isPaymentConfirmed, isPaymentPending } from "@shared/orders/payment";
+import { isPaidAndStockDeducted, isPaymentPending } from "@shared/orders/payment";
 import { useSession } from "@/common/session/view";
 import type { components } from "@shared/api/schema";
 import { ReadState, link, panel } from "../shared/view";
@@ -25,12 +25,18 @@ export function OrderScreen({ id }: { id: string }) {
     <div className="mx-auto max-w-2xl space-y-4">
       <Link href="/customer" className={link}>Мои заказы</Link>
       <ReadState pending={order.isPending} error={order.error} retry={() => void order.refetch()} />
-      {order.data && !inaccessible && <OrderCard key={id} order={order.data} canPay={!order.isError} />}
+      {order.data && !inaccessible && (
+        <OrderCard key={id} order={order.data} canPay={!order.isError} refresh={() => void order.refetch()} />
+      )}
     </div>
   );
 }
 
-function OrderCard({ order, canPay }: { order: components["schemas"]["Order"]; canPay: boolean }) {
+function OrderCard({ order, canPay, refresh }: {
+  order: components["schemas"]["Order"];
+  canPay: boolean;
+  refresh: () => void;
+}) {
   const { gateway } = useSession();
   const { data: vehicle } = useQuery(vehicleQuery(gateway, order.vehicle_id));
   const payment = usePayOrder(gateway, order.id);
@@ -57,16 +63,21 @@ function OrderCard({ order, canPay }: { order: components["schemas"]["Order"]; c
       )}
       <p className="font-semibold">Итого {formatRubles(order.total)}</p>
       {payment.isPending && !isPaymentPending(order) && (
-        <p role="status">Отправляем оплату…</p>
+        <p role="status">Сохраняем отметку об оплате…</p>
       )}
       {order.status === "active" && !payment.isPending && (
         <div className="space-y-2">
           {payment.isSuccess && canPay && <p role="alert">Оплата не подтвердилась. Можно попробовать снова.</p>}
-          {payment.isError && <p role="alert">Не удалось отправить оплату. Попробуйте снова.</p>}
-          <Button disabled={!canPay} onClick={() => payment.mutate()}>Оплатить</Button>
+          {payment.isError && (
+            <>
+              <p role="alert">Не удалось подтвердить результат. Обновите заказ.</p>
+              <Button variant="outline" onClick={refresh}>Обновить заказ</Button>
+            </>
+          )}
+          <Button disabled={!canPay} onClick={() => payment.mutate()}>Отметить оплаченным</Button>
         </div>
       )}
-      {isPaymentConfirmed(order) && <CertificateDownload id={order.id} />}
+      {isPaidAndStockDeducted(order) && <CertificateDownload id={order.id} />}
     </section>
   );
 }

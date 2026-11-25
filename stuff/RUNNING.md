@@ -190,12 +190,11 @@ curl -s $API/orders/<order_id> -H "Authorization: Bearer $ENGINEER" | jq
 
 Точные имена полей — в `api/openapi.yaml` (агент добавит их перед вечером 3).
 
-### 6.4 Оплата и сага 🕒 вечер 5
+### 6.4 Отметка оплаты и списание
 
 ```sh
-curl -i -X POST $API/orders/<order_id>/pay -H "Authorization: Bearer $CLIENT"  # → 202
-sleep 2
-curl -s $API/orders/<order_id> -H "Authorization: Bearer $CLIENT" | jq          # paid, подтверждена
+curl -i -X POST "$API/orders/$ORDER_ID/pay" -H "Authorization: Bearer $CLIENT"  # 200: paid и paid_at
+curl -s "$API/orders/$ORDER_ID" -H "Authorization: Bearer $CLIENT" | jq         # stock_status: pending, deducted или rejected
 ```
 
 ### 6.5 Справка 🕒 вечер 6
@@ -207,7 +206,7 @@ curl -s $API/orders/<order_id>/certificate -H "Authorization: Bearer $CLIENT" -o
 ### 6.6 Сквозной сценарий целиком 🕒 вечер 6
 
 ```sh
-scripts/e2e.sh            # успех и дедлайн; агент пишет скрипт, этап 0, п. 9
+scripts/e2e.sh            # отметка, дубль, выдача и недоступный Inventory
 ```
 
 ---
@@ -268,7 +267,7 @@ curl -s http://127.0.0.1:3000/health
 | Что проверяем | Команды | Чего ждём |
 |---|---|---|
 | Inventory недоступен при добавлении позиции | `make stop SVC=inventory` → добавить товар | `502 upstream_error`, позиции нет |
-| Дедлайн саги | `make stop SVC=inventory` → оплата → подождать 11 с → `make up SVC=inventory` | заказ снова `active`, сага `failed`, в Inventory tombstone `cancelled` |
+| Inventory недоступен | `make stop SVC=inventory` → отметить оплату → подождать 11 с → `make up SVC=inventory` | заказ остаётся `paid`, до списания выдача и PDF заблокированы, после восстановления склад обрабатывает команду |
 | Брокер лежит | `make stop SVC=rabbitmq` → оплата → `make up SVC=rabbitmq` | outbox ждёт `published = false`, потом догоняет; сервисы перезапускаются compose |
 | Gotenberg лежит | `make stop SVC=gotenberg` → оплата → ждать ~1,5 мин | справка: 3 попытки (10 с, 1 мин), затем `failed` |
 | Users лежит | `make stop SVC=users` → вход | `502` в конверте от Gateway |

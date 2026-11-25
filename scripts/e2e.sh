@@ -50,15 +50,17 @@ register_client() {
 }
 
 create_order() {
+    local item_id=${1:-$item}
     post_json 201 /orders "$(jq -cn --arg client "$client_id" '{client_id:$client,vehicle_id:"20000000-0000-4000-8000-000000000002"}')" \
         -H "Authorization: Bearer $engineer"
     order_id=$(jq -er '.order_id' "$tmp/body")
-    post_json 201 "/orders/$order_id/items" "$(jq -cn --arg item "$item" '{item_id:$item,quantity:1}')" \
+    post_json 201 "/orders/$order_id/items" "$(jq -cn --arg item "$item_id" '{item_id:$item,quantity:1}')" \
         -H "Authorization: Bearer $engineer"
 }
 
 pay() {
-    request 202 "/orders/$order_id/pay" -X POST -H "Authorization: Bearer $client"
+    request 200 "/orders/$order_id/pay" -X POST -H "Authorization: Bearer $client"
+    jq -e '.status == "paid" and (.paid_at | type == "string")' "$tmp/body" >/dev/null
 }
 
 wait_for_order() {
@@ -114,12 +116,15 @@ check_duplicate() {
 }
 
 success_case() {
-    local before saga_id
+    local before saga_id paid_at
     before=$(stock)
     create_order
     request 403 "/orders/$order_id/pay" -X POST -H "Authorization: Bearer $engineer"
     pay
-    wait_for_order '.status == "paid" and .payment_confirmed == true'
+    paid_at=$(jq -er '.paid_at' "$tmp/body")
+    pay
+    [[ $(jq -er '.paid_at' "$tmp/body") == "$paid_at" ]]
+    wait_for_order '.status == "paid" and .payment_confirmed and .stock_status == "deducted"'
     [[ $(stock) == "$((before - 1))" ]]
     saga_id=$(sql orders-db "SELECT saga_id FROM saga_state WHERE order_id = '$order_id' AND current_step = 'completed'")
     [[ -n $saga_id ]]
@@ -128,32 +133,45 @@ success_case() {
     printf 'Payment confirmed, duplicate handled: %s\n' "$order_id"
 }
 
-deadline_case() {
-    local before saga_id
+unavailable_inventory_case() {
+    local before
     before=$(stock)
     create_order
     inventory_stopped=true
     docker compose stop inventory
     pay
-    wait_for_order '.status == "active" and .payment_confirmed == false'
-    saga_id=$(sql orders-db "SELECT saga_id FROM saga_state WHERE order_id = '$order_id' AND current_step = 'failed'")
-    [[ -n $saga_id ]]
+    sleep 11
+    wait_for_order '.status == "paid" and .payment_confirmed and .stock_status == "pending"'
+    request 404 "/orders/$order_id/certificate" -H "Authorization: Bearer $client"
+    post_json 409 "/orders/$order_id/stage" '{"stage":"выдан"}' -X PATCH -H "Authorization: Bearer $engineer"
+    [[ $(stock) == "$before" ]]
     docker compose start inventory
     inventory_stopped=false
-    for ((attempt=0; attempt<25; attempt++)); do
-        if [[ $(sql inventory-db "SELECT state FROM stock_attempts WHERE saga_id = '$saga_id'") == cancelled ]]; then
-            [[ $(stock) == "$before" ]]
-            printf 'Deadline restored order and stock: %s\n' "$order_id"
-            return
-        fi
-        sleep 1
-    done
-    printf 'Cancellation did not reach Inventory for %s\n' "$saga_id" >&2
-    return 1
+    wait_for_order '.status == "paid" and .payment_confirmed and .stock_status == "deducted"'
+    [[ $(stock) == "$((before - 1))" ]]
+    post_json 200 "/orders/$order_id/stage" '{"stage":"выдан"}' -X PATCH -H "Authorization: Bearer $engineer"
+    wait_for_pdf
+    printf 'Payment stayed confirmed while Inventory was stopped: %s\n' "$order_id"
+}
+
+rejected_stock_case() {
+    local test_item
+    test_item=$(sql inventory-db "WITH item AS (INSERT INTO inventory (name, price, quantity) VALUES ('Масляный фильтр — проверка списания', 1, 0) RETURNING id) SELECT id FROM item")
+    create_order "$test_item"
+    pay
+    wait_for_order '.status == "paid" and .payment_confirmed and .stock_status == "rejected"'
+    request 403 "/orders/$order_id/stock/retry" -X POST -H "Authorization: Bearer $client"
+    sql inventory-db "UPDATE inventory SET quantity = 1 WHERE id = '$test_item'" >/dev/null
+    request 202 "/orders/$order_id/stock/retry" -X POST -H "Authorization: Bearer $engineer"
+    request 409 "/orders/$order_id/stock/retry" -X POST -H "Authorization: Bearer $engineer"
+    wait_for_order '.status == "paid" and .payment_confirmed and .stock_status == "deducted"'
+    wait_for_pdf
+    printf 'Rejected stock deduction succeeded after replenishment: %s\n' "$order_id"
 }
 
 post_json 200 /login '{"phone":"+70000000001","password":"engineer-example"}'
 engineer=$(jq -er '.token' "$tmp/body")
 register_client
 success_case
-deadline_case
+unavailable_inventory_case
+rejected_stock_case

@@ -48,7 +48,7 @@ func (h handler) listClientOrderHistory(ctx context.Context, clientID uuid.UUID,
 			VehicleId:        row.VehicleID,
 			Status:           api.OrderHistoryItemStatus(row.Status),
 			Stage:            api.OrderHistoryItemStage(row.Stage),
-			PaymentConfirmed: row.PaymentConfirmed,
+			PaymentConfirmed: row.PaymentConfirmed != nil && *row.PaymentConfirmed,
 			CreatedAt:        row.CreatedAt.Time,
 		})
 	}

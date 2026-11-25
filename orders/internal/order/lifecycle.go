@@ -9,11 +9,11 @@ import (
 	"github.com/AlexeBabanov/sto/orders/internal/api"
 )
 
-// ChangeOrderStage разрешает выдачу при оплаченном заказе и завершённой саге.
+// ChangeOrderStage разрешает выдачу после подтверждения оплаты и списания.
 func (h handler) ChangeOrderStage(ctx context.Context, req api.ChangeOrderStageRequestObject) (api.ChangeOrderStageResponseObject, error) {
 	err := h.repo.changeStage(ctx, req.Id, string(req.Body.Stage))
 	if err != nil {
-		return nil, transitionError(err, "order_not_paid", "delivery requires confirmed payment")
+		return nil, transitionError(err, "order_not_paid", "delivery requires confirmed payment and stock deduction")
 	}
 	return api.ChangeOrderStage200Response{}, nil
 }

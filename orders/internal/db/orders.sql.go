@@ -196,12 +196,18 @@ func (q *Queries) CreateServiceBooking(ctx context.Context, arg CreateServiceBoo
 
 const getOrder = `-- name: GetOrder :one
 SELECT o.id, o.client_id, o.vehicle_id, o.engineer_id, o.status, o.stage, o.created_at,
-       EXISTS (
-           SELECT 1
-           FROM saga_state AS s
-           WHERE s.order_id = o.id AND s.current_step = 'completed'
-       ) AS payment_confirmed
+       (o.paid_at IS NOT NULL OR stock.status = 'deducted') AS payment_confirmed,
+       stock.status::text AS stock_status
 FROM orders AS o
+CROSS JOIN LATERAL (
+    SELECT CASE
+        WHEN count(*) FILTER (WHERE current_step = 'completed') > 0 THEN 'deducted'
+        WHEN count(*) FILTER (WHERE current_step = 'verifying_stock') > 0 THEN 'pending'
+        WHEN count(*) FILTER (WHERE current_step = 'failed') > 0 THEN 'rejected'
+        ELSE ''
+    END AS status
+    FROM saga_state WHERE order_id = o.id AND o.status = 'paid'
+) AS stock
 WHERE o.id = $1
 `
 
@@ -213,7 +219,8 @@ type GetOrderRow struct {
 	Status           string
 	Stage            string
 	CreatedAt        pgtype.Timestamptz
-	PaymentConfirmed bool
+	PaymentConfirmed *bool
+	StockStatus      string
 }
 
 func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, error) {
@@ -228,17 +235,18 @@ func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, erro
 		&i.Stage,
 		&i.CreatedAt,
 		&i.PaymentConfirmed,
+		&i.StockStatus,
 	)
 	return i, err
 }
 
 const listClientOrderHistory = `-- name: ListClientOrderHistory :many
 SELECT o.id, o.vehicle_id, o.status, o.stage, o.created_at,
-       EXISTS (
+       (o.paid_at IS NOT NULL OR EXISTS (
            SELECT 1
            FROM saga_state AS s
            WHERE s.order_id = o.id AND s.current_step = 'completed'
-       ) AS payment_confirmed
+       )) AS payment_confirmed
 FROM orders AS o
 WHERE o.client_id = $1
   AND ($2::uuid IS NULL OR o.vehicle_id = $2::uuid)
@@ -256,7 +264,7 @@ type ListClientOrderHistoryRow struct {
 	Status           string
 	Stage            string
 	CreatedAt        pgtype.Timestamptz
-	PaymentConfirmed bool
+	PaymentConfirmed *bool
 }
 
 func (q *Queries) ListClientOrderHistory(ctx context.Context, arg ListClientOrderHistoryParams) ([]ListClientOrderHistoryRow, error) {

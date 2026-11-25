@@ -80,6 +80,13 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
             Статус: {confirming ? "Оплата подтверждается" : orderStatusLabels[order.status]}
           </Text>
           <Text>Этап: {orderStageLabels[order.stage]}</Text>
+          {order.stock_status === "pending" && <Text accessibilityLiveRegion="polite">Ожидаем списание товара со склада.</Text>}
+          {order.stock_status === "rejected" && (
+            <>
+              <Text accessibilityRole="alert">На складе не хватило товара. Проверьте остатки перед повтором.</Text>
+              <Button title="Повторить списание" onPress={() => save({ action: "stock/retry" })} disabled={saving} />
+            </>
+          )}
           <Button title="Карточка ТС" onPress={() => onVehicleOpened(order.vehicle_id)} disabled={saving} />
           <OrderPositions order={order} />
           <Text>Итого: {formatRubles(order.total)}</Text>

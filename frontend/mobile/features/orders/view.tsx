@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, ScrollView, Text, TextInput, View } from "react-native";
 import { formatRubles } from "../../../common/money/utils";
 import { orderStageLabels, orderStatusLabels } from "../../../common/orders/labels";
+import { certificateStatusLabels } from "../../../common/orders/certificate";
 import { isPaymentPending } from "../../../common/orders/payment";
 import { EngineerApiError, sessionErrorMessage } from "../../common/api/controller";
 import { useLoad } from "../../common/hooks/use-load";
@@ -11,16 +12,18 @@ import { availableStages, canCancelOrder, readPositionForm } from "./form";
 import type { PositionKind } from "./search/form";
 import { PositionSearch } from "./search/view";
 
-export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }: {
+export function OrderScreen({ token, id, historyAnchorId, onBack, onSessionEnd, onVehicleOpened }: {
   token: string;
   id: string;
+  historyAnchorId?: string;
   onBack: () => void;
-  onVehicleOpened: (vehicleId: string) => void;
+  onVehicleOpened: (vehicleId: string, withHistory: boolean, canEdit: boolean) => void;
   onSessionEnd: (message?: string) => void;
 }) {
-  const load = useCallback((signal: AbortSignal) => loadOrder(token, id, signal), [id, token]);
+  const load = useCallback((signal: AbortSignal) => loadOrder(token, id, signal, historyAnchorId), [historyAnchorId, id, token]);
   const { state, reload } = useLoad(load, onSessionEnd);
   const order = state.status === "ready" ? state.data : undefined;
+  const canEdit = !historyAnchorId && order?.can_edit === true;
   const confirming = order && isPaymentPending(order);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
@@ -29,7 +32,7 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
   useEffect(() => () => writeRequest.current?.abort(), []);
 
   function save(write: OrderWrite) {
-    if (writeRequest.current) return;
+    if (writeRequest.current || !canEdit) return;
     const controller = new AbortController();
     writeRequest.current = controller;
     setSaving(true);
@@ -62,7 +65,7 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
 
   return (
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 12 }}>
-      <Button title="К пулу заявок" onPress={onBack} />
+      <Button title="Назад" onPress={onBack} />
       <Text accessibilityRole="header" style={styles.heading}>Заказ {id.slice(0, 8)}</Text>
       {notice ? <Text accessibilityRole="alert" style={styles.error}>{notice}</Text> : null}
       {state.status === "error" ? (
@@ -80,24 +83,36 @@ export function OrderScreen({ token, id, onBack, onSessionEnd, onVehicleOpened }
             Статус: {confirming ? "Оплата подтверждается" : orderStatusLabels[order.status]}
           </Text>
           <Text>Этап: {orderStageLabels[order.stage]}</Text>
+          {order.certificate_status && <Text>Справка: {certificateStatusLabels[order.certificate_status]}</Text>}
           {order.stock_status === "pending" && <Text accessibilityLiveRegion="polite">Ожидаем списание товара со склада.</Text>}
           {order.stock_status === "rejected" && (
             <>
               <Text accessibilityRole="alert">На складе не хватило товара. Проверьте остатки перед повтором.</Text>
-              <Button title="Повторить списание" onPress={() => save({ action: "stock/retry" })} disabled={saving} />
+              {canEdit && <Button title="Повторить списание" onPress={() => save({ action: "stock/retry" })} disabled={saving} />}
             </>
           )}
-          <Button title="Карточка ТС" onPress={() => onVehicleOpened(order.vehicle_id)} disabled={saving} />
+          <Button title="Карточка ТС" disabled={saving} onPress={() => onVehicleOpened(order.vehicle_id,
+            canEdit && (order.status === "active" || (order.status === "paid" && order.stage !== "выдан")), canEdit)} />
+          {order.engineers && order.engineers.length > 0 && (
+            <View style={{ gap: 4 }}>
+              <Text accessibilityRole="header">Исполнители</Text>
+              {order.engineers.map((engineer) => (
+                <Text key={engineer.id}>
+                  {engineer.name || engineer.id}{engineer.id === order.engineer_id ? " · Ответственный" : ""}
+                </Text>
+              ))}
+            </View>
+          )}
           <OrderPositions order={order} />
           <Text>Итого: {formatRubles(order.total)}</Text>
-          {order.status === "active" && (
+          {canEdit && order.status === "active" && (
             <PositionEditor token={token} saving={saving} onSave={save} onSessionEnd={onSessionEnd} />
           )}
-          {availableStages(order).filter((stage) => stage !== order.stage).map((stage) => (
+          {canEdit && availableStages(order).filter((stage) => stage !== order.stage).map((stage) => (
             <Button key={stage} title={stage === "выдан" ? "Выдать автомобиль" : `Этап: ${orderStageLabels[stage]}`} disabled={saving}
               onPress={() => save({ action: "stage", body: { stage } })} />
           ))}
-          {canCancelOrder(order) && (
+          {canEdit && canCancelOrder(order) && (
             <Button title="Отменить заказ" disabled={saving} onPress={() => {
               Alert.alert("Отменить заказ?", "Заказ перейдёт в статус «Отменён».", [
                 { text: "Назад", style: "cancel" },

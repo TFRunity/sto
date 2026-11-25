@@ -29,3 +29,22 @@ SELECT id, name, phone FROM users WHERE id = ANY(sqlc.arg(ids)::uuid[]);
 SELECT id, name, phone FROM users
 WHERE role = 'engineer' AND deleted_at IS NULL
 ORDER BY name, id;
+
+-- name: SearchActiveClients :many
+SELECT id, name, phone
+FROM users
+WHERE role = 'client' AND deleted_at IS NULL AND (
+    name ILIKE '%' || sqlc.arg(pattern)::text || '%' ESCAPE '!'
+    OR phone ILIKE '%' || sqlc.arg(pattern)::text || '%' ESCAPE '!'
+)
+ORDER BY name, id LIMIT 201;
+
+-- name: GetMyProfile :one
+SELECT name, phone, role, created_at, work_started_at, notifications_enabled
+FROM users WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: UpdateMyNotifications :one
+UPDATE users
+SET notifications_enabled = sqlc.arg(enabled), updated_at = now()
+WHERE id = sqlc.arg(user_id) AND deleted_at IS NULL
+RETURNING name, phone, role, created_at, work_started_at, notifications_enabled;

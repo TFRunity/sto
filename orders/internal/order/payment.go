@@ -28,14 +28,11 @@ func (h handler) PayOrder(ctx context.Context, req api.PayOrderRequestObject) (a
 
 // RetryOrderStock начинает новую попытку после отказа Inventory.
 func (h handler) RetryOrderStock(ctx context.Context, req api.RetryOrderStockRequestObject) (api.RetryOrderStockResponseObject, error) {
-	identity, ok := httpx.IdentityFromContext(ctx)
-	if !ok {
-		return nil, httpx.Unauthorized()
+	engineer, err := httpx.EngineerIdentity(ctx)
+	if err != nil {
+		return nil, err
 	}
-	if identity.Role != "engineer" {
-		return nil, &httpx.Error{Status: http.StatusForbidden, Code: "forbidden", Message: "forbidden"}
-	}
-	err := h.payments.RetryStock(ctx, req.Id)
+	err = h.payments.RetryStock(ctx, req.Id, engineer.ID)
 	if errors.Is(err, saga.ErrStockRetryUnavailable) {
 		return nil, &httpx.Error{Status: http.StatusConflict, Code: "stock_retry_unavailable", Message: "stock deduction cannot be retried"}
 	}

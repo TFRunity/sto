@@ -1,6 +1,6 @@
 <mxfile host="Electron">
-  <diagram name="Sequence - Оплата (сага)" id="seq-pay">
-    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1460" math="0" shadow="0">
+  <diagram name="Sequence - Отметка оплаты и списание (v3)" id="seq-pay">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1550" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -55,7 +55,7 @@
         <mxCell id="flabel10" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[StockRejected]" vertex="1">
           <mxGeometry x="46" y="969" width="200" height="16" as="geometry" />
         </mxCell>
-        <mxCell id="flabel11" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[0 строк — сага уже завершена]" vertex="1">
+        <mxCell id="flabel11" parent="1" style="text;html=1;align=left;fontSize=10;fontStyle=2;" value="[переход пропущен: дубль или дедлайн v1]" vertex="1">
           <mxGeometry x="46" y="1044" width="200" height="16" as="geometry" />
         </mxCell>
         <mxCell id="fsep12" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;strokeColor=#666666;" value="">
@@ -70,7 +70,7 @@
             <mxPoint x="970" y="1035" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="frame14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="loop: воркер дедлайнов Orders (тик ~1 с) — параллельно шагам 7–18" vertex="1">
+        <mxCell id="frame14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=4;fontSize=10;fontStyle=1;" value="loop: воркер дедлайнов Orders — только для оставшихся попыток v1" vertex="1">
           <mxGeometry x="40" y="1115" width="1520" height="235" as="geometry" />
         </mxCell>
         <mxCell id="ll1" edge="1" parent="1" source="p_client" style="endArrow=none;dashed=1;html=1;strokeColor=#6c8ebf;" value="">
@@ -109,16 +109,16 @@
             <mxPoint x="300" y="120" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="a16" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="2. canStartPayment: active?" vertex="1">
+        <mxCell id="a16" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="2. Идентификатор клиента из Gateway" vertex="1">
           <mxGeometry x="308" y="170" width="10" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="m17" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. UPDATE orders SET status='paid'&lt;br&gt;WHERE id=? AND status='active'">
+        <mxCell id="m17" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="3. UPDATE orders SET status='paid', paid_at=now()&lt;br&gt;WHERE id=? AND client_id=? AND status='active'">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="228" as="sourcePoint" />
             <mxPoint x="530" y="228" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m18" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. INSERT saga_state: 'verifying_stock',&lt;br&gt;deadline = now() + 10 s">
+        <mxCell id="m18" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="4. INSERT saga_state: 'verifying_stock',&lt;br&gt;deadline = infinity (v3)">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="276" as="sourcePoint" />
             <mxPoint x="530" y="276" as="targetPoint" />
@@ -130,10 +130,10 @@
             <mxPoint x="530" y="324" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="note20" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Шаги 3–5 — ОДНА транзакция (ADR-005, ADR-030).&lt;br&gt;0 строк на шаге 3 → 409 order_not_active&lt;br&gt;(уже оплачивается или отменён).&lt;br&gt;В payload — только id и количества (А-08)" vertex="1">
-          <mxGeometry x="660" y="150" width="310" height="84" as="geometry" />
+        <mxCell id="note20" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Шаги 3–5 выполняются в одной транзакции (ADR-043).&lt;br&gt;Если UPDATE не изменил строку, читаем paid_at&amp;nbsp;владельца.&lt;br&gt;Нашли → 200 с исходным временем, без новой попытки.&lt;br&gt;Иначе → 409 order_not_active." vertex="1">
+          <mxGeometry x="660" y="150" width="385" height="84" as="geometry" />
         </mxCell>
-        <mxCell id="m21" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="6. 202 Accepted — UI: «оплата подтверждается», опрос статуса">
+        <mxCell id="m21" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=10;align=center;verticalAlign=bottom;" value="6. 200 OK: paid и paid_at">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="372" as="sourcePoint" />
             <mxPoint x="90" y="372" as="targetPoint" />
@@ -178,13 +178,13 @@
             <mxPoint x="300" y="868" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m31" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="16. tx: UPDATE saga_state SET current_step='completed'&lt;br&gt;WHERE … 'verifying_stock' → + INSERT certificates (pending)">
+        <mxCell id="m31" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="16. tx: попытка → completed условно;&lt;br&gt;для v1 записать paid_at; поставить справку в очередь">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="945" as="sourcePoint" />
             <mxPoint x="530" y="945" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m32" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="17. tx: сага → 'failed' (условно) + компенсация&lt;br&gt;UPDATE orders SET status='active' WHERE status='paid'">
+        <mxCell id="m32" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="17. tx: попытка → failed условно;&lt;br&gt;v3 остаётся paid, только v1 возвращается в active">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="300" y="1018" as="sourcePoint" />
             <mxPoint x="530" y="1018" as="targetPoint" />
@@ -193,7 +193,7 @@
         <mxCell id="a33" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="18. ack + warn-лог, ничего не менять" vertex="1">
           <mxGeometry x="308" y="1060" width="10" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="note34" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Успех после дедлайна: сага уже failed → ответ отброшен&lt;br&gt;на шаге 18, а списание отменит CancelStock&lt;br&gt;от воркера дедлайнов (шаги 20–23)" vertex="1">
+        <mxCell id="note34" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="У новой попытки v3 нет срока истечения.&lt;br&gt;Если Inventory недоступен, заказ остаётся paid,&lt;br&gt;а списание — pending до ответа." vertex="1">
           <mxGeometry x="1000" y="890" width="470" height="70" as="geometry" />
         </mxCell>
         <mxCell id="m35" edge="1" parent="1" style="html=1;endArrow=block;fontSize=10;align=center;verticalAlign=bottom;" value="19. SELECT saga_state WHERE current_step='verifying_stock'&lt;br&gt;AND deadline &lt; now()">
@@ -223,11 +223,11 @@
         <mxCell id="a39" parent="1" style="text;html=1;align=left;verticalAlign=top;fontSize=10;whiteSpace=nowrap;" value="23. deducted → вернуть позиции, 'cancelled'; попытки нет → tombstone 'cancelled';&lt;br&gt;rejected / cancelled → ничего. Ответ на отмену не нужен" vertex="1">
           <mxGeometry x="998" y="1305" width="10" height="34" as="geometry" />
         </mxCell>
-        <mxCell id="note40" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fcebeb;strokeColor=#a32d2d;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Возврат денег: TODO — «Доменный модуль коммерческих&lt;br&gt;операций», не спроектирован. Компенсация здесь&lt;br&gt;ограничена статусом заказа" vertex="1">
+        <mxCell id="note40" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fcebeb;strokeColor=#a32d2d;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Веб показывает подтверждение из ответа 200.&lt;br&gt;Списание и этап выдачи обновляются при чтении заказа." vertex="1">
           <mxGeometry x="40" y="1375" width="470" height="62" as="geometry" />
         </mxCell>
-        <mxCell id="note41" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Автоматического повтора нет (ADR-016): клиент сам нажимает «Оплатить» —&lt;br&gt;новая сага, новый saga_id. Потерянная CancelStock (5 доставок) →&lt;br&gt;error-лог с saga_id и ручной разбор (ADR-030)" vertex="1">
-          <mxGeometry x="530" y="1375" width="600" height="62" as="geometry" />
+        <mxCell id="note41" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Повтор списания в v3 после отказа склада и пополнения остатков&lt;br&gt;Инженер → Gateway → Orders: POST /orders/{id}/stock/retry.&lt;br&gt;Orders блокирует заказ и проверяет, что есть отказ и нет ожидающей или успешной попытки.&lt;br&gt;Если повтор допустим, Orders пишет DeductStock с новым saga_id и отвечает 202.&lt;br&gt;Иначе отвечает 409 stock_retry_unavailable. Дубликат доставки сохраняет прежний saga_id." vertex="1">
+          <mxGeometry x="530" y="1375" width="760" height="115" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

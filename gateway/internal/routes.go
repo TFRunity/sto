@@ -25,6 +25,8 @@ type route struct {
 var routes = []route{
 	{prefix: "/register", upstream: "users", public: true},
 	{prefix: "/login", upstream: "users", public: true},
+	{prefix: "/me", upstream: "users", roles: []string{roleClient, roleEngineer, roleDirector}},
+	{prefix: "/certificates", upstream: "orders", roles: []string{roleClient}},
 	// Запись позиций и создание заказа доступны инженеру. Исключения проверяются по методу.
 	{prefix: "/orders", upstream: "orders", roles: []string{roleEngineer}},
 	{prefix: "/vehicles", upstream: "vehicle"},
@@ -32,6 +34,9 @@ var routes = []route{
 	{prefix: "/services", upstream: "services"},
 	{prefix: "/dashboard", upstream: "director", roles: []string{roleDirector}},
 	{prefix: "/director/orders", upstream: "director", roles: []string{roleDirector}},
+	{prefix: "/engineer/orders", upstream: "director", roles: []string{roleEngineer}},
+	{prefix: "/engineer/clients", upstream: "users", roles: []string{roleEngineer}},
+	{prefix: "/engineer/vehicles", upstream: "vehicle", roles: []string{roleEngineer}},
 }
 
 // NewRouter принимает внешние пути с /api и передаёт маршрутизацию по путям из OpenAPI.
@@ -98,8 +103,21 @@ func decideRequest(r *http.Request, route route, identity Identity) error {
 	switch route.prefix {
 	case "/orders":
 		roles = orderRoles(r, roles)
-	case "/dashboard", "/director/orders":
+	case "/dashboard", "/certificates", "/engineer/orders", "/engineer/clients":
 		if r.Method != http.MethodGet || r.URL.Path != route.prefix {
+			roles = nil
+		}
+	case "/director/orders":
+		id := strings.TrimPrefix(r.URL.Path, route.prefix+"/")
+		if r.Method != http.MethodGet || (r.URL.Path != route.prefix && (id == "" || strings.Contains(id, "/"))) {
+			roles = nil
+		}
+	case "/me":
+		if r.URL.Path != route.prefix || (r.Method != http.MethodGet && r.Method != http.MethodPatch) {
+			roles = nil
+		}
+	case "/engineer/vehicles":
+		if r.URL.Path != route.prefix || (r.Method != http.MethodGet && r.Method != http.MethodPost) {
 			roles = nil
 		}
 	case "/vehicles":
@@ -168,11 +186,20 @@ func orderRoles(r *http.Request, fallback []string) []string {
 		return []string{roleClient}
 	}
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/orders/"), "/")
+	if len(parts) >= 2 && parts[1] == "vehicle-history" {
+		if r.Method == http.MethodGet && len(parts) <= 3 {
+			return []string{roleEngineer}
+		}
+		return nil
+	}
 	if len(parts) == 2 && parts[1] == "pay" && r.Method == http.MethodPost {
 		return []string{roleClient}
 	}
-	if len(parts) == 2 && parts[1] == "certificate" && r.Method == http.MethodGet {
-		return []string{roleClient}
+	if len(parts) == 2 && parts[1] == "certificate" {
+		if r.Method == http.MethodGet {
+			return []string{roleClient, roleDirector}
+		}
+		return nil
 	}
 	if len(parts) == 1 && parts[0] != "/orders" && parts[0] != "" && r.Method == http.MethodGet {
 		return []string{roleEngineer, roleClient}

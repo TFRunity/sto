@@ -1,50 +1,83 @@
 import { useCallback, useEffect, useState } from "react";
 import { BackHandler, StatusBar, View } from "react-native";
 import { styles } from "./common/styles";
+import { AssignedOrders } from "./features/assigned-orders/view";
 import { EngineerLogin } from "./features/auth/view";
+import { IntakeScreen } from "./features/intake/view";
 import { OrderScreen } from "./features/orders/view";
 import { BookingPool } from "./features/pool/view";
+import { EngineerProfile } from "./features/profile/view";
 import { VehicleScreen } from "./features/vehicles/view";
 
+type Screen =
+  | { kind: "assigned" | "intake" | "profile" }
+  | { kind: "order"; id: string; historyAnchorId?: string }
+  | { kind: "vehicle"; id: string; orderId?: string; historyOrderId?: string };
+
 export default function App() {
-  const [token, setToken] = useState<string | null>(null);
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [vehicle, setVehicle] = useState<{ id: string; orderId?: string } | null>(null);
+  const [session, setSession] = useState<{ token: string; phone: string } | null>(null);
+  const [screens, setScreens] = useState<Screen[]>([]);
+  const screen = screens.at(-1);
   const [sessionMessage, setSessionMessage] = useState("");
   const endSession = useCallback((message = "") => {
-    setVehicle(null);
-    setOrderId(null);
-    setToken(null);
+    setScreens([]);
+    setSession(null);
     setSessionMessage(message);
   }, []);
 
-  const closeOrder = useCallback(() => setOrderId(null), []);
-
-  const closeVehicle = useCallback(() => setVehicle(null), []);
+  const goBack = useCallback(() => setScreens((history) => history.slice(0, -1)), []);
 
   useEffect(() => {
-    if (!vehicle && !orderId) return;
+    if (!screen) return;
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (vehicle) closeVehicle();
-      else closeOrder();
+      goBack();
       return true;
     });
 
     return () => subscription.remove();
-  }, [closeOrder, closeVehicle, orderId, vehicle]);
+  }, [goBack, screen]);
+
+  function open(next: Screen) {
+    setScreens((history) => [...history, next]);
+  }
+
+  function openOrder(id: string) {
+    open({ kind: "order", id });
+  }
+
+  function openAcceptedOrder(id: string) {
+    setScreens([{ kind: "assigned" }, { kind: "order", id }]);
+  }
 
   function renderScreen() {
-    if (!token) return <EngineerLogin sessionMessage={sessionMessage} onSignIn={setToken} />;
-    if (vehicle) {
-      return <VehicleScreen token={token} id={vehicle.id} orderId={vehicle.orderId}
-        onBack={closeVehicle} onSessionEnd={endSession} />;
+    if (!session) return <EngineerLogin sessionMessage={sessionMessage}
+      onSignIn={(token, phone) => setSession({ token, phone })} />;
+    const { token } = session;
+    switch (screen?.kind) {
+      case "vehicle":
+        return <VehicleScreen key={screen.id} token={token} id={screen.id} orderId={screen.orderId}
+          historyOrderId={screen.historyOrderId} onBack={goBack} onSessionEnd={endSession}
+          onHistoryOrderOpened={(id) => open({ kind: "order", id, historyAnchorId: screen.historyOrderId })} />;
+      case "order":
+        return <OrderScreen key={screen.id} token={token} id={screen.id} historyAnchorId={screen.historyAnchorId}
+          onBack={goBack} onSessionEnd={endSession} onVehicleOpened={(id, withHistory, canEdit) => open({
+            kind: "vehicle", id,
+            orderId: canEdit ? screen.id : undefined,
+            historyOrderId: withHistory ? screen.id : undefined,
+          })} />;
+      case "assigned":
+        return <AssignedOrders token={token} onBack={goBack} onOrderOpened={openOrder} onSessionEnd={endSession} />;
+      case "intake":
+        return <IntakeScreen token={token} engineerPhone={session.phone} onBack={goBack}
+          onOrderOpened={openAcceptedOrder} onSessionEnd={endSession} />;
+      case "profile":
+        return <EngineerProfile token={token} onBack={goBack} onSessionEnd={endSession} />;
+      default:
+        return <BookingPool token={token} onOrderOpened={openAcceptedOrder} onSessionEnd={endSession}
+          onVehicleOpened={(id) => open({ kind: "vehicle", id })}
+          onAssignedOpened={() => open({ kind: "assigned" })} onIntakeOpened={() => open({ kind: "intake" })}
+          onProfileOpened={() => open({ kind: "profile" })} />;
     }
-    if (orderId) {
-      return <OrderScreen token={token} id={orderId} onBack={closeOrder} onSessionEnd={endSession}
-        onVehicleOpened={(id) => setVehicle({ id, orderId })} />;
-    }
-    return <BookingPool token={token} onOrderOpened={setOrderId} onSessionEnd={endSession}
-      onVehicleOpened={(id) => setVehicle({ id })} />;
   }
 
   return (

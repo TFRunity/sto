@@ -72,5 +72,10 @@ func newApp(svc *internal.Service, repo *internal.Repository, logger *slog.Logge
 		return nil, fmt.Errorf("load openapi spec: %w", err)
 	}
 	strict := api.NewStrictHandlerWithOptions(internal.NewHandler(svc, repo), nil, api.StrictHTTPServerOptions(httpx.NewStrictErrors(logger)))
-	return httpx.Validator(spec, logger)(api.Handler(strict)), nil
+	routes := api.Handler(strict)
+	mux := http.NewServeMux()
+	mux.Handle("GET /engineer/clients", httpx.RequireIdentity(routes, logger))
+	mux.Handle("/me", httpx.RequireIdentity(routes, logger))
+	mux.Handle("/", routes)
+	return httpx.Validator(spec, logger)(mux), nil
 }

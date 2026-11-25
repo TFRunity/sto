@@ -27,6 +27,11 @@ export function Cabinet({ role, children }: { role: WebRole; children: ReactNode
           <Link className="font-medium underline-offset-4 hover:underline" href={cabinetPath[role]}>
             {role === "client" ? "Мои заказы" : "Дашборд"}
           </Link>
+          {role === "client" && (
+            <Link className="font-medium underline-offset-4 hover:underline" href="/customer/certificates">
+              Справки
+            </Link>
+          )}
           {role === "director" && (
             <>
               <Link className="font-medium underline-offset-4 hover:underline" href="/director/orders">
@@ -37,6 +42,9 @@ export function Cabinet({ role, children }: { role: WebRole; children: ReactNode
               </Link>
             </>
           )}
+          <Link className="font-medium underline-offset-4 hover:underline" href={`${cabinetPath[role]}/profile`}>
+            Профиль
+          </Link>
         </nav>
         <Button variant="outline" onClick={signOut}>Выйти</Button>
       </header>

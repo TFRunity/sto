@@ -184,14 +184,34 @@ func (q *Queries) ListExpiredSagas(ctx context.Context) ([]ListExpiredSagasRow, 
 
 const lockPaidOrderForStockRetry = `-- name: LockPaidOrderForStockRetry :one
 SELECT id FROM orders
-WHERE id = $1 AND status = 'paid' AND paid_at IS NOT NULL
+WHERE id = $1 AND engineer_id = $2::uuid
+  AND status = 'paid' AND paid_at IS NOT NULL
 FOR UPDATE
 `
 
-func (q *Queries) LockPaidOrderForStockRetry(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, lockPaidOrderForStockRetry, id)
+type LockPaidOrderForStockRetryParams struct {
+	OrderID    uuid.UUID
+	EngineerID uuid.UUID
+}
+
+func (q *Queries) LockPaidOrderForStockRetry(ctx context.Context, arg LockPaidOrderForStockRetryParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockPaidOrderForStockRetry, arg.OrderID, arg.EngineerID)
+	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const recordLegacyPaymentConfirmation = `-- name: RecordLegacyPaymentConfirmation :exec
+UPDATE orders AS o
+SET paid_at = s.updated_at
+FROM saga_state AS s
+WHERE s.saga_id = $1 AND s.order_id = o.id AND s.current_step = 'completed'
+  AND s.deadline < 'infinity'::timestamptz AND o.status = 'paid' AND o.paid_at IS NULL
+`
+
+func (q *Queries) RecordLegacyPaymentConfirmation(ctx context.Context, sagaID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, recordLegacyPaymentConfirmation, sagaID)
+	return err
 }
 
 const restoreActiveOrder = `-- name: RestoreActiveOrder :exec

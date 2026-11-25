@@ -8,3 +8,9 @@ export function loadVehicle(token: string, vehicleId: string, signal: AbortSigna
     headers: bearerHeader(token), signal,
   }).then((response) => response.json() as Promise<Vehicle>);
 }
+
+export function loadVehicleHistory(token: string, orderId: string, signal: AbortSignal) {
+  return gatewayRequest(`/orders/${encodeURIComponent(orderId)}/vehicle-history`, {
+    headers: bearerHeader(token), signal,
+  }).then((response) => response.json() as Promise<components["schemas"]["OrderHistoryItem"][]>);
+}

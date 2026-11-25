@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/AlexeBabanov/sto/chassis/postgres"
+	"github.com/AlexeBabanov/sto/orders/internal/api"
 	"github.com/AlexeBabanov/sto/orders/internal/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -25,41 +27,12 @@ type repository struct {
 	queries *db.Queries
 }
 
-func (r repository) create(ctx context.Context, clientID, vehicleID, engineerID uuid.UUID) (uuid.UUID, error) {
-	var id uuid.UUID
-	err := postgres.InTx(ctx, r.pool, func(tx pgx.Tx) error {
-		inserted, err := insertOrderWithEngineer(ctx, db.New(tx), clientID, vehicleID, engineerID)
-		id = inserted
-		return err
-	})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("create order: %w", err)
-	}
-	return id, nil
-}
-
-// Для назначения ответственного обе вставки должны пройти в одной транзакции.
-func insertOrderWithEngineer(ctx context.Context, queries *db.Queries, clientID, vehicleID, engineerID uuid.UUID) (uuid.UUID, error) {
-	id, err := queries.CreateOrder(ctx, db.CreateOrderParams{
-		ClientID: clientID, VehicleID: vehicleID, EngineerID: engineerID,
-	})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("insert order: %w", err)
-	}
-	if err := queries.AddOrderEngineer(ctx, db.AddOrderEngineerParams{
-		OrderID: id, EngineerID: engineerID,
-	}); err != nil {
-		return uuid.Nil, fmt.Errorf("assign order engineer: %w", err)
-	}
-	return id, nil
-}
-
-func (r repository) addItem(ctx context.Context, orderID uuid.UUID, item orderItem) (uuid.UUID, error) {
+func (r repository) addItem(ctx context.Context, orderID, engineerID uuid.UUID, item orderItem) (uuid.UUID, error) {
 	id, err := r.queries.AddOrderItem(ctx, db.AddOrderItemParams{
-		OrderID: orderID, ItemID: item.itemID, Name: item.name, Quantity: item.quantity, Price: item.price,
+		OrderID: orderID, EngineerID: engineerID, ItemID: item.itemID, Name: item.name, Quantity: item.quantity, Price: item.price,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, r.orderConflict(ctx, orderID)
+		return uuid.Nil, r.orderConflict(ctx, orderID, engineerID)
 	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("add order item: %w", err)
@@ -68,13 +41,23 @@ func (r repository) addItem(ctx context.Context, orderID uuid.UUID, item orderIt
 }
 
 type orderSnapshot struct {
-	header   db.GetOrderRow
-	items    []orderItem
-	services []db.ListOrderServicesRow
+	header            db.GetOrderRow
+	items             []orderItem
+	services          []db.ListOrderServicesRow
+	engineerIDs       []uuid.UUID
+	certificateStatus *api.CertificateStatus
 }
 
-// get reads the order state and both kinds of positions from one database snapshot.
-func (r repository) get(ctx context.Context, id uuid.UUID) (orderSnapshot, error) {
+type orderRead struct {
+	clientID                uuid.UUID
+	engineerID              uuid.UUID
+	historyAnchorID         uuid.UUID
+	includeEngineers        bool
+	includeCertificateState bool
+}
+
+// get читает заказ, позиции и при необходимости исполнителей из одного снимка БД.
+func (r repository) get(ctx context.Context, id uuid.UUID, read orderRead) (orderSnapshot, error) {
 	var snapshot orderSnapshot
 	var items []db.ListOrderItemsRow
 	err := postgres.InReadSnapshot(ctx, r.pool, func(tx pgx.Tx) error {
@@ -87,6 +70,15 @@ func (r repository) get(ctx context.Context, id uuid.UUID) (orderSnapshot, error
 		if err != nil {
 			return fmt.Errorf("read order: %w", err)
 		}
+		if read.includeEngineers {
+			snapshot.engineerIDs, err = queries.ListCertificateEngineerIDs(ctx, id)
+			if err != nil {
+				return fmt.Errorf("list order engineers: %w", err)
+			}
+		}
+		if err := checkOrderRead(ctx, queries, snapshot, read); err != nil {
+			return err
+		}
 		items, err = queries.ListOrderItems(ctx, id)
 		if err != nil {
 			return fmt.Errorf("list order items: %w", err)
@@ -95,6 +87,10 @@ func (r repository) get(ctx context.Context, id uuid.UUID) (orderSnapshot, error
 		if err != nil {
 			return fmt.Errorf("list order services: %w", err)
 		}
+		if read.includeCertificateState {
+			snapshot.certificateStatus, err = readCertificateStatus(ctx, queries, id)
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -102,6 +98,33 @@ func (r repository) get(ctx context.Context, id uuid.UUID) (orderSnapshot, error
 	}
 	snapshot.items = mapOrderItems(items)
 	return snapshot, nil
+}
+
+func checkOrderRead(ctx context.Context, queries *db.Queries, order orderSnapshot, read orderRead) error {
+	if read.clientID != uuid.Nil && order.header.ClientID != read.clientID {
+		return errOrderNotFound
+	}
+	if read.historyAnchorID != uuid.Nil {
+		// Права на текущий заказ могут измениться между загрузкой списка и открытием строки.
+		vehicleID, err := vehicleForEngineerHistory(ctx, queries, read.engineerID, read.historyAnchorID)
+		if err != nil {
+			return err
+		}
+		if vehicleID != order.header.VehicleID || order.header.ID == read.historyAnchorID {
+			return errOrderNotFound
+		}
+		return nil
+	}
+	if read.engineerID != uuid.Nil &&
+		!isResponsible(order.header.EngineerID, read.engineerID) &&
+		!slices.Contains(order.engineerIDs, read.engineerID) {
+		return errOrderNotFound
+	}
+	return nil
+}
+
+func isResponsible(responsible *uuid.UUID, engineerID uuid.UUID) bool {
+	return responsible != nil && *responsible == engineerID
 }
 
 func mapOrderItems(rows []db.ListOrderItemsRow) []orderItem {
@@ -120,8 +143,10 @@ func mapOrderItems(rows []db.ListOrderItemsRow) []orderItem {
 
 var errCertificateNotFound = errors.New("certificate not found")
 
-func (r repository) getCertificate(ctx context.Context, orderID, clientID uuid.UUID) ([]byte, error) {
-	pdf, err := r.queries.GetCompletedCertificate(ctx, db.GetCompletedCertificateParams{OrderID: orderID, ClientID: clientID})
+func (r repository) getCertificate(ctx context.Context, orderID, clientID uuid.UUID, isDirector bool) ([]byte, error) {
+	pdf, err := r.queries.GetCompletedCertificate(ctx, db.GetCompletedCertificateParams{
+		OrderID: orderID, ClientID: clientID, IsDirector: isDirector,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errCertificateNotFound
 	}
@@ -190,34 +215,34 @@ func (r repository) listClientOrderHistory(ctx context.Context, clientID uuid.UU
 	return rows, nil
 }
 
-func (r repository) changeStage(ctx context.Context, id uuid.UUID, stage string) error {
-	changed, err := r.queries.ChangeOrderStage(ctx, db.ChangeOrderStageParams{ID: id, Stage: stage})
+func (r repository) changeStage(ctx context.Context, id, engineerID uuid.UUID, stage string) error {
+	changed, err := r.queries.ChangeOrderStage(ctx, db.ChangeOrderStageParams{ID: id, EngineerID: engineerID, Stage: stage})
 	if err != nil {
 		return fmt.Errorf("change order stage: %w", err)
 	}
 	if changed == 0 {
-		return r.orderConflict(ctx, id)
+		return r.orderConflict(ctx, id, engineerID)
 	}
 	return nil
 }
 
-func (r repository) cancel(ctx context.Context, id uuid.UUID) error {
-	changed, err := r.queries.CancelOrder(ctx, id)
+func (r repository) cancel(ctx context.Context, id, engineerID uuid.UUID) error {
+	changed, err := r.queries.CancelOrder(ctx, db.CancelOrderParams{ID: id, EngineerID: engineerID})
 	if err != nil {
 		return fmt.Errorf("cancel order: %w", err)
 	}
 	if changed == 0 {
-		return r.orderConflict(ctx, id)
+		return r.orderConflict(ctx, id, engineerID)
 	}
 	return nil
 }
 
-func (r repository) addService(ctx context.Context, orderID, serviceID uuid.UUID, quantity int32, service catalogEntry) (uuid.UUID, error) {
+func (r repository) addService(ctx context.Context, orderID, engineerID, serviceID uuid.UUID, quantity int32, service catalogEntry) (uuid.UUID, error) {
 	id, err := r.queries.AddOrderService(ctx, db.AddOrderServiceParams{
-		OrderID: orderID, ServiceID: serviceID, Name: service.name, Price: service.price, Quantity: quantity,
+		OrderID: orderID, EngineerID: engineerID, ServiceID: serviceID, Name: service.name, Price: service.price, Quantity: quantity,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, r.orderConflict(ctx, orderID)
+		return uuid.Nil, r.orderConflict(ctx, orderID, engineerID)
 	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("add order service: %w", err)
@@ -225,13 +250,16 @@ func (r repository) addService(ctx context.Context, orderID, serviceID uuid.UUID
 	return id, nil
 }
 
-func (r repository) orderConflict(ctx context.Context, id uuid.UUID) error {
-	_, err := r.queries.GetOrder(ctx, id)
+func (r repository) orderConflict(ctx context.Context, id, engineerID uuid.UUID) error {
+	order, err := r.queries.GetOrder(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errOrderNotFound
 	}
 	if err != nil {
 		return fmt.Errorf("read order after rejected update: %w", err)
+	}
+	if !isResponsible(order.EngineerID, engineerID) {
+		return errOrderNotFound
 	}
 	return errOrderConflict
 }

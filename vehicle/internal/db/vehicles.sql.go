@@ -37,6 +37,31 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (u
 	return id, err
 }
 
+const findVehicleForIntake = `-- name: FindVehicleForIntake :one
+SELECT id, owner_id, number, brand
+FROM vehicles
+WHERE number = $1 AND deleted_at IS NULL
+`
+
+type FindVehicleForIntakeRow struct {
+	ID      uuid.UUID
+	OwnerID uuid.UUID
+	Number  string
+	Brand   string
+}
+
+func (q *Queries) FindVehicleForIntake(ctx context.Context, number string) (FindVehicleForIntakeRow, error) {
+	row := q.db.QueryRow(ctx, findVehicleForIntake, number)
+	var i FindVehicleForIntakeRow
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Number,
+		&i.Brand,
+	)
+	return i, err
+}
+
 const getVehicle = `-- name: GetVehicle :one
 SELECT id, owner_id, number, brand, vin, cover_photo_url
 FROM vehicles
@@ -67,12 +92,14 @@ func (q *Queries) GetVehicle(ctx context.Context, id uuid.UUID) (GetVehicleRow, 
 }
 
 const getVehiclesByIDs = `-- name: GetVehiclesByIDs :many
-SELECT id, number FROM vehicles WHERE id = ANY($1::uuid[])
+SELECT id, number, brand, vin FROM vehicles WHERE id = ANY($1::uuid[])
 `
 
 type GetVehiclesByIDsRow struct {
 	ID     uuid.UUID
 	Number string
+	Brand  string
+	Vin    string
 }
 
 // include-deleted: номера ТС из истории заказов.
@@ -85,7 +112,12 @@ func (q *Queries) GetVehiclesByIDs(ctx context.Context, ids []uuid.UUID) ([]GetV
 	var items []GetVehiclesByIDsRow
 	for rows.Next() {
 		var i GetVehiclesByIDsRow
-		if err := rows.Scan(&i.ID, &i.Number); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Number,
+			&i.Brand,
+			&i.Vin,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

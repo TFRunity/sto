@@ -58,7 +58,7 @@ func run(ctx context.Context) error {
 
 	payments := saga.New(pool)
 	certificates := certificate.NewWorker(pool, order.NewCertificateSource(pool, cfg.InventoryURL, cfg.UsersURL), pdf.NewClient(cfg.GotenbergURL), logger)
-	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, cfg.VehicleURL, cfg.ServicesURL, payments, logger)
+	app, err := order.NewHTTPHandler(pool, cfg.InventoryURL, cfg.VehicleURL, cfg.ServicesURL, cfg.UsersURL, payments, logger)
 	if err != nil {
 		return fmt.Errorf("load orders OpenAPI spec: %w", err)
 	}

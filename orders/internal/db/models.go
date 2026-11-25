@@ -35,6 +35,8 @@ type Order struct {
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	PaidAt           pgtype.Timestamptz
+	IntakeEngineerID *uuid.UUID
+	IntakeRequestID  *uuid.UUID
 }
 
 type OrderEngineer struct {

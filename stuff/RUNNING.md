@@ -206,7 +206,7 @@ curl -s $API/orders/<order_id>/certificate -H "Authorization: Bearer $CLIENT" -o
 ### 6.6 Сквозной сценарий целиком 🕒 вечер 6
 
 ```sh
-scripts/e2e.sh            # отметка, дубль, выдача и недоступный Inventory
+scripts/e2e.sh            # отметка, права доступа, выдача, повтор списания и переход с v1
 ```
 
 ---

@@ -2,17 +2,20 @@ import { useCallback, useState } from "react";
 import { Button, FlatList, Text, View } from "react-native";
 import { EngineerApiError } from "../../common/api/controller";
 import { useLoad } from "../../common/hooks/use-load";
+import { HistoryRow } from "../../common/order-history/view";
 import { styles } from "../../common/styles";
 import { InspectionCamera } from "./camera/view";
-import { loadVehicle } from "./controller";
+import { loadVehicle, loadVehicleHistory } from "./controller";
 import type { VehiclePhoto } from "./photos/controller";
 import { PhotoPreview } from "./photos/view";
 
-export function VehicleScreen({ token, id, orderId, onBack, onSessionEnd }: {
+export function VehicleScreen({ token, id, orderId, historyOrderId, onBack, onHistoryOrderOpened, onSessionEnd }: {
   token: string;
   id: string;
   orderId?: string;
+  historyOrderId?: string;
   onBack: () => void;
+  onHistoryOrderOpened: (id: string) => void;
   onSessionEnd: (message: string) => void;
 }) {
   const load = useCallback((signal: AbortSignal) => loadVehicle(token, id, signal), [id, token]);
@@ -22,7 +25,7 @@ export function VehicleScreen({ token, id, orderId, onBack, onSessionEnd }: {
 
   return (
     <>
-      <Button title={orderId ? "К заказу" : "К пулу заявок"} onPress={onBack} />
+      <Button title="Назад" onPress={onBack} />
       {state.status === "loading" && <Text accessibilityLiveRegion="polite">Загружаем карточку ТС…</Text>}
       {state.status === "error" && (
         <>
@@ -53,7 +56,9 @@ export function VehicleScreen({ token, id, orderId, onBack, onSessionEnd }: {
               })} />
             </View>
           )}
-          ListEmptyComponent={<Text>Снимков фотофиксации пока нет.</Text>} />
+          ListEmptyComponent={<Text>Снимков фотофиксации пока нет.</Text>}
+          ListFooterComponent={historyOrderId ? <VehicleHistory token={token} orderId={historyOrderId}
+            onOpen={onHistoryOrderOpened} onSessionEnd={onSessionEnd} /> : undefined} />
       )}
       {selected && <PhotoPreview token={token} vehicleId={id} photo={selected.photo} label={selected.label}
         onClose={() => setSelected(undefined)} onSessionEnd={onSessionEnd} />}
@@ -63,5 +68,35 @@ export function VehicleScreen({ token, id, orderId, onBack, onSessionEnd }: {
           reload();
         }} />}
     </>
+  );
+}
+
+function VehicleHistory({ token, orderId, onOpen, onSessionEnd }: {
+  token: string;
+  orderId: string;
+  onOpen: (id: string) => void;
+  onSessionEnd: (message: string) => void;
+}) {
+  const load = useCallback((signal: AbortSignal) => loadVehicleHistory(token, orderId, signal), [token, orderId]);
+  const { state, reload } = useLoad(load, onSessionEnd);
+
+  return (
+    <View style={{ gap: 8, paddingTop: 16 }}>
+      <Text accessibilityRole="header">История работ</Text>
+      {state.status === "loading" && <Text accessibilityLiveRegion="polite">Загружаем историю…</Text>}
+      {state.status === "error" && (
+        <>
+          <Text accessibilityRole="alert" style={styles.error}>
+            {state.error instanceof EngineerApiError && state.error.status === 404
+              ? "История доступна ответственному по текущему заказу."
+              : "Не удалось загрузить историю работ."}
+          </Text>
+          <Button title="Обновить историю" onPress={reload} />
+        </>
+      )}
+      {state.status === "ready" && (state.data.length
+        ? state.data.map((order) => <HistoryRow key={order.id} order={order} onOpen={onOpen} />)
+        : <Text>Других заказов по этому ТС пока нет.</Text>)}
+    </View>
   );
 }

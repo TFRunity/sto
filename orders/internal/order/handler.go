@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/orders/internal/api"
@@ -21,26 +22,30 @@ type handler struct {
 	inventory catalogClient
 	vehicles  vehicleClient
 	services  catalogClient
+	people    peopleDirectory
 	logger    *slog.Logger
 }
 
+const directorRole = "director"
+
 // NewHTTPHandler подключает валидацию OpenAPI перед сгенерированным HTTP-сервером.
-func NewHTTPHandler(pool *pgxpool.Pool, inventoryURL, vehicleURL, servicesURL url.URL, payments *saga.Service, logger *slog.Logger) (http.Handler, error) {
+func NewHTTPHandler(pool *pgxpool.Pool, inventoryURL, vehicleURL, servicesURL, usersURL url.URL, payments *saga.Service, logger *slog.Logger) (http.Handler, error) {
 	spec, err := api.GetSwagger()
 	if err != nil {
 		return nil, err
 	}
-	h := newHandler(pool, inventoryURL, vehicleURL, servicesURL, payments, logger)
+	h := newHandler(pool, inventoryURL, vehicleURL, servicesURL, usersURL, payments, logger)
 	return httpx.Validator(spec, logger)(strictHTTPHandler(h)), nil
 }
 
-func newHandler(pool *pgxpool.Pool, inventoryURL, vehicleURL, servicesURL url.URL, payments *saga.Service, logger *slog.Logger) handler {
+func newHandler(pool *pgxpool.Pool, inventoryURL, vehicleURL, servicesURL, usersURL url.URL, payments *saga.Service, logger *slog.Logger) handler {
 	return handler{
 		payments:  payments,
 		repo:      repository{pool: pool, queries: db.New(pool)},
 		inventory: newCatalogClient(inventoryURL, "inventory"),
 		vehicles:  newVehicleClient(vehicleURL),
 		services:  newCatalogClient(servicesURL, "internal/services"),
+		people:    peopleDirectory{baseURL: usersURL, http: &http.Client{Timeout: 3 * time.Second}},
 		logger:    logger,
 	}
 }
@@ -65,6 +70,9 @@ func (h handler) CreateOrder(ctx context.Context, req api.CreateOrderRequestObje
 	if user.Role == httpx.RoleClient {
 		return h.createServiceBooking(ctx, user.ID, req.Body)
 	}
+	if _, err := httpx.EngineerIdentity(ctx); err != nil {
+		return nil, err
+	}
 	body, err := req.Body.AsCreateEngineerOrderRequest()
 	// Декодирование варианта oneOf само по себе не проверяет обязательные поля.
 	if err != nil || body.ClientId == uuid.Nil {
@@ -73,22 +81,26 @@ func (h handler) CreateOrder(ctx context.Context, req api.CreateOrderRequestObje
 			Message: "engineer order requires a client ID", Fields: map[string]string{"client_id": "required"},
 		}
 	}
-	id, err := h.repo.create(ctx, body.ClientId, body.VehicleId, user.ID)
+	id, err := h.createEngineerOrder(ctx, body, user.ID)
 	if err != nil {
-		return nil, err
+		return nil, intakeError(err)
 	}
 	return api.CreateOrder201JSONResponse{OrderId: id}, nil
 }
 
 // AddOrderItem получает цену из Inventory до записи. Репозиторий проверяет статус при вставке.
 func (h handler) AddOrderItem(ctx context.Context, req api.AddOrderItemRequestObject) (api.AddOrderItemResponseObject, error) {
+	engineer, err := httpx.EngineerIdentity(ctx)
+	if err != nil {
+		return nil, err
+	}
 	product, err := h.findItem(ctx, req.Body.ItemId)
 	if err != nil {
 		return nil, err
 	}
 
 	item := orderItem{itemID: req.Body.ItemId, quantity: req.Body.Quantity, name: &product.name, price: product.price}
-	item.id, err = h.repo.addItem(ctx, req.Id, item)
+	item.id, err = h.repo.addItem(ctx, req.Id, engineer.ID, item)
 	if err != nil {
 		return nil, transitionError(err, "order_not_editable", "order must be active")
 	}
@@ -112,22 +124,43 @@ func orderNotFound() *httpx.Error {
 	return &httpx.Error{Status: http.StatusNotFound, Code: "order_not_found", Message: "order not found"}
 }
 
-// GetOrder возвращает снимок заказа и скрывает чужие заказы от клиента.
+// GetOrder возвращает карточку владельцу, ответственному и исполнителям заказа.
 func (h handler) GetOrder(ctx context.Context, req api.GetOrderRequestObject) (api.GetOrderResponseObject, error) {
 	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
 		return nil, httpx.Unauthorized()
 	}
-	snapshot, err := h.repo.get(ctx, req.Id)
-	if errors.Is(err, errOrderNotFound) {
-		return nil, orderNotFound()
+	if user.Role == httpx.RoleClient {
+		return h.readOrder(ctx, req.Id, orderRead{clientID: user.ID})
 	}
-	if err != nil {
+	if user.Role == directorRole {
+		return h.readOrder(ctx, req.Id, orderRead{includeEngineers: true})
+	}
+	if _, err := httpx.EngineerIdentity(ctx); err != nil {
 		return nil, err
 	}
+	return h.readOrder(ctx, req.Id, orderRead{engineerID: user.ID, includeEngineers: true})
+}
 
-	if user.Role == httpx.RoleClient && snapshot.header.ClientID != user.ID {
-		return nil, orderNotFound()
+func (h handler) readOrder(ctx context.Context, id uuid.UUID, read orderRead) (orderJSON, error) {
+	// Историческая карточка не расширяет доступ инженера к справкам.
+	read.includeCertificateState = read.historyAnchorID == uuid.Nil
+	snapshot, err := h.repo.get(ctx, id, read)
+	if errors.Is(err, errOrderNotFound) {
+		return orderJSON{}, orderNotFound()
 	}
-	return orderResponse(snapshot.header, snapshot.items, snapshot.services), nil
+	if err != nil {
+		return orderJSON{}, err
+	}
+	response := orderResponse(snapshot.header, snapshot.items, snapshot.services)
+	response.CertificateStatus = snapshot.certificateStatus
+	if read.includeEngineers {
+		engineers := h.describeEngineers(ctx, snapshot.engineerIDs)
+		response.Engineers = &engineers
+	}
+	if read.engineerID != uuid.Nil {
+		canEdit := read.historyAnchorID == uuid.Nil && isResponsible(snapshot.header.EngineerID, read.engineerID)
+		response.CanEdit = &canEdit
+	}
+	return response, nil
 }

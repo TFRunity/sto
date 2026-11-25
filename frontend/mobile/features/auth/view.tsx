@@ -7,7 +7,7 @@ import { readLoginForm } from "./form";
 
 export function EngineerLogin({ sessionMessage, onSignIn }: {
   sessionMessage: string;
-  onSignIn: (token: string) => void;
+  onSignIn: (token: string, phone: string) => void;
 }) {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +19,8 @@ export function EngineerLogin({ sessionMessage, onSignIn }: {
     if (submitting.current) return;
 
     const form = readLoginForm(phone, password);
-    if (!form.body) {
+    const body = form.body;
+    if (!body) {
       setError(form.error);
       return;
     }
@@ -28,9 +29,9 @@ export function EngineerLogin({ sessionMessage, onSignIn }: {
     setBusy(true);
     setError("");
 
-    void loginEngineer(form.body).then((token) => {
+    void loginEngineer(body).then((token) => {
       setPassword("");
-      onSignIn(token);
+      onSignIn(token, body.phone);
     }).catch((cause: unknown) => {
       setError(cause instanceof EngineerApiError && cause.status === 401
         ? "Проверьте телефон и пароль."

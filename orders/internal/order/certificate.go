@@ -16,13 +16,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// GetCertificate возвращает готовый PDF владельцу заказа. Повторная загрузка читает те же байты.
+// GetCertificate возвращает готовый PDF владельцу или директору.
 func (h handler) GetCertificate(ctx context.Context, req api.GetCertificateRequestObject) (api.GetCertificateResponseObject, error) {
 	user, ok := httpx.IdentityFromContext(ctx)
 	if !ok {
 		return nil, httpx.Unauthorized()
 	}
-	pdf, err := h.repo.getCertificate(ctx, req.Id, user.ID)
+	if user.Role != httpx.RoleClient && user.Role != directorRole {
+		return nil, certificateRoleForbidden()
+	}
+	pdf, err := h.repo.getCertificate(ctx, req.Id, user.ID, user.Role == directorRole)
 	if errors.Is(err, errCertificateNotFound) {
 		return nil, &httpx.Error{Status: http.StatusNotFound, Code: "certificate_not_found", Message: "certificate not found"}
 	}
@@ -37,7 +40,7 @@ func NewCertificateSource(pool *pgxpool.Pool, inventoryURL, usersURL url.URL) ce
 	source := certificateSource{
 		repo:      repository{pool: pool, queries: db.New(pool)},
 		inventory: newCatalogClient(inventoryURL, "inventory"),
-		usersURL:  usersURL, http: &http.Client{Timeout: 3 * time.Second},
+		people:    peopleDirectory{baseURL: usersURL, http: &http.Client{Timeout: 3 * time.Second}},
 	}
 	return source.load
 }
@@ -45,12 +48,11 @@ func NewCertificateSource(pool *pgxpool.Pool, inventoryURL, usersURL url.URL) ce
 type certificateSource struct {
 	repo      repository
 	inventory catalogClient
-	usersURL  url.URL
-	http      *http.Client
+	people    peopleDirectory
 }
 
 func (s certificateSource) load(ctx context.Context, id uuid.UUID) (certificate.Snapshot, error) {
-	snapshot, err := s.repo.get(ctx, id)
+	snapshot, err := s.repo.get(ctx, id, orderRead{includeEngineers: true})
 	if err != nil {
 		return certificate.Snapshot{}, err
 	}
@@ -61,7 +63,7 @@ func (s certificateSource) load(ctx context.Context, id uuid.UUID) (certificate.
 	for _, service := range snapshot.services {
 		positions = append(positions, certificate.Item{Name: service.Name, Quantity: service.Quantity, Price: service.Price.StringFixed(2)})
 	}
-	clientName, engineers, err := s.loadNames(ctx, id, snapshot.header.ClientID)
+	clientName, engineers, err := s.loadNames(ctx, snapshot.header.ClientID, snapshot.engineerIDs)
 	if err != nil {
 		return certificate.Snapshot{}, err
 	}
@@ -95,27 +97,14 @@ func (s certificateSource) loadPositions(ctx context.Context, items []orderItem)
 	return positions, nil
 }
 
-// loadNames читает список исполнителей и отправляет один запрос Users вне транзакции.
-func (s certificateSource) loadNames(ctx context.Context, orderID, clientID uuid.UUID) (string, []string, error) {
-	engineers, err := s.repo.queries.ListCertificateEngineerIDs(ctx, orderID)
+// loadNames разрешает имена клиента и всех исполнителей одним запросом к Users вне транзакции.
+func (s certificateSource) loadNames(ctx context.Context, clientID uuid.UUID, engineers []uuid.UUID) (string, []string, error) {
+	ids := make([]uuid.UUID, 0, len(engineers)+1)
+	ids = append(ids, clientID)
+	ids = append(ids, engineers...)
+	names, err := s.people.names(ctx, ids)
 	if err != nil {
 		return "", nil, err
-	}
-	params := url.Values{"ids": {clientID.String()}}
-	for _, id := range engineers {
-		params.Add("ids", id.String())
-	}
-	type person struct {
-		ID   uuid.UUID `json:"id"`
-		Name string    `json:"name"`
-	}
-	people, _, err := httpx.GetJSON[[]person](ctx, s.http, s.usersURL, "/users", params)
-	if err != nil {
-		return "", nil, err
-	}
-	names := make(map[uuid.UUID]string, len(people))
-	for _, person := range people {
-		names[person.ID] = person.Name
 	}
 	engineerNames := make([]string, 0, len(engineers))
 	for _, engineer := range engineers {

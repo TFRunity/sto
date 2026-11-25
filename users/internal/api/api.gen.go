@@ -16,11 +16,23 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	openapi_types "github.com/oapi-codegen/runtime/types"
+)
+
+const (
+	BearerAuthScopes = "bearerAuth.Scopes"
+)
+
+// Defines values for MyProfileRole.
+const (
+	Client   MyProfileRole = "client"
+	Director MyProfileRole = "director"
+	Engineer MyProfileRole = "engineer"
 )
 
 // Error Конверт ошибки (ADR-032)
@@ -45,6 +57,19 @@ type LoginRequest struct {
 	Password string `json:"password"`
 	Phone    string `json:"phone"`
 }
+
+// MyProfile defines model for MyProfile.
+type MyProfile struct {
+	CreatedAt            time.Time           `json:"created_at"`
+	Name                 string              `json:"name"`
+	NotificationsEnabled bool                `json:"notifications_enabled"`
+	Phone                string              `json:"phone"`
+	Role                 MyProfileRole       `json:"role"`
+	WorkStartedAt        *openapi_types.Date `json:"work_started_at,omitempty"`
+}
+
+// MyProfileRole defines model for MyProfile.Role.
+type MyProfileRole string
 
 // PersonSummary defines model for PersonSummary.
 type PersonSummary struct {
@@ -80,11 +105,24 @@ type TokenResponse struct {
 // ResourceId defines model for ResourceId.
 type ResourceId = openapi_types.UUID
 
+// Unauthorized Конверт ошибки (ADR-032)
+type Unauthorized = Error
+
 // UnexpectedError Конверт ошибки (ADR-032)
 type UnexpectedError = Error
 
 // ValidationFailed Конверт ошибки (ADR-032)
 type ValidationFailed = Error
+
+// SearchActiveClientsParams defines parameters for SearchActiveClients.
+type SearchActiveClientsParams struct {
+	Q string `form:"q" json:"q"`
+}
+
+// UpdateMyNotificationsJSONBody defines parameters for UpdateMyNotifications.
+type UpdateMyNotificationsJSONBody struct {
+	NotificationsEnabled bool `json:"notifications_enabled"`
+}
 
 // GetPeopleByIDsParams defines parameters for GetPeopleByIDs.
 type GetPeopleByIDsParams struct {
@@ -99,14 +137,26 @@ type SearchClientsParams struct {
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
+// UpdateMyNotificationsJSONRequestBody defines body for UpdateMyNotifications for application/json ContentType.
+type UpdateMyNotificationsJSONRequestBody UpdateMyNotificationsJSONBody
+
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Подобрать зарегистрированного клиента для прямого приёма
+	// (GET /engineer/clients)
+	SearchActiveClients(w http.ResponseWriter, r *http.Request, params SearchActiveClientsParams)
 	// Вход по телефону и паролю
 	// (POST /login)
 	Login(w http.ResponseWriter, r *http.Request)
+	// Профиль текущего пользователя
+	// (GET /me)
+	GetMyProfile(w http.ResponseWriter, r *http.Request)
+	// Изменить настройку уведомлений текущего пользователя
+	// (PATCH /me)
+	UpdateMyNotifications(w http.ResponseWriter, r *http.Request)
 	// Регистрация клиента
 	// (POST /register)
 	Register(w http.ResponseWriter, r *http.Request)
@@ -130,11 +180,91 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
+// SearchActiveClients operation middleware
+func (siw *ServerInterfaceWrapper) SearchActiveClients(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchActiveClientsParams
+
+	// ------------- Required query parameter "q" -------------
+
+	if paramValue := r.URL.Query().Get("q"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchActiveClients(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // Login operation middleware
 func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Login(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMyProfile operation middleware
+func (siw *ServerInterfaceWrapper) GetMyProfile(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMyProfile(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateMyNotifications operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMyNotifications(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMyNotifications(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -360,7 +490,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/engineer/clients", wrapper.SearchActiveClients)
 	m.HandleFunc("POST "+options.BaseURL+"/login", wrapper.Login)
+	m.HandleFunc("GET "+options.BaseURL+"/me", wrapper.GetMyProfile)
+	m.HandleFunc("PATCH "+options.BaseURL+"/me", wrapper.UpdateMyNotifications)
 	m.HandleFunc("POST "+options.BaseURL+"/register", wrapper.Register)
 	m.HandleFunc("GET "+options.BaseURL+"/users", wrapper.GetPeopleByIDs)
 	m.HandleFunc("GET "+options.BaseURL+"/users/engineers-load", wrapper.ListEngineersForLoad)
@@ -369,9 +502,58 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	return m
 }
 
+type UnauthorizedJSONResponse Error
+
 type UnexpectedErrorJSONResponse Error
 
 type ValidationFailedJSONResponse Error
+
+type SearchActiveClientsRequestObject struct {
+	Params SearchActiveClientsParams
+}
+
+type SearchActiveClientsResponseObject interface {
+	VisitSearchActiveClientsResponse(w http.ResponseWriter) error
+}
+
+type SearchActiveClients200JSONResponse []PersonSummary
+
+func (response SearchActiveClients200JSONResponse) VisitSearchActiveClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchActiveClients400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response SearchActiveClients400JSONResponse) VisitSearchActiveClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchActiveClients422JSONResponse Error
+
+func (response SearchActiveClients422JSONResponse) VisitSearchActiveClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchActiveClientsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response SearchActiveClientsdefaultJSONResponse) VisitSearchActiveClientsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
 
 type LoginRequestObject struct {
 	Body *LoginJSONRequestBody
@@ -414,6 +596,90 @@ type LogindefaultJSONResponse struct {
 }
 
 func (response LogindefaultJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetMyProfileRequestObject struct {
+}
+
+type GetMyProfileResponseObject interface {
+	VisitGetMyProfileResponse(w http.ResponseWriter) error
+}
+
+type GetMyProfile200JSONResponse MyProfile
+
+func (response GetMyProfile200JSONResponse) VisitGetMyProfileResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetMyProfile401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetMyProfile401JSONResponse) VisitGetMyProfileResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetMyProfiledefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetMyProfiledefaultJSONResponse) VisitGetMyProfileResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateMyNotificationsRequestObject struct {
+	Body *UpdateMyNotificationsJSONRequestBody
+}
+
+type UpdateMyNotificationsResponseObject interface {
+	VisitUpdateMyNotificationsResponse(w http.ResponseWriter) error
+}
+
+type UpdateMyNotifications200JSONResponse MyProfile
+
+func (response UpdateMyNotifications200JSONResponse) VisitUpdateMyNotificationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateMyNotifications400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response UpdateMyNotifications400JSONResponse) VisitUpdateMyNotificationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateMyNotifications401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateMyNotifications401JSONResponse) VisitUpdateMyNotificationsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateMyNotificationsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response UpdateMyNotificationsdefaultJSONResponse) VisitUpdateMyNotificationsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
 
@@ -582,9 +848,18 @@ func (response SearchClientsdefaultJSONResponse) VisitSearchClientsResponse(w ht
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Подобрать зарегистрированного клиента для прямого приёма
+	// (GET /engineer/clients)
+	SearchActiveClients(ctx context.Context, request SearchActiveClientsRequestObject) (SearchActiveClientsResponseObject, error)
 	// Вход по телефону и паролю
 	// (POST /login)
 	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
+	// Профиль текущего пользователя
+	// (GET /me)
+	GetMyProfile(ctx context.Context, request GetMyProfileRequestObject) (GetMyProfileResponseObject, error)
+	// Изменить настройку уведомлений текущего пользователя
+	// (PATCH /me)
+	UpdateMyNotifications(ctx context.Context, request UpdateMyNotificationsRequestObject) (UpdateMyNotificationsResponseObject, error)
 	// Регистрация клиента
 	// (POST /register)
 	Register(ctx context.Context, request RegisterRequestObject) (RegisterResponseObject, error)
@@ -628,6 +903,32 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
+// SearchActiveClients operation middleware
+func (sh *strictHandler) SearchActiveClients(w http.ResponseWriter, r *http.Request, params SearchActiveClientsParams) {
+	var request SearchActiveClientsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchActiveClients(ctx, request.(SearchActiveClientsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchActiveClients")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchActiveClientsResponseObject); ok {
+		if err := validResponse.VisitSearchActiveClientsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Login operation middleware
 func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var request LoginRequestObject
@@ -652,6 +953,61 @@ func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LoginResponseObject); ok {
 		if err := validResponse.VisitLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMyProfile operation middleware
+func (sh *strictHandler) GetMyProfile(w http.ResponseWriter, r *http.Request) {
+	var request GetMyProfileRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMyProfile(ctx, request.(GetMyProfileRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMyProfile")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMyProfileResponseObject); ok {
+		if err := validResponse.VisitGetMyProfileResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateMyNotifications operation middleware
+func (sh *strictHandler) UpdateMyNotifications(w http.ResponseWriter, r *http.Request) {
+	var request UpdateMyNotificationsRequestObject
+
+	var body UpdateMyNotificationsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMyNotifications(ctx, request.(UpdateMyNotificationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMyNotifications")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateMyNotificationsResponseObject); ok {
+		if err := validResponse.VisitUpdateMyNotificationsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -769,50 +1125,59 @@ func (sh *strictHandler) SearchClients(w http.ResponseWriter, r *http.Request, p
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"nf8ZALXFmlCvJAAA",
+	"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",
+	"+yN6578HAAgxSzeyMQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

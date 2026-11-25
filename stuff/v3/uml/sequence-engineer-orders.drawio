@@ -1,0 +1,169 @@
+<mxfile host="Electron">
+  <diagram name="Sequence - Заказы инженера и история ТС" id="seq-engineer-orders">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageWidth="1200" pageHeight="1058">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="p0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Инженер (RN)" vertex="1">
+          <mxGeometry x="90" y="42" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="l0" edge="1" parent="1" style="endArrow=none;dashed=1;strokeColor=#9ba5af;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="80" as="sourcePoint" />
+            <mxPoint x="160" y="1034" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Gateway" vertex="1">
+          <mxGeometry x="290" y="42" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="l1" edge="1" parent="1" style="endArrow=none;dashed=1;strokeColor=#9ba5af;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="80" as="sourcePoint" />
+            <mxPoint x="360" y="1034" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Orders" vertex="1">
+          <mxGeometry x="490" y="42" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="l2" edge="1" parent="1" style="endArrow=none;dashed=1;strokeColor=#9ba5af;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="80" as="sourcePoint" />
+            <mxPoint x="560" y="1034" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Users" vertex="1">
+          <mxGeometry x="690" y="42" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="l3" edge="1" parent="1" style="endArrow=none;dashed=1;strokeColor=#9ba5af;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="80" as="sourcePoint" />
+            <mxPoint x="760" y="1034" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#378add;fontSize=13;fontStyle=1;" value="Vehicle" vertex="1">
+          <mxGeometry x="890" y="42" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="l4" edge="1" parent="1" style="endArrow=none;dashed=1;strokeColor=#9ba5af;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="80" as="sourcePoint" />
+            <mxPoint x="960" y="1034" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m0" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="GET /engineer/orders?scope=…">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="112" as="sourcePoint" />
+            <mxPoint x="360" y="112" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="Подтверждённая роль и ID инженера">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="155" as="sourcePoint" />
+            <mxPoint x="560" y="155" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m2" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=6;fontSize=11;" value="Выбрать по engineer_id и состоянию выдачи" vertex="1">
+          <mxGeometry x="571" y="178" width="330" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;verticalAlign=bottom;" value="Заказы инженера">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="241" as="sourcePoint" />
+            <mxPoint x="360" y="241" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="GET /internal/vehicles?ids=… · подписи пачками">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="284" as="sourcePoint" />
+            <mxPoint x="960" y="284" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;verticalAlign=bottom;" value="Марки и номера по ID">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="327" as="sourcePoint" />
+            <mxPoint x="360" y="327" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;verticalAlign=bottom;" value="200 · заказы с подписями ТС">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="370" as="sourcePoint" />
+            <mxPoint x="160" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="GET /orders/{id}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="413" as="sourcePoint" />
+            <mxPoint x="360" y="413" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="Чтение обычной карточки">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="456" as="sourcePoint" />
+            <mxPoint x="560" y="456" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m9" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=6;fontSize=11;" value="Проверить, что инженер ответственный или исполнитель" vertex="1">
+          <mxGeometry x="571" y="479" width="330" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="GET /users?ids=… · подписи исполнителей">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="542" as="sourcePoint" />
+            <mxPoint x="760" y="542" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;verticalAlign=bottom;" value="Имена по ID">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="760" y="585" as="sourcePoint" />
+            <mxPoint x="560" y="585" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m12" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;verticalAlign=bottom;" value="200 · карточка и признак права изменения">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="628" as="sourcePoint" />
+            <mxPoint x="160" y="628" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="GET /orders/{id}/vehicle-history">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="671" as="sourcePoint" />
+            <mxPoint x="360" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="Чтение истории">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="714" as="sourcePoint" />
+            <mxPoint x="560" y="714" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m15" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=6;fontSize=11;" value="Один снимок · проверить ответственного и состояние текущего заказа, выбрать историю ТС" vertex="1">
+          <mxGeometry x="571" y="737" width="330" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="m16" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;verticalAlign=bottom;" value="200 · история ТС, либо 404">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="800" as="sourcePoint" />
+            <mxPoint x="160" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m17" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="GET /orders/{id}/vehicle-history/{historical_id}">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="160" y="843" as="sourcePoint" />
+            <mxPoint x="360" y="843" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m18" edge="1" parent="1" style="html=1;endArrow=block;fontSize=11;verticalAlign=bottom;" value="Чтение исторической карточки">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="886" as="sourcePoint" />
+            <mxPoint x="560" y="886" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m19" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=6;fontSize=11;" value="Заново проверить доступ по текущему заказу и совпадение ТС" vertex="1">
+          <mxGeometry x="571" y="909" width="330" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="m20" edge="1" parent="1" style="html=1;endArrow=open;dashed=1;fontSize=11;verticalAlign=bottom;" value="200 · карточка в режиме просмотра, либо 404">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="972" as="sourcePoint" />
+            <mxPoint x="160" y="972" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

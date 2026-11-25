@@ -73,7 +73,7 @@ func (h *Handler) GetVehiclesByIDs(ctx context.Context, req api.GetVehiclesByIDs
 	}
 	result := make(api.GetVehiclesByIDs200JSONResponse, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, api.VehicleSummary{Id: row.ID, Number: row.Number})
+		result = append(result, api.VehicleSummary{Id: row.ID, Number: row.Number, Brand: &row.Brand, Vin: &row.Vin})
 	}
 	return result, nil
 }

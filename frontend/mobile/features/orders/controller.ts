@@ -3,8 +3,11 @@ import { bearerHeader, gatewayRequest } from "../../common/api/controller";
 
 export type Order = components["schemas"]["Order"];
 
-export function loadOrder(token: string, id: string, signal: AbortSignal) {
-  return gatewayRequest(`/orders/${encodeURIComponent(id)}`, {
+export function loadOrder(token: string, id: string, signal: AbortSignal, historyAnchorId?: string) {
+  const path = historyAnchorId
+    ? `/orders/${encodeURIComponent(historyAnchorId)}/vehicle-history/${encodeURIComponent(id)}`
+    : `/orders/${encodeURIComponent(id)}`;
+  return gatewayRequest(path, {
     headers: bearerHeader(token), signal,
   }).then((response) => response.json() as Promise<Order>);
 }

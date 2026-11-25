@@ -14,7 +14,8 @@ VALUES ($1, $2, 'verifying_stock', 'infinity'::timestamptz);
 
 -- name: LockPaidOrderForStockRetry :one
 SELECT id FROM orders
-WHERE id = $1 AND status = 'paid' AND paid_at IS NOT NULL
+WHERE id = sqlc.arg(order_id) AND engineer_id = sqlc.arg(engineer_id)::uuid
+  AND status = 'paid' AND paid_at IS NOT NULL
 FOR UPDATE;
 
 -- name: CanRetryStockDeduction :one
@@ -37,6 +38,13 @@ SELECT order_id, current_step FROM saga_state WHERE saga_id = $1;
 -- name: TransitionSaga :execrows
 UPDATE saga_state SET current_step = $2, updated_at = now()
 WHERE saga_id = $1 AND current_step = 'verifying_stock' AND deadline > clock_timestamp();
+
+-- name: RecordLegacyPaymentConfirmation :exec
+UPDATE orders AS o
+SET paid_at = s.updated_at
+FROM saga_state AS s
+WHERE s.saga_id = $1 AND s.order_id = o.id AND s.current_step = 'completed'
+  AND s.deadline < 'infinity'::timestamptz AND o.status = 'paid' AND o.paid_at IS NULL;
 
 -- name: ExpireSaga :execrows
 UPDATE saga_state SET current_step = 'failed', updated_at = now()

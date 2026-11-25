@@ -49,7 +49,7 @@
             <mxPoint x="670" y="199.99571428571434" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="4. UPDATE orders SET status='cancelled' WHERE id=? AND status IN ('requested','active') — 0 строк → 409 (нельзя отменить оплаченный)">
+        <mxCell id="m4" edge="1" parent="1" style="html=1;endArrow=none;fontSize=11;align=center;verticalAlign=bottom;" value="4. UPDATE orders SET status='cancelled' WHERE id=? AND engineer_id=? AND status='active'. 404 при отсутствии доступа, 409 при неподходящем статусе">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="670" y="240" as="sourcePoint" />
             <mxPoint x="670" y="240" as="targetPoint" />

@@ -33,17 +33,18 @@ const addOrderItem = `-- name: AddOrderItem :one
 INSERT INTO order_items (order_id, item_id, name, quantity, price)
 SELECT o.id, $1, $2, $3, $4
 FROM orders AS o
-WHERE o.id = $5 AND o.status = 'active'
+WHERE o.id = $5 AND o.engineer_id = $6::uuid AND o.status = 'active'
 FOR UPDATE OF o
 RETURNING id
 `
 
 type AddOrderItemParams struct {
-	ItemID   uuid.UUID
-	Name     *string
-	Quantity int32
-	Price    decimal.Decimal
-	OrderID  uuid.UUID
+	ItemID     uuid.UUID
+	Name       *string
+	Quantity   int32
+	Price      decimal.Decimal
+	OrderID    uuid.UUID
+	EngineerID uuid.UUID
 }
 
 func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (uuid.UUID, error) {
@@ -53,6 +54,7 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (uui
 		arg.Quantity,
 		arg.Price,
 		arg.OrderID,
+		arg.EngineerID,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -63,17 +65,18 @@ const addOrderService = `-- name: AddOrderService :one
 INSERT INTO order_services (order_id, service_id, name, quantity, price)
 SELECT o.id, $1, $2, $3, $4
 FROM orders AS o
-WHERE o.id = $5 AND o.status = 'active'
+WHERE o.id = $5 AND o.engineer_id = $6::uuid AND o.status = 'active'
 FOR UPDATE OF o
 RETURNING id
 `
 
 type AddOrderServiceParams struct {
-	ServiceID uuid.UUID
-	Name      string
-	Quantity  int32
-	Price     decimal.Decimal
-	OrderID   uuid.UUID
+	ServiceID  uuid.UUID
+	Name       string
+	Quantity   int32
+	Price      decimal.Decimal
+	OrderID    uuid.UUID
+	EngineerID uuid.UUID
 }
 
 func (q *Queries) AddOrderService(ctx context.Context, arg AddOrderServiceParams) (uuid.UUID, error) {
@@ -83,6 +86,7 @@ func (q *Queries) AddOrderService(ctx context.Context, arg AddOrderServiceParams
 		arg.Quantity,
 		arg.Price,
 		arg.OrderID,
+		arg.EngineerID,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -91,11 +95,16 @@ func (q *Queries) AddOrderService(ctx context.Context, arg AddOrderServiceParams
 
 const cancelOrder = `-- name: CancelOrder :execrows
 UPDATE orders SET status = 'cancelled', updated_at = now()
-WHERE id = $1 AND status IN ('requested', 'active')
+WHERE id = $1 AND engineer_id = $2::uuid AND status = 'active'
 `
 
-func (q *Queries) CancelOrder(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, cancelOrder, id)
+type CancelOrderParams struct {
+	ID         uuid.UUID
+	EngineerID uuid.UUID
+}
+
+func (q *Queries) CancelOrder(ctx context.Context, arg CancelOrderParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelOrder, arg.ID, arg.EngineerID)
 	if err != nil {
 		return 0, err
 	}
@@ -106,6 +115,7 @@ const changeOrderStage = `-- name: ChangeOrderStage :execrows
 UPDATE orders
 SET stage = $1, updated_at = now()
 WHERE id = $2
+  AND engineer_id = $3::uuid
   AND ($1::text <> 'выдан' OR (
       status = 'paid' AND EXISTS (
           SELECT 1 FROM saga_state WHERE order_id = orders.id AND current_step = 'completed'
@@ -114,12 +124,13 @@ WHERE id = $2
 `
 
 type ChangeOrderStageParams struct {
-	Stage string
-	ID    uuid.UUID
+	Stage      string
+	ID         uuid.UUID
+	EngineerID uuid.UUID
 }
 
 func (q *Queries) ChangeOrderStage(ctx context.Context, arg ChangeOrderStageParams) (int64, error) {
-	result, err := q.db.Exec(ctx, changeOrderStage, arg.Stage, arg.ID)
+	result, err := q.db.Exec(ctx, changeOrderStage, arg.Stage, arg.ID, arg.EngineerID)
 	if err != nil {
 		return 0, err
 	}
@@ -149,8 +160,11 @@ func (q *Queries) ClaimOrder(ctx context.Context, arg ClaimOrderParams) (int64, 
 }
 
 const createOrder = `-- name: CreateOrder :one
-INSERT INTO orders (client_id, vehicle_id, engineer_id, status)
-VALUES ($1, $2, $3::uuid, 'active')
+INSERT INTO orders (client_id, vehicle_id, engineer_id, status, intake_engineer_id, intake_request_id)
+VALUES ($1, $2, $3::uuid, 'active',
+        CASE WHEN $4::uuid IS NOT NULL THEN $3::uuid END,
+        $4::uuid)
+ON CONFLICT ON CONSTRAINT uq_orders_intake_request DO NOTHING
 RETURNING id
 `
 
@@ -158,10 +172,16 @@ type CreateOrderParams struct {
 	ClientID   uuid.UUID
 	VehicleID  uuid.UUID
 	EngineerID uuid.UUID
+	RequestID  *uuid.UUID
 }
 
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createOrder, arg.ClientID, arg.VehicleID, arg.EngineerID)
+	row := q.db.QueryRow(ctx, createOrder,
+		arg.ClientID,
+		arg.VehicleID,
+		arg.EngineerID,
+		arg.RequestID,
+	)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
@@ -192,6 +212,31 @@ func (q *Queries) CreateServiceBooking(ctx context.Context, arg CreateServiceBoo
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getIntakeOrder = `-- name: GetIntakeOrder :one
+SELECT id, client_id, vehicle_id
+FROM orders
+WHERE intake_engineer_id = $1::uuid
+  AND intake_request_id = $2::uuid
+`
+
+type GetIntakeOrderParams struct {
+	EngineerID uuid.UUID
+	RequestID  uuid.UUID
+}
+
+type GetIntakeOrderRow struct {
+	ID        uuid.UUID
+	ClientID  uuid.UUID
+	VehicleID uuid.UUID
+}
+
+func (q *Queries) GetIntakeOrder(ctx context.Context, arg GetIntakeOrderParams) (GetIntakeOrderRow, error) {
+	row := q.db.QueryRow(ctx, getIntakeOrder, arg.EngineerID, arg.RequestID)
+	var i GetIntakeOrderRow
+	err := row.Scan(&i.ID, &i.ClientID, &i.VehicleID)
+	return i, err
 }
 
 const getOrder = `-- name: GetOrder :one
@@ -238,6 +283,83 @@ func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, erro
 		&i.StockStatus,
 	)
 	return i, err
+}
+
+const getVehicleForEngineerHistory = `-- name: GetVehicleForEngineerHistory :one
+SELECT vehicle_id
+FROM orders
+WHERE id = $1
+  AND engineer_id = $2
+  AND (status = 'active' OR (status = 'paid' AND stage <> 'выдан'))
+`
+
+type GetVehicleForEngineerHistoryParams struct {
+	OrderID    uuid.UUID
+	EngineerID *uuid.UUID
+}
+
+// Заказ даёт доступ к истории машины только текущему ответственному до выдачи.
+func (q *Queries) GetVehicleForEngineerHistory(ctx context.Context, arg GetVehicleForEngineerHistoryParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getVehicleForEngineerHistory, arg.OrderID, arg.EngineerID)
+	var vehicle_id uuid.UUID
+	err := row.Scan(&vehicle_id)
+	return vehicle_id, err
+}
+
+const listAssignedOrders = `-- name: ListAssignedOrders :many
+SELECT o.id, o.vehicle_id, o.status, o.stage, o.created_at,
+       (o.paid_at IS NOT NULL OR EXISTS (
+           SELECT 1 FROM saga_state AS s
+           WHERE s.order_id = o.id AND s.current_step = 'completed'
+       )) AS payment_confirmed
+FROM orders AS o
+WHERE o.engineer_id = $1
+  AND CASE WHEN $2::boolean
+      THEN o.status = 'cancelled' OR (o.status = 'paid' AND o.stage = 'выдан')
+      ELSE o.status = 'active' OR (o.status = 'paid' AND o.stage <> 'выдан')
+  END
+ORDER BY o.created_at DESC, o.id DESC
+`
+
+type ListAssignedOrdersParams struct {
+	EngineerID *uuid.UUID
+	Completed  bool
+}
+
+type ListAssignedOrdersRow struct {
+	ID               uuid.UUID
+	VehicleID        uuid.UUID
+	Status           string
+	Stage            string
+	CreatedAt        pgtype.Timestamptz
+	PaymentConfirmed *bool
+}
+
+func (q *Queries) ListAssignedOrders(ctx context.Context, arg ListAssignedOrdersParams) ([]ListAssignedOrdersRow, error) {
+	rows, err := q.db.Query(ctx, listAssignedOrders, arg.EngineerID, arg.Completed)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAssignedOrdersRow
+	for rows.Next() {
+		var i ListAssignedOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VehicleID,
+			&i.Status,
+			&i.Stage,
+			&i.CreatedAt,
+			&i.PaymentConfirmed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listClientOrderHistory = `-- name: ListClientOrderHistory :many
@@ -411,6 +533,60 @@ func (q *Queries) ListServiceBookings(ctx context.Context) ([]ListServiceBooking
 			&i.DesiredDate,
 			&i.Comment,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVehicleOrderHistory = `-- name: ListVehicleOrderHistory :many
+SELECT o.id, o.vehicle_id, o.status, o.stage, o.created_at,
+       (o.paid_at IS NOT NULL OR EXISTS (
+           SELECT 1 FROM saga_state AS s
+           WHERE s.order_id = o.id AND s.current_step = 'completed'
+       )) AS payment_confirmed
+FROM orders AS o
+WHERE o.vehicle_id = $1
+  AND o.id <> $2
+ORDER BY o.created_at DESC, o.id DESC
+`
+
+type ListVehicleOrderHistoryParams struct {
+	VehicleID      uuid.UUID
+	CurrentOrderID uuid.UUID
+}
+
+type ListVehicleOrderHistoryRow struct {
+	ID               uuid.UUID
+	VehicleID        uuid.UUID
+	Status           string
+	Stage            string
+	CreatedAt        pgtype.Timestamptz
+	PaymentConfirmed *bool
+}
+
+// Вызывается в том же снимке БД, что и GetVehicleForEngineerHistory.
+func (q *Queries) ListVehicleOrderHistory(ctx context.Context, arg ListVehicleOrderHistoryParams) ([]ListVehicleOrderHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listVehicleOrderHistory, arg.VehicleID, arg.CurrentOrderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVehicleOrderHistoryRow
+	for rows.Next() {
+		var i ListVehicleOrderHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VehicleID,
+			&i.Status,
+			&i.Stage,
+			&i.CreatedAt,
+			&i.PaymentConfirmed,
 		); err != nil {
 			return nil, err
 		}

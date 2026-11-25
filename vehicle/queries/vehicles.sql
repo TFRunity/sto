@@ -8,6 +8,11 @@ SELECT id, owner_id, number, brand, vin, cover_photo_url
 FROM vehicles
 WHERE id = $1 AND deleted_at IS NULL;
 
+-- name: FindVehicleForIntake :one
+SELECT id, owner_id, number, brand
+FROM vehicles
+WHERE number = $1 AND deleted_at IS NULL;
+
 -- name: ListClientVehicles :many
 SELECT id AS vehicle_id, number, brand
 FROM vehicles
@@ -28,4 +33,4 @@ ORDER BY id LIMIT 201;
 
 -- include-deleted: номера ТС из истории заказов.
 -- name: GetVehiclesByIDs :many
-SELECT id, number FROM vehicles WHERE id = ANY(sqlc.arg(ids)::uuid[]);
+SELECT id, number, brand, vin FROM vehicles WHERE id = ANY(sqlc.arg(ids)::uuid[]);

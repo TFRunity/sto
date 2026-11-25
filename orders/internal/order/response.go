@@ -34,17 +34,20 @@ func (item itemJSON) VisitAddOrderItemResponse(w http.ResponseWriter) error {
 }
 
 type orderJSON struct {
-	ID               uuid.UUID            `json:"id"`
-	ClientID         uuid.UUID            `json:"client_id"`
-	VehicleID        uuid.UUID            `json:"vehicle_id"`
-	EngineerID       *uuid.UUID           `json:"engineer_id,omitempty"`
-	Status           api.OrderStatus      `json:"status"`
-	Stage            api.OrderStage       `json:"stage"`
-	PaymentConfirmed bool                 `json:"payment_confirmed"`
-	StockStatus      api.OrderStockStatus `json:"stock_status,omitempty"`
-	Items            []itemJSON           `json:"items"`
-	Services         []api.OrderService   `json:"services"`
-	Total            string               `json:"total"`
+	ID                uuid.UUID              `json:"id"`
+	ClientID          uuid.UUID              `json:"client_id"`
+	VehicleID         uuid.UUID              `json:"vehicle_id"`
+	EngineerID        *uuid.UUID             `json:"engineer_id,omitempty"`
+	Engineers         *[]api.OrderEngineer   `json:"engineers,omitempty"`
+	CanEdit           *bool                  `json:"can_edit,omitempty"`
+	CertificateStatus *api.CertificateStatus `json:"certificate_status,omitempty"`
+	Status            api.OrderStatus        `json:"status"`
+	Stage             api.OrderStage         `json:"stage"`
+	PaymentConfirmed  bool                   `json:"payment_confirmed"`
+	StockStatus       api.OrderStockStatus   `json:"stock_status,omitempty"`
+	Items             []itemJSON             `json:"items"`
+	Services          []api.OrderService     `json:"services"`
+	Total             string                 `json:"total"`
 }
 
 func orderResponse(row db.GetOrderRow, items []orderItem, services []db.ListOrderServicesRow) orderJSON {
@@ -77,4 +80,8 @@ func orderResponse(row db.GetOrderRow, items []orderItem, services []db.ListOrde
 func (order orderJSON) VisitGetOrderResponse(w http.ResponseWriter) error {
 	httpx.WriteJSON(w, http.StatusOK, order)
 	return nil
+}
+
+func (order orderJSON) VisitGetHistoricalOrderForEngineerResponse(w http.ResponseWriter) error {
+	return order.VisitGetOrderResponse(w)
 }

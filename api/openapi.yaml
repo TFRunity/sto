@@ -194,6 +194,72 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /director/orders/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [gateway]
+      operationId: getDirectorOrder
+      summary: Карточка заказа для директора
+      responses:
+        '200':
+          description: Заказ с историческими ценами и связанными данными.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectorOrderDetails'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /me:
+    get:
+      tags: [users]
+      operationId: getMyProfile
+      summary: Профиль текущего пользователя
+      responses:
+        '200':
+          description: Собственный профиль.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    patch:
+      tags: [users]
+      operationId: updateMyNotifications
+      summary: Изменить настройку уведомлений текущего пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notifications_enabled]
+              additionalProperties: false
+              properties:
+                notifications_enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Профиль с сохранённой настройкой.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyProfile'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /users/engineers-load:
     get:
       tags: [users]
@@ -409,6 +475,121 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /engineer/orders:
+    get:
+      tags: [orders, gateway]
+      operationId: listEngineerOrders
+      summary: Заказы ответственного инженера
+      description: |
+        Инженер определяется по доверенной идентичности. Активные включают active
+        и paid до выдачи. Завершённые включают cancelled и paid после выдачи.
+        Заказы выдаются от новых к старым. Пул заявок остаётся на GET /orders?status=requested.
+        Gateway подставляет марку и номер ТС, если карточка найдена.
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [active, completed]
+      responses:
+        '200':
+          $ref: '#/components/responses/OrderHistory'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /engineer/clients:
+    get:
+      tags: [users]
+      operationId: searchActiveClients
+      summary: Подобрать зарегистрированного клиента для прямого приёма
+      description: Инженеру доступны действующие клиенты. Поиск по имени или телефону.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+      responses:
+        '200':
+          description: Подходящие клиенты. При отсутствии совпадений возвращается пустой массив.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonSummary'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '422':
+          description: '`search_too_broad` — уточните запрос'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /engineer/vehicles:
+    get:
+      tags: [vehicle]
+      operationId: findVehicleForIntake
+      summary: Найти действующее ТС по введённому госномеру
+      description: Поиск инженера по точному номеру после нормализации Vehicle.
+      parameters:
+        - name: number
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 32
+      responses:
+        '200':
+          description: Найденное ТС и его владелец.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntakeVehicle'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/VehicleNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    post:
+      tags: [vehicle]
+      operationId: createVehicleForIntake
+      summary: Добавить ТС при прямом приёме
+      description: Инженер выбирает действующего клиента. ТС сохраняется за выбранным владельцем.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIntakeVehicleRequest'
+      responses:
+        '201':
+          description: ТС добавлено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntakeVehicle'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '409':
+          description: '`plate_taken` — нормализованный номер уже занят'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /orders:
     get:
       tags: [orders]
@@ -475,7 +656,10 @@ paths:
         Клиент создаёт заявку в статусе requested для своего ТС. Orders берёт
         client_id из доверенной идентичности и оставляет заказ без ответственного.
         Инженер создаёт заказ в статусе active для указанного клиента и назначается
-        ответственным. Вариант тела запроса определяется ролью вызывающего.
+        ответственным. Выбранное ТС принадлежит указанному клиенту.
+        Повтор запроса с тем же request_id и теми же данными возвращает исходный ID
+        заказа. Ключ относится к инженеру, который создал заказ.
+        Вариант тела запроса определяется ролью вызывающего.
       requestBody:
         required: true
         content:
@@ -495,6 +679,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/VehicleNotFound'
+        '409':
+          description: '`intake_request_conflict` — ключ уже использован с другим клиентом или ТС'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
 
@@ -505,9 +695,60 @@ paths:
       tags: [orders]
       operationId: getOrder
       summary: Карточка заказа
+      description: Клиент читает свой заказ. Ответственный и исполнители читают свою карточку. Для инженера ответ содержит исполнителей и признак права изменения.
       responses:
         '200':
           description: Заказ с позициями и итоговой суммой
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/vehicle-history:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [orders]
+      operationId: listVehicleHistoryForEngineer
+      summary: История ТС из текущего заказа инженера
+      description: |
+        ID относится к текущему заказу. История доступна его ответственному,
+        пока заказ активен либо оплачен и ожидает выдачи. Orders определяет
+        машину по текущему заказу и возвращает все её остальные заказы
+        от новых к старым, включая заказы других инженеров.
+      responses:
+        '200':
+          $ref: '#/components/responses/OrderHistory'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /orders/{id}/vehicle-history/{historical_id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+      - name: historical_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [orders]
+      operationId: getHistoricalOrderForEngineer
+      summary: Карточка заказа из истории ТС
+      description: Orders заново проверяет доступ по текущему заказу и принадлежность исторического заказа тому же ТС.
+      responses:
+        '200':
+          description: Историческая карточка заказа в режиме просмотра.
           content:
             application/json:
               schema:
@@ -555,6 +796,7 @@ paths:
       tags: [orders]
       operationId: changeOrderStage
       summary: Изменить этап работ
+      description: Доступно ответственному за заказ инженеру.
       requestBody:
         required: true
         content:
@@ -596,6 +838,7 @@ paths:
       tags: [orders]
       operationId: cancelOrder
       summary: Отменить заказ
+      description: Ответственный может отменить активный заказ.
       responses:
         '200':
           description: Заказ отменён
@@ -631,6 +874,7 @@ paths:
       tags: [orders]
       operationId: addOrderService
       summary: Добавить услугу по текущей цене каталога
+      description: Доступно ответственному за активный заказ инженеру.
       requestBody:
         required: true
         content:
@@ -682,7 +926,7 @@ paths:
       tags: [orders]
       operationId: addOrderItem
       summary: Добавление товарной позиции
-      description: Для активного заказа. Название и цена запрашиваются в Inventory и сохраняются в позиции.
+      description: Доступно ответственному за активный заказ. Название и цена запрашиваются в Inventory и сохраняются в позиции.
       requestBody:
         required: true
         content:
@@ -748,7 +992,7 @@ paths:
     post:
       tags: [orders]
       operationId: retryOrderStock
-      summary: Повторить отклонённое списание по оплаченному заказу (инженер)
+      summary: Ответственный повторяет отклонённое списание по оплаченному заказу
       responses:
         '202':
           description: Новая попытка списания принята
@@ -761,6 +1005,29 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /certificates:
+    get:
+      tags: [orders]
+      operationId: listClientCertificates
+      summary: Справки об оплате текущего клиента
+      description: |
+        Справка появляется в списке после успешного списания. Повтор формирования
+        отображается как processing. После последней неудачной попытки статус failed.
+        Справки выдаются от новых к старым.
+      responses:
+        '200':
+          description: Справки клиента. Если справок нет, возвращается пустой массив.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientCertificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
   /orders/{id}/certificate:
     parameters:
       - $ref: '#/components/parameters/ResourceId'
@@ -768,6 +1035,7 @@ paths:
       tags: [orders]
       operationId: getCertificate
       summary: Скачать готовую справку об оплате
+      description: Клиент скачивает PDF по своему заказу. Директор может скачать PDF любого заказа.
       responses:
         '200':
           description: PDF-справка
@@ -1378,6 +1646,14 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    OrderHistory:
+      description: Заказы. Если записей нет, возвращается пустой массив.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/OrderHistoryItem'
     OrderNotFound:
       description: '`order_not_found` — заказ не найден'
       content:
@@ -1426,6 +1702,29 @@ components:
         vin:
           type: string
           minLength: 1
+    IntakeVehicle:
+      type: object
+      required: [vehicle_id, owner_id, number, brand]
+      properties:
+        vehicle_id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        brand:
+          type: string
+    CreateIntakeVehicleRequest:
+      allOf:
+        - $ref: '#/components/schemas/VehicleDetails'
+        - type: object
+          required: [owner_id]
+          properties:
+            owner_id:
+              type: string
+              format: uuid
     VehicleMake:
       type: object
       required: [name, aliases]
@@ -1568,6 +1867,10 @@ components:
         vehicle_id:
           type: string
           format: uuid
+        request_id:
+          type: string
+          format: uuid
+          description: Ключ попытки прямого приёма. Повтор с тем же ключом и данными возвращает ID созданного заказа.
 
     CreateServiceBookingRequest:
       description: Заявка клиента на сервис. Выбор услуги сохраняется как описание заявки.
@@ -1617,6 +1920,27 @@ components:
           type: string
           format: date-time
 
+    ClientCertificate:
+      type: object
+      required: [id, order_id, created_at, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/CertificateStatus'
+
+    CertificateStatus:
+      type: string
+      enum: [processing, ready, failed]
+      description: Формируется, готова к скачиванию или исчерпаны попытки формирования.
+
     OrderHistoryItem:
       type: object
       required: [id, vehicle_id, status, stage, payment_confirmed, created_at]
@@ -1627,6 +1951,12 @@ components:
         vehicle_id:
           type: string
           format: uuid
+        vehicle_number:
+          type: string
+          description: Госномер ТС в списке инженера.
+        vehicle_brand:
+          type: string
+          description: Марка ТС в списке инженера.
         status:
           type: string
           enum: [requested, active, paid, cancelled]
@@ -1698,6 +2028,16 @@ components:
           type: string
           format: uuid
           description: Идентификатор назначенного инженера. У заявки может отсутствовать.
+        engineers:
+          type: array
+          description: Исполнители заказа. Поле передаётся инженеру.
+          items:
+            $ref: '#/components/schemas/OrderEngineer'
+        can_edit:
+          type: boolean
+          description: Текущий инженер может менять карточку. В исторической карточке значение false.
+        certificate_status:
+          $ref: '#/components/schemas/CertificateStatus'
         status:
           type: string
           enum: [requested, active, paid, cancelled]
@@ -1722,6 +2062,17 @@ components:
           type: string
           enum: [pending, deducted, rejected]
           description: Состояние списания по оплаченному заказу. Может отсутствовать в ответе v1.
+
+    OrderEngineer:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Имя из Users, когда оно доступно.
 
     MarkOrderPaidResponse:
       type: object
@@ -1855,6 +2206,41 @@ components:
           format: uuid
         number:
           type: string
+        brand:
+          type: string
+        vin:
+          type: string
+
+    DirectorOrderDetails:
+      type: object
+      required: [order]
+      properties:
+        order:
+          $ref: '#/components/schemas/Order'
+        client:
+          $ref: '#/components/schemas/PersonSummary'
+        vehicle:
+          $ref: '#/components/schemas/VehicleSummary'
+
+    MyProfile:
+      type: object
+      required: [name, phone, role, created_at, notifications_enabled]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [client, engineer, director]
+        created_at:
+          type: string
+          format: date-time
+        work_started_at:
+          type: string
+          format: date
+        notifications_enabled:
+          type: boolean
 
     DirectorOrder:
       type: object

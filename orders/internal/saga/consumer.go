@@ -34,8 +34,8 @@ func (s *Service) HandleReply(ctx context.Context, event string, body []byte, lo
 }
 
 // applyReply находит попытку по saga_id, проверяет order_id и через replyStep
-// выбирает переход. Успешное списание ставит справку в очередь. При отказе
-// только заказ из старой попытки v1 может вернуться в active.
+// выбирает переход. Успех фиксирует время оплаты v1 и ставит справку в очередь.
+// При отказе только заказ из старой попытки v1 может вернуться в active.
 func applyReply(ctx context.Context, q *db.Queries, event string, attempt stockmessage.Attempt) (bool, error) {
 	row, err := q.GetSaga(ctx, attempt.SagaID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -54,7 +54,16 @@ func applyReply(ctx context.Context, q *db.Queries, event string, attempt stockm
 		return false, err
 	}
 	if step == completed {
-		return true, q.CreateCertificate(ctx, row.OrderID)
+		return true, finishDeduction(ctx, q, attempt)
 	}
 	return true, q.RestoreActiveOrder(ctx, row.OrderID)
+}
+
+func finishDeduction(ctx context.Context, q *db.Queries, attempt stockmessage.Attempt) error {
+	// Попытка v1 могла завершиться после миграции 00007. Берём время её
+	// перехода в completed, чтобы повтор оплаты вернул исходное время.
+	if err := q.RecordLegacyPaymentConfirmation(ctx, attempt.SagaID); err != nil {
+		return err
+	}
+	return q.CreateCertificate(ctx, attempt.OrderID)
 }

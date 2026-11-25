@@ -72,6 +72,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/director/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /** Карточка заказа для директора */
+        get: operations["getDirectorOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Профиль текущего пользователя */
+        get: operations["getMyProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Изменить настройку уведомлений текущего пользователя */
+        patch: operations["updateMyNotifications"];
+        trace?: never;
+    };
     "/users/engineers-load": {
         parameters: {
             query?: never;
@@ -199,6 +236,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engineer/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Заказы ответственного инженера
+         * @description Инженер определяется по доверенной идентичности. Активные включают active
+         *     и paid до выдачи. Завершённые включают cancelled и paid после выдачи.
+         *     Заказы выдаются от новых к старым. Пул заявок остаётся на GET /orders?status=requested.
+         *     Gateway подставляет марку и номер ТС, если карточка найдена.
+         */
+        get: operations["listEngineerOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engineer/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Подобрать зарегистрированного клиента для прямого приёма
+         * @description Инженеру доступны действующие клиенты. Поиск по имени или телефону.
+         */
+        get: operations["searchActiveClients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engineer/vehicles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Найти действующее ТС по введённому госномеру
+         * @description Поиск инженера по точному номеру после нормализации Vehicle.
+         */
+        get: operations["findVehicleForIntake"];
+        put?: never;
+        /**
+         * Добавить ТС при прямом приёме
+         * @description Инженер выбирает действующего клиента. ТС сохраняется за выбранным владельцем.
+         */
+        post: operations["createVehicleForIntake"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orders": {
         parameters: {
             query?: never;
@@ -224,7 +328,10 @@ export interface paths {
          * @description Клиент создаёт заявку в статусе requested для своего ТС. Orders берёт
          *     client_id из доверенной идентичности и оставляет заказ без ответственного.
          *     Инженер создаёт заказ в статусе active для указанного клиента и назначается
-         *     ответственным. Вариант тела запроса определяется ролью вызывающего.
+         *     ответственным. Выбранное ТС принадлежит указанному клиенту.
+         *     Повтор запроса с тем же request_id и теми же данными возвращает исходный ID
+         *     заказа. Ключ относится к инженеру, который создал заказ.
+         *     Вариант тела запроса определяется ролью вызывающего.
          */
         post: operations["createOrder"];
         delete?: never;
@@ -242,8 +349,59 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Карточка заказа */
+        /**
+         * Карточка заказа
+         * @description Клиент читает свой заказ. Ответственный и исполнители читают свою карточку. Для инженера ответ содержит исполнителей и признак права изменения.
+         */
         get: operations["getOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/{id}/vehicle-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * История ТС из текущего заказа инженера
+         * @description ID относится к текущему заказу. История доступна его ответственному,
+         *     пока заказ активен либо оплачен и ожидает выдачи. Orders определяет
+         *     машину по текущему заказу и возвращает все её остальные заказы
+         *     от новых к старым, включая заказы других инженеров.
+         */
+        get: operations["listVehicleHistoryForEngineer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/{id}/vehicle-history/{historical_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+                historical_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Карточка заказа из истории ТС
+         * @description Orders заново проверяет доступ по текущему заказу и принадлежность исторического заказа тому же ТС.
+         */
+        get: operations["getHistoricalOrderForEngineer"];
         put?: never;
         post?: never;
         delete?: never;
@@ -291,7 +449,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Изменить этап работ */
+        /**
+         * Изменить этап работ
+         * @description Доступно ответственному за заказ инженеру.
+         */
         patch: operations["changeOrderStage"];
         trace?: never;
     };
@@ -310,7 +471,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Отменить заказ */
+        /**
+         * Отменить заказ
+         * @description Ответственный может отменить активный заказ.
+         */
         patch: operations["cancelOrder"];
         trace?: never;
     };
@@ -325,7 +489,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Добавить услугу по текущей цене каталога */
+        /**
+         * Добавить услугу по текущей цене каталога
+         * @description Доступно ответственному за активный заказ инженеру.
+         */
         post: operations["addOrderService"];
         delete?: never;
         options?: never;
@@ -346,7 +513,7 @@ export interface paths {
         put?: never;
         /**
          * Добавление товарной позиции
-         * @description Для активного заказа. Название и цена запрашиваются в Inventory и сохраняются в позиции.
+         * @description Доступно ответственному за активный заказ. Название и цена запрашиваются в Inventory и сохраняются в позиции.
          */
         post: operations["addOrderItem"];
         delete?: never;
@@ -385,8 +552,30 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Повторить отклонённое списание по оплаченному заказу (инженер) */
+        /** Ответственный повторяет отклонённое списание по оплаченному заказу */
         post: operations["retryOrderStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Справки об оплате текущего клиента
+         * @description Справка появляется в списке после успешного списания. Повтор формирования
+         *     отображается как processing. После последней неудачной попытки статус failed.
+         *     Справки выдаются от новых к старым.
+         */
+        get: operations["listClientCertificates"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -402,7 +591,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Скачать готовую справку об оплате */
+        /**
+         * Скачать готовую справку об оплате
+         * @description Клиент скачивает PDF по своему заказу. Директор может скачать PDF любого заказа.
+         */
         get: operations["getCertificate"];
         put?: never;
         post?: never;
@@ -694,6 +886,18 @@ export interface components {
             brand: string;
             vin: string;
         };
+        IntakeVehicle: {
+            /** Format: uuid */
+            vehicle_id: string;
+            /** Format: uuid */
+            owner_id: string;
+            number: string;
+            brand: string;
+        };
+        CreateIntakeVehicleRequest: components["schemas"]["VehicleDetails"] & {
+            /** Format: uuid */
+            owner_id: string;
+        };
         VehicleMake: {
             name: string;
             aliases: string[];
@@ -775,6 +979,11 @@ export interface components {
             client_id: string;
             /** Format: uuid */
             vehicle_id: string;
+            /**
+             * Format: uuid
+             * @description Ключ попытки прямого приёма. Повтор с тем же ключом и данными возвращает ID созданного заказа.
+             */
+            request_id?: string;
         };
         /** @description Заявка клиента на сервис. Выбор услуги сохраняется как описание заявки. */
         CreateServiceBookingRequest: {
@@ -806,11 +1015,29 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        ClientCertificate: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            order_id: string;
+            /** Format: date-time */
+            created_at: string;
+            status: components["schemas"]["CertificateStatus"];
+        };
+        /**
+         * @description Формируется, готова к скачиванию или исчерпаны попытки формирования.
+         * @enum {string}
+         */
+        CertificateStatus: "processing" | "ready" | "failed";
         OrderHistoryItem: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             vehicle_id: string;
+            /** @description Госномер ТС в списке инженера. */
+            vehicle_number?: string;
+            /** @description Марка ТС в списке инженера. */
+            vehicle_brand?: string;
             /** @enum {string} */
             status: "requested" | "active" | "paid" | "cancelled";
             /** @enum {string} */
@@ -853,6 +1080,11 @@ export interface components {
              * @description Идентификатор назначенного инженера. У заявки может отсутствовать.
              */
             engineer_id?: string;
+            /** @description Исполнители заказа. Поле передаётся инженеру. */
+            engineers?: components["schemas"]["OrderEngineer"][];
+            /** @description Текущий инженер может менять карточку. В исторической карточке значение false. */
+            can_edit?: boolean;
+            certificate_status?: components["schemas"]["CertificateStatus"];
             /** @enum {string} */
             status: "requested" | "active" | "paid" | "cancelled";
             /** @enum {string} */
@@ -867,6 +1099,12 @@ export interface components {
              * @enum {string}
              */
             stock_status?: "pending" | "deducted" | "rejected";
+        };
+        OrderEngineer: {
+            /** Format: uuid */
+            id: string;
+            /** @description Имя из Users, когда оно доступно. */
+            name?: string;
         };
         MarkOrderPaidResponse: {
             /** @enum {string} */
@@ -933,6 +1171,24 @@ export interface components {
             /** Format: uuid */
             id: string;
             number: string;
+            brand?: string;
+            vin?: string;
+        };
+        DirectorOrderDetails: {
+            order: components["schemas"]["Order"];
+            client?: components["schemas"]["PersonSummary"];
+            vehicle?: components["schemas"]["VehicleSummary"];
+        };
+        MyProfile: {
+            name: string;
+            phone: string;
+            /** @enum {string} */
+            role: "client" | "engineer" | "director";
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date */
+            work_started_at?: string;
+            notifications_enabled: boolean;
         };
         DirectorOrder: {
             /** Format: uuid */
@@ -1041,6 +1297,15 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Заказы. Если записей нет, возвращается пустой массив. */
+        OrderHistory: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["OrderHistoryItem"][];
             };
         };
         /** @description `order_not_found` — заказ не найден */
@@ -1237,6 +1502,82 @@ export interface operations {
                 };
             };
             400: components["responses"]["ValidationFailed"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    getDirectorOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Заказ с историческими ценами и связанными данными. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectorOrderDetails"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            404: components["responses"]["OrderNotFound"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    getMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Собственный профиль. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyProfile"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    updateMyNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    notifications_enabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Профиль с сохранённой настройкой. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyProfile"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
             default: components["responses"]["UnexpectedError"];
         };
     };
@@ -1445,6 +1786,115 @@ export interface operations {
             default: components["responses"]["UnexpectedError"];
         };
     };
+    listEngineerOrders: {
+        parameters: {
+            query: {
+                scope: "active" | "completed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["OrderHistory"];
+            400: components["responses"]["ValidationFailed"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    searchActiveClients: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Подходящие клиенты. При отсутствии совпадений возвращается пустой массив. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonSummary"][];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            /** @description `search_too_broad` — уточните запрос */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    findVehicleForIntake: {
+        parameters: {
+            query: {
+                number: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Найденное ТС и его владелец. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeVehicle"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            404: components["responses"]["VehicleNotFound"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    createVehicleForIntake: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIntakeVehicleRequest"];
+            };
+        };
+        responses: {
+            /** @description ТС добавлено. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeVehicle"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            /** @description `plate_taken` — нормализованный номер уже занят */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
     listOrders: {
         parameters: {
             query?: {
@@ -1507,6 +1957,15 @@ export interface operations {
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["VehicleNotFound"];
+            /** @description `intake_request_conflict` — ключ уже использован с другим клиентом или ТС */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             default: components["responses"]["UnexpectedError"];
         };
     };
@@ -1522,6 +1981,49 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Заказ с позициями и итоговой суммой */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            404: components["responses"]["OrderNotFound"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    listVehicleHistoryForEngineer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["OrderHistory"];
+            400: components["responses"]["ValidationFailed"];
+            404: components["responses"]["OrderNotFound"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    getHistoricalOrderForEngineer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+                historical_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Историческая карточка заказа в режиме просмотра. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1851,6 +2353,28 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    listClientCertificates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Справки клиента. Если справок нет, возвращается пустой массив. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientCertificate"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             default: components["responses"]["UnexpectedError"];
         };
     };

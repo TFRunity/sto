@@ -5,11 +5,14 @@ import { useLoad } from "../../common/hooks/use-load";
 import { styles } from "../../common/styles";
 import { claimBooking, loadBookingPool } from "./controller";
 
-export function BookingPool({ token, onOrderOpened, onSessionEnd, onVehicleOpened }: {
+export function BookingPool({ token, onOrderOpened, onSessionEnd, onVehicleOpened, onAssignedOpened, onIntakeOpened, onProfileOpened }: {
   token: string;
   onOrderOpened: (id: string) => void;
   onVehicleOpened: (vehicleId: string) => void;
   onSessionEnd: (message?: string) => void;
+  onAssignedOpened: () => void;
+  onIntakeOpened: () => void;
+  onProfileOpened: () => void;
 }) {
   const load = useCallback((signal: AbortSignal) => loadBookingPool(token, signal), [token]);
   const { state, reload } = useLoad(load, onSessionEnd);
@@ -52,6 +55,9 @@ export function BookingPool({ token, onOrderOpened, onSessionEnd, onVehicleOpene
         <Text accessibilityRole="header" style={styles.heading}>Пул заявок</Text>
         <Button title="Выйти" onPress={() => onSessionEnd()} />
       </View>
+      <Button title="Мои заказы" onPress={onAssignedOpened} disabled={Boolean(claimingId)} />
+      <Button title="Прямой приём" onPress={onIntakeOpened} disabled={Boolean(claimingId)} />
+      <Button title="Профиль" onPress={onProfileOpened} disabled={Boolean(claimingId)} />
       {message ? <Text accessibilityRole="alert" style={styles.error}>{message}</Text> : null}
       {state.status === "loading" && <Text accessibilityLiveRegion="polite">Загружаем заявки…</Text>}
       {state.status === "error" && (

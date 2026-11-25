@@ -14,19 +14,38 @@ import (
 
 const getCompletedCertificate = `-- name: GetCompletedCertificate :one
 SELECT c.pdf FROM certificates AS c JOIN orders AS o ON o.id = c.order_id
-WHERE c.order_id = $1 AND o.client_id = $2 AND c.status = 'completed'
+WHERE c.order_id = $1 AND c.status = 'completed'
+  AND ($2::boolean OR o.client_id = $3::uuid)
 `
 
 type GetCompletedCertificateParams struct {
-	OrderID  uuid.UUID
-	ClientID uuid.UUID
+	OrderID    uuid.UUID
+	IsDirector bool
+	ClientID   uuid.UUID
 }
 
 func (q *Queries) GetCompletedCertificate(ctx context.Context, arg GetCompletedCertificateParams) ([]byte, error) {
-	row := q.db.QueryRow(ctx, getCompletedCertificate, arg.OrderID, arg.ClientID)
+	row := q.db.QueryRow(ctx, getCompletedCertificate, arg.OrderID, arg.IsDirector, arg.ClientID)
 	var pdf []byte
 	err := row.Scan(&pdf)
 	return pdf, err
+}
+
+const getOrderCertificateState = `-- name: GetOrderCertificateState :one
+SELECT status, attempts, next_attempt_at FROM certificates WHERE order_id = $1
+`
+
+type GetOrderCertificateStateRow struct {
+	Status        string
+	Attempts      int32
+	NextAttemptAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetOrderCertificateState(ctx context.Context, orderID uuid.UUID) (GetOrderCertificateStateRow, error) {
+	row := q.db.QueryRow(ctx, getOrderCertificateState, orderID)
+	var i GetOrderCertificateStateRow
+	err := row.Scan(&i.Status, &i.Attempts, &i.NextAttemptAt)
+	return i, err
 }
 
 const listCertificateEngineerIDs = `-- name: ListCertificateEngineerIDs :many
@@ -48,6 +67,50 @@ func (q *Queries) ListCertificateEngineerIDs(ctx context.Context, orderID uuid.U
 			return nil, err
 		}
 		items = append(items, engineer_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClientCertificates = `-- name: ListClientCertificates :many
+SELECT c.id, c.order_id, c.created_at, c.status, c.attempts, c.next_attempt_at
+FROM certificates AS c
+JOIN orders AS o ON o.id = c.order_id
+WHERE o.client_id = $1
+ORDER BY c.created_at DESC, c.id DESC
+`
+
+type ListClientCertificatesRow struct {
+	ID            uuid.UUID
+	OrderID       uuid.UUID
+	CreatedAt     pgtype.Timestamptz
+	Status        string
+	Attempts      int32
+	NextAttemptAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListClientCertificates(ctx context.Context, clientID uuid.UUID) ([]ListClientCertificatesRow, error) {
+	rows, err := q.db.Query(ctx, listClientCertificates, clientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListClientCertificatesRow
+	for rows.Next() {
+		var i ListClientCertificatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.CreatedAt,
+			&i.Status,
+			&i.Attempts,
+			&i.NextAttemptAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

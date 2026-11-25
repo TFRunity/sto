@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -14,7 +15,7 @@ import (
 const createClient = `-- name: CreateClient :one
 INSERT INTO users (id, name, phone, password_hash, role)
 VALUES ($1, $2, $3, $4, 'client')
-RETURNING id, name, phone, password_hash, role, work_started_at, created_at, updated_at, deleted_at
+RETURNING id, name, phone, password_hash, role, work_started_at, created_at, updated_at, deleted_at, notifications_enabled
 `
 
 type CreateClientParams struct {
@@ -44,6 +45,35 @@ func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Use
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.NotificationsEnabled,
+	)
+	return i, err
+}
+
+const getMyProfile = `-- name: GetMyProfile :one
+SELECT name, phone, role, created_at, work_started_at, notifications_enabled
+FROM users WHERE id = $1 AND deleted_at IS NULL
+`
+
+type GetMyProfileRow struct {
+	Name                 string
+	Phone                string
+	Role                 string
+	CreatedAt            time.Time
+	WorkStartedAt        *time.Time
+	NotificationsEnabled bool
+}
+
+func (q *Queries) GetMyProfile(ctx context.Context, id uuid.UUID) (GetMyProfileRow, error) {
+	row := q.db.QueryRow(ctx, getMyProfile, id)
+	var i GetMyProfileRow
+	err := row.Scan(
+		&i.Name,
+		&i.Phone,
+		&i.Role,
+		&i.CreatedAt,
+		&i.WorkStartedAt,
+		&i.NotificationsEnabled,
 	)
 	return i, err
 }
@@ -80,7 +110,7 @@ func (q *Queries) GetPeopleByIDs(ctx context.Context, ids []uuid.UUID) ([]GetPeo
 }
 
 const getUserByPhone = `-- name: GetUserByPhone :one
-SELECT id, name, phone, password_hash, role, work_started_at, created_at, updated_at, deleted_at
+SELECT id, name, phone, password_hash, role, work_started_at, created_at, updated_at, deleted_at, notifications_enabled
 FROM users
 WHERE phone = $1
   AND deleted_at IS NULL
@@ -100,6 +130,7 @@ func (q *Queries) GetUserByPhone(ctx context.Context, phone string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.NotificationsEnabled,
 	)
 	return i, err
 }
@@ -125,6 +156,42 @@ func (q *Queries) ListEngineersForLoad(ctx context.Context) ([]ListEngineersForL
 	var items []ListEngineersForLoadRow
 	for rows.Next() {
 		var i ListEngineersForLoadRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Phone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchActiveClients = `-- name: SearchActiveClients :many
+SELECT id, name, phone
+FROM users
+WHERE role = 'client' AND deleted_at IS NULL AND (
+    name ILIKE '%' || $1::text || '%' ESCAPE '!'
+    OR phone ILIKE '%' || $1::text || '%' ESCAPE '!'
+)
+ORDER BY name, id LIMIT 201
+`
+
+type SearchActiveClientsRow struct {
+	ID    uuid.UUID
+	Name  string
+	Phone string
+}
+
+func (q *Queries) SearchActiveClients(ctx context.Context, pattern string) ([]SearchActiveClientsRow, error) {
+	rows, err := q.db.Query(ctx, searchActiveClients, pattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchActiveClientsRow
+	for rows.Next() {
+		var i SearchActiveClientsRow
 		if err := rows.Scan(&i.ID, &i.Name, &i.Phone); err != nil {
 			return nil, err
 		}
@@ -164,4 +231,39 @@ func (q *Queries) SearchClients(ctx context.Context, pattern string) ([]uuid.UUI
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateMyNotifications = `-- name: UpdateMyNotifications :one
+UPDATE users
+SET notifications_enabled = $1, updated_at = now()
+WHERE id = $2 AND deleted_at IS NULL
+RETURNING name, phone, role, created_at, work_started_at, notifications_enabled
+`
+
+type UpdateMyNotificationsParams struct {
+	Enabled bool
+	UserID  uuid.UUID
+}
+
+type UpdateMyNotificationsRow struct {
+	Name                 string
+	Phone                string
+	Role                 string
+	CreatedAt            time.Time
+	WorkStartedAt        *time.Time
+	NotificationsEnabled bool
+}
+
+func (q *Queries) UpdateMyNotifications(ctx context.Context, arg UpdateMyNotificationsParams) (UpdateMyNotificationsRow, error) {
+	row := q.db.QueryRow(ctx, updateMyNotifications, arg.Enabled, arg.UserID)
+	var i UpdateMyNotificationsRow
+	err := row.Scan(
+		&i.Name,
+		&i.Phone,
+		&i.Role,
+		&i.CreatedAt,
+		&i.WorkStartedAt,
+		&i.NotificationsEnabled,
+	)
+	return i, err
 }

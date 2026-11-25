@@ -30,21 +30,32 @@ func (h *Handler) CreateVehicle(ctx context.Context, req api.CreateVehicleReques
 	if !ok {
 		return nil, httpx.Unauthorized()
 	}
-	details, fields := prepareVehicleDetails(req.Body.Number, req.Body.Brand, req.Body.Vin)
+	vehicle, err := h.createVehicleForOwner(ctx, user.ID, req.Body.Number, req.Body.Brand, req.Body.Vin)
+	if err != nil {
+		return nil, err
+	}
+	return api.CreateVehicle201JSONResponse{VehicleId: vehicle.VehicleId}, nil
+}
+
+func (h *Handler) createVehicleForOwner(ctx context.Context, ownerID uuid.UUID, number, brand, vin string) (api.IntakeVehicle, error) {
+	details, fields := prepareVehicleDetails(number, brand, vin)
+	if ownerID == uuid.Nil {
+		fields["owner_id"] = "required"
+	}
 	if len(fields) != 0 {
-		return nil, &httpx.Error{
+		return api.IntakeVehicle{}, &httpx.Error{
 			Status: http.StatusBadRequest, Code: "validation_failed",
 			Message: "vehicle details must not be blank", Fields: fields,
 		}
 	}
-	id, err := h.repo.create(ctx, user.ID, details)
+	id, err := h.repo.create(ctx, ownerID, details)
 	if errors.Is(err, errPlateTaken) {
-		return nil, &httpx.Error{Status: http.StatusConflict, Code: "plate_taken", Message: errPlateTaken.Error()}
+		return api.IntakeVehicle{}, &httpx.Error{Status: http.StatusConflict, Code: "plate_taken", Message: errPlateTaken.Error()}
 	}
 	if err != nil {
-		return nil, err
+		return api.IntakeVehicle{}, err
 	}
-	return api.CreateVehicle201JSONResponse{VehicleId: id}, nil
+	return api.IntakeVehicle{VehicleId: id, OwnerId: ownerID, Number: details.number, Brand: details.brand}, nil
 }
 
 // GetVehicle собирает карточку из данных ТС и ссылок на доступные фото.

@@ -2,7 +2,9 @@ package internal
 
 import (
 	"context"
+	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/chassis/postgres"
@@ -19,6 +21,32 @@ func (h *Handler) SearchClients(ctx context.Context, req api.SearchClientsReques
 		return nil, httpx.SearchTooBroad()
 	}
 	return append(api.SearchClients200JSONResponse{}, ids...), nil
+}
+
+// SearchActiveClients возвращает инженеру клиентов, доступных для прямого приёма.
+func (h *Handler) SearchActiveClients(ctx context.Context, req api.SearchActiveClientsRequestObject) (api.SearchActiveClientsResponseObject, error) {
+	if _, err := httpx.EngineerIdentity(ctx); err != nil {
+		return nil, err
+	}
+	query := strings.TrimSpace(req.Params.Q)
+	if utf8.RuneCountInString(query) < 2 {
+		return nil, &httpx.Error{
+			Status: http.StatusBadRequest, Code: "validation_failed", Message: "search requires at least two characters",
+			Fields: map[string]string{"q": "too_short"},
+		}
+	}
+	rows, err := h.directory.q.SearchActiveClients(ctx, postgres.ContainsPattern(query))
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) > httpx.SearchLimit {
+		return nil, httpx.SearchTooBroad()
+	}
+	result := make(api.SearchActiveClients200JSONResponse, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, api.PersonSummary{Id: row.ID, Name: row.Name, Phone: row.Phone})
+	}
+	return result, nil
 }
 
 // GetPeopleByIDs выдаёт краткие данные по существующим ID, включая мягко удалённых пользователей.

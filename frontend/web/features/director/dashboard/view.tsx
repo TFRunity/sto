@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { formatRubles } from "@shared/money/utils";
 import { orderStatusLabels } from "@shared/orders/labels";
 import { useSession } from "@/common/session/view";
@@ -60,7 +61,9 @@ export function DirectorDashboard() {
             <ul className="mt-2 divide-y">
               {orders.recent_orders.map((order) => (
                 <li key={order.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span>{order.vehicle_number || `Заказ ${order.id.slice(0, 8)}`}</span>
+                  <Link href={`/director/orders/${order.id}`} className="font-medium underline-offset-4 hover:underline">
+                    {order.vehicle_number || `Заказ ${order.id.slice(0, 8)}`}
+                  </Link>
                   <span className="rounded-md bg-muted px-2 py-1 text-sm">
                     {recentOrderLabel(order.status, order.stage)}
                   </span>

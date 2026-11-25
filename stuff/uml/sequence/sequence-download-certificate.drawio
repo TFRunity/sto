@@ -61,8 +61,70 @@
             <mxPoint x="130" y="270" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="note1" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="failed-справки без кнопки скачивания (web-design.md) —&#xa;этот запрос для них недоступен на UI" vertex="1">
+        <mxCell id="note1" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;fontSize=10;size=10;" value="Веб предлагает скачивание после успешного списания.&lt;br&gt;Пока готового PDF нет, Orders отвечает 404." vertex="1">
           <mxGeometry height="40" width="280" x="160" y="300" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Список справок клиента" id="seq-list-client-certificates">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageWidth="900" pageHeight="390">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="list-p0" parent="1" vertex="1" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Клиент (веб)">
+          <mxGeometry x="80" y="35" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="list-l0" parent="1" edge="1" style="endArrow=none;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="73" as="sourcePoint" />
+            <mxPoint x="150" y="345" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="list-p1" parent="1" vertex="1" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Gateway">
+          <mxGeometry x="350" y="35" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="list-l1" parent="1" edge="1" style="endArrow=none;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="73" as="sourcePoint" />
+            <mxPoint x="420" y="345" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="list-p2" parent="1" vertex="1" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Orders">
+          <mxGeometry x="620" y="35" width="140" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="list-l2" parent="1" edge="1" style="endArrow=none;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="690" y="73" as="sourcePoint" />
+            <mxPoint x="690" y="345" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="list-m0" parent="1" edge="1" style="html=1;endArrow=block;verticalAlign=bottom;" value="GET /certificates">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="116" as="sourcePoint" />
+            <mxPoint x="420" y="116" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="list-m1" parent="1" edge="1" style="html=1;endArrow=block;verticalAlign=bottom;" value="Передать ID текущего клиента">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="164" as="sourcePoint" />
+            <mxPoint x="690" y="164" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="list-m2" parent="1" edge="1" style="html=1;endArrow=open;dashed=1;verticalAlign=bottom;" value="Справки клиента со статусами">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="690" y="212" as="sourcePoint" />
+            <mxPoint x="420" y="212" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="list-m3" parent="1" edge="1" style="html=1;endArrow=open;dashed=1;verticalAlign=bottom;" value="200 · список справок">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="260" as="sourcePoint" />
+            <mxPoint x="150" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="list-note" parent="1" vertex="1" style="shape=note;html=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" value="Повтор запланирован → формируется. Три неудачи → ошибка. У готовой справки доступен PDF.">
+          <mxGeometry x="150" y="300" width="540" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

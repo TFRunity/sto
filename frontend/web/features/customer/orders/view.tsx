@@ -5,16 +5,17 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatRubles } from "@shared/money/utils";
 import { orderStageLabels } from "@shared/orders/labels";
-import { isPaidAndStockDeducted, isPaymentPending } from "@shared/orders/payment";
+import { isPaidAndStockDeducted } from "@shared/orders/payment";
 import { useSession } from "@/common/session/view";
 import type { components } from "@shared/api/schema";
 import { ReadState, link, panel } from "../shared/view";
 
+import { CertificateDownload } from "@/common/certificates/view";
 import { vehiclePath } from "../shared/routes";
 import { vehicleQuery } from "../shared/vehicles/controller";
 import { vehicleLabel } from "../shared/utils";
 import { OrderStatus } from "../shared/orders/view";
-import { isOrderInaccessible, orderQuery, useDownloadCertificate, usePayOrder } from "./controller";
+import { isOrderInaccessible, orderQuery, usePayOrder } from "./controller";
 
 export function OrderScreen({ id }: { id: string }) {
   const { gateway } = useSession();
@@ -62,12 +63,11 @@ function OrderCard({ order, canPay, refresh }: {
         </ul>
       )}
       <p className="font-semibold">Итого {formatRubles(order.total)}</p>
-      {payment.isPending && !isPaymentPending(order) && (
+      {payment.isPending && order.status === "active" && (
         <p role="status">Сохраняем отметку об оплате…</p>
       )}
       {order.status === "active" && !payment.isPending && (
         <div className="space-y-2">
-          {payment.isSuccess && canPay && <p role="alert">Оплата не подтвердилась. Можно попробовать снова.</p>}
           {payment.isError && (
             <>
               <p role="alert">Не удалось подтвердить результат. Обновите заказ.</p>
@@ -79,38 +79,5 @@ function OrderCard({ order, canPay, refresh }: {
       )}
       {isPaidAndStockDeducted(order) && <CertificateDownload id={order.id} />}
     </section>
-  );
-}
-
-function CertificateDownload({ id }: { id: string }) {
-  const { gateway } = useSession();
-  const certificate = useDownloadCertificate(gateway, id);
-
-  function download() {
-    certificate.mutate(undefined, {
-      onSuccess(pdf) {
-        if (!pdf) return;
-        const url = URL.createObjectURL(pdf);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `Справка-${id}.pdf`;
-        document.body.append(anchor);
-        anchor.click();
-        anchor.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
-      },
-    });
-  }
-
-  const unavailable = certificate.data === null;
-
-  return (
-    <div className="space-y-2">
-      {unavailable && <p role="status">Справка пока недоступна.</p>}
-      {certificate.isError && <p role="alert">Не удалось скачать справку. Попробуйте снова.</p>}
-      <Button variant="outline" disabled={certificate.isPending} onClick={download}>
-        {certificate.isPending ? "Загружаем справку…" : unavailable ? "Проверить справку снова" : "Скачать справку (PDF)"}
-      </Button>
-    </div>
   );
 }

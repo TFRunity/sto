@@ -36,6 +36,14 @@ type ClientVehicleListItem struct {
 	VehicleId openapi_types.UUID `json:"vehicle_id"`
 }
 
+// CreateIntakeVehicleRequest defines model for CreateIntakeVehicleRequest.
+type CreateIntakeVehicleRequest struct {
+	Brand   string             `json:"brand"`
+	Number  string             `json:"number"`
+	OwnerId openapi_types.UUID `json:"owner_id"`
+	Vin     string             `json:"vin"`
+}
+
 // Error Конверт ошибки (ADR-032)
 type Error struct {
 	Error ErrorBody `json:"error"`
@@ -51,6 +59,14 @@ type ErrorBody struct {
 
 	// Message Для разработчика; не показывать пользователю
 	Message string `json:"message"`
+}
+
+// IntakeVehicle defines model for IntakeVehicle.
+type IntakeVehicle struct {
+	Brand     string             `json:"brand"`
+	Number    string             `json:"number"`
+	OwnerId   openapi_types.UUID `json:"owner_id"`
+	VehicleId openapi_types.UUID `json:"vehicle_id"`
 }
 
 // VehicleCard defines model for VehicleCard.
@@ -93,8 +109,10 @@ type VehiclePhotoUpload = openapi_types.File
 
 // VehicleSummary defines model for VehicleSummary.
 type VehicleSummary struct {
+	Brand  *string            `json:"brand,omitempty"`
 	Id     openapi_types.UUID `json:"id"`
 	Number string             `json:"number"`
+	Vin    *string            `json:"vin,omitempty"`
 }
 
 // ResourceId defines model for ResourceId.
@@ -117,6 +135,11 @@ type VehiclePhotoNotFound = Error
 
 // VehiclePhotoTooLarge Конверт ошибки (ADR-032)
 type VehiclePhotoTooLarge = Error
+
+// FindVehicleForIntakeParams defines parameters for FindVehicleForIntake.
+type FindVehicleForIntakeParams struct {
+	Number string `form:"number" json:"number"`
+}
 
 // GetVehiclesByIDsParams defines parameters for GetVehiclesByIDs.
 type GetVehiclesByIDsParams struct {
@@ -147,6 +170,9 @@ type AddVehiclePhotoMultipartBody struct {
 	Photo VehiclePhotoUpload `json:"photo"`
 }
 
+// CreateVehicleForIntakeJSONRequestBody defines body for CreateVehicleForIntake for application/json ContentType.
+type CreateVehicleForIntakeJSONRequestBody = CreateIntakeVehicleRequest
+
 // CreateVehicleJSONRequestBody defines body for CreateVehicle for application/json ContentType.
 type CreateVehicleJSONRequestBody = VehicleDetails
 
@@ -158,6 +184,12 @@ type AddVehiclePhotoMultipartRequestBody AddVehiclePhotoMultipartBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Найти действующее ТС по введённому госномеру
+	// (GET /engineer/vehicles)
+	FindVehicleForIntake(w http.ResponseWriter, r *http.Request, params FindVehicleForIntakeParams)
+	// Добавить ТС при прямом приёме
+	// (POST /engineer/vehicles)
+	CreateVehicleForIntake(w http.ResponseWriter, r *http.Request)
 	// Номера ТС, включая удалённые
 	// (GET /internal/vehicles)
 	GetVehiclesByIDs(w http.ResponseWriter, r *http.Request, params GetVehiclesByIDsParams)
@@ -201,6 +233,66 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// FindVehicleForIntake operation middleware
+func (siw *ServerInterfaceWrapper) FindVehicleForIntake(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params FindVehicleForIntakeParams
+
+	// ------------- Required query parameter "number" -------------
+
+	if paramValue := r.URL.Query().Get("number"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "number"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "number", r.URL.Query(), &params.Number)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "number", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.FindVehicleForIntake(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateVehicleForIntake operation middleware
+func (siw *ServerInterfaceWrapper) CreateVehicleForIntake(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateVehicleForIntake(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetVehiclesByIDs operation middleware
 func (siw *ServerInterfaceWrapper) GetVehiclesByIDs(w http.ResponseWriter, r *http.Request) {
@@ -657,6 +749,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/engineer/vehicles", wrapper.FindVehicleForIntake)
+	m.HandleFunc("POST "+options.BaseURL+"/engineer/vehicles", wrapper.CreateVehicleForIntake)
 	m.HandleFunc("GET "+options.BaseURL+"/internal/vehicles", wrapper.GetVehiclesByIDs)
 	m.HandleFunc("GET "+options.BaseURL+"/internal/vehicles/search", wrapper.SearchVehicles)
 	m.HandleFunc("GET "+options.BaseURL+"/internal/vehicles/{id}/ownership", wrapper.CheckVehicleOwnership)
@@ -689,6 +783,100 @@ type VehiclePhotoJPEGImagejpegResponse struct {
 type VehiclePhotoNotFoundJSONResponse Error
 
 type VehiclePhotoTooLargeJSONResponse Error
+
+type FindVehicleForIntakeRequestObject struct {
+	Params FindVehicleForIntakeParams
+}
+
+type FindVehicleForIntakeResponseObject interface {
+	VisitFindVehicleForIntakeResponse(w http.ResponseWriter) error
+}
+
+type FindVehicleForIntake200JSONResponse IntakeVehicle
+
+func (response FindVehicleForIntake200JSONResponse) VisitFindVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type FindVehicleForIntake400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response FindVehicleForIntake400JSONResponse) VisitFindVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type FindVehicleForIntake404JSONResponse struct{ VehicleNotFoundJSONResponse }
+
+func (response FindVehicleForIntake404JSONResponse) VisitFindVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type FindVehicleForIntakedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response FindVehicleForIntakedefaultJSONResponse) VisitFindVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateVehicleForIntakeRequestObject struct {
+	Body *CreateVehicleForIntakeJSONRequestBody
+}
+
+type CreateVehicleForIntakeResponseObject interface {
+	VisitCreateVehicleForIntakeResponse(w http.ResponseWriter) error
+}
+
+type CreateVehicleForIntake201JSONResponse IntakeVehicle
+
+func (response CreateVehicleForIntake201JSONResponse) VisitCreateVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateVehicleForIntake400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response CreateVehicleForIntake400JSONResponse) VisitCreateVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateVehicleForIntake409JSONResponse Error
+
+func (response CreateVehicleForIntake409JSONResponse) VisitCreateVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateVehicleForIntakedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateVehicleForIntakedefaultJSONResponse) VisitCreateVehicleForIntakeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
 
 type GetVehiclesByIDsRequestObject struct {
 	Params GetVehiclesByIDsParams
@@ -1281,6 +1469,12 @@ func (response GetVehiclePhoto404JSONResponse) VisitGetVehiclePhotoResponse(w ht
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Найти действующее ТС по введённому госномеру
+	// (GET /engineer/vehicles)
+	FindVehicleForIntake(ctx context.Context, request FindVehicleForIntakeRequestObject) (FindVehicleForIntakeResponseObject, error)
+	// Добавить ТС при прямом приёме
+	// (POST /engineer/vehicles)
+	CreateVehicleForIntake(ctx context.Context, request CreateVehicleForIntakeRequestObject) (CreateVehicleForIntakeResponseObject, error)
 	// Номера ТС, включая удалённые
 	// (GET /internal/vehicles)
 	GetVehiclesByIDs(ctx context.Context, request GetVehiclesByIDsRequestObject) (GetVehiclesByIDsResponseObject, error)
@@ -1343,6 +1537,63 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// FindVehicleForIntake operation middleware
+func (sh *strictHandler) FindVehicleForIntake(w http.ResponseWriter, r *http.Request, params FindVehicleForIntakeParams) {
+	var request FindVehicleForIntakeRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.FindVehicleForIntake(ctx, request.(FindVehicleForIntakeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "FindVehicleForIntake")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(FindVehicleForIntakeResponseObject); ok {
+		if err := validResponse.VisitFindVehicleForIntakeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateVehicleForIntake operation middleware
+func (sh *strictHandler) CreateVehicleForIntake(w http.ResponseWriter, r *http.Request) {
+	var request CreateVehicleForIntakeRequestObject
+
+	var body CreateVehicleForIntakeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateVehicleForIntake(ctx, request.(CreateVehicleForIntakeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateVehicleForIntake")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateVehicleForIntakeResponseObject); ok {
+		if err := validResponse.VisitCreateVehicleForIntakeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetVehiclesByIDs operation middleware
@@ -1651,65 +1902,70 @@ func (sh *strictHandler) GetVehiclePhoto(w http.ResponseWriter, r *http.Request,
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

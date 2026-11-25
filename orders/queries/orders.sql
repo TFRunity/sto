@@ -1,7 +1,16 @@
 -- name: CreateOrder :one
-INSERT INTO orders (client_id, vehicle_id, engineer_id, status)
-VALUES (sqlc.arg(client_id), sqlc.arg(vehicle_id), sqlc.arg(engineer_id)::uuid, 'active')
+INSERT INTO orders (client_id, vehicle_id, engineer_id, status, intake_engineer_id, intake_request_id)
+VALUES (sqlc.arg(client_id), sqlc.arg(vehicle_id), sqlc.arg(engineer_id)::uuid, 'active',
+        CASE WHEN sqlc.narg(request_id)::uuid IS NOT NULL THEN sqlc.arg(engineer_id)::uuid END,
+        sqlc.narg(request_id)::uuid)
+ON CONFLICT ON CONSTRAINT uq_orders_intake_request DO NOTHING
 RETURNING id;
+
+-- name: GetIntakeOrder :one
+SELECT id, client_id, vehicle_id
+FROM orders
+WHERE intake_engineer_id = sqlc.arg(engineer_id)::uuid
+  AND intake_request_id = sqlc.arg(request_id)::uuid;
 
 -- name: CreateServiceBooking :one
 INSERT INTO orders (client_id, vehicle_id, status, requested_service, desired_date, comment)
@@ -34,7 +43,7 @@ ORDER BY created_at, id;
 INSERT INTO order_items (order_id, item_id, name, quantity, price)
 SELECT o.id, sqlc.arg(item_id), sqlc.narg(name), sqlc.arg(quantity), sqlc.arg(price)
 FROM orders AS o
-WHERE o.id = sqlc.arg(order_id) AND o.status = 'active'
+WHERE o.id = sqlc.arg(order_id) AND o.engineer_id = sqlc.arg(engineer_id)::uuid AND o.status = 'active'
 FOR UPDATE OF o
 RETURNING id;
 
@@ -66,6 +75,40 @@ CROSS JOIN LATERAL (
 ) AS stock
 WHERE o.id = $1;
 
+-- name: ListAssignedOrders :many
+SELECT o.id, o.vehicle_id, o.status, o.stage, o.created_at,
+       (o.paid_at IS NOT NULL OR EXISTS (
+           SELECT 1 FROM saga_state AS s
+           WHERE s.order_id = o.id AND s.current_step = 'completed'
+       )) AS payment_confirmed
+FROM orders AS o
+WHERE o.engineer_id = sqlc.arg(engineer_id)
+  AND CASE WHEN sqlc.arg(completed)::boolean
+      THEN o.status = 'cancelled' OR (o.status = 'paid' AND o.stage = 'выдан')
+      ELSE o.status = 'active' OR (o.status = 'paid' AND o.stage <> 'выдан')
+  END
+ORDER BY o.created_at DESC, o.id DESC;
+
+-- name: GetVehicleForEngineerHistory :one
+-- Заказ даёт доступ к истории машины только текущему ответственному до выдачи.
+SELECT vehicle_id
+FROM orders
+WHERE id = sqlc.arg(order_id)
+  AND engineer_id = sqlc.arg(engineer_id)
+  AND (status = 'active' OR (status = 'paid' AND stage <> 'выдан'));
+
+-- name: ListVehicleOrderHistory :many
+-- Вызывается в том же снимке БД, что и GetVehicleForEngineerHistory.
+SELECT o.id, o.vehicle_id, o.status, o.stage, o.created_at,
+       (o.paid_at IS NOT NULL OR EXISTS (
+           SELECT 1 FROM saga_state AS s
+           WHERE s.order_id = o.id AND s.current_step = 'completed'
+       )) AS payment_confirmed
+FROM orders AS o
+WHERE o.vehicle_id = sqlc.arg(vehicle_id)
+  AND o.id <> sqlc.arg(current_order_id)
+ORDER BY o.created_at DESC, o.id DESC;
+
 -- name: ListOrderItems :many
 SELECT id, item_id, name, quantity, price
 FROM order_items
@@ -76,6 +119,7 @@ ORDER BY created_at, id;
 UPDATE orders
 SET stage = sqlc.arg(stage), updated_at = now()
 WHERE id = sqlc.arg(id)
+  AND engineer_id = sqlc.arg(engineer_id)::uuid
   AND (sqlc.arg(stage)::text <> 'выдан' OR (
       status = 'paid' AND EXISTS (
           SELECT 1 FROM saga_state WHERE order_id = orders.id AND current_step = 'completed'
@@ -84,13 +128,13 @@ WHERE id = sqlc.arg(id)
 
 -- name: CancelOrder :execrows
 UPDATE orders SET status = 'cancelled', updated_at = now()
-WHERE id = $1 AND status IN ('requested', 'active');
+WHERE id = sqlc.arg(id) AND engineer_id = sqlc.arg(engineer_id)::uuid AND status = 'active';
 
 -- name: AddOrderService :one
 INSERT INTO order_services (order_id, service_id, name, quantity, price)
 SELECT o.id, sqlc.arg(service_id), sqlc.arg(name), sqlc.arg(quantity), sqlc.arg(price)
 FROM orders AS o
-WHERE o.id = sqlc.arg(order_id) AND o.status = 'active'
+WHERE o.id = sqlc.arg(order_id) AND o.engineer_id = sqlc.arg(engineer_id)::uuid AND o.status = 'active'
 FOR UPDATE OF o
 RETURNING id;
 

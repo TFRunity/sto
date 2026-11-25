@@ -11,13 +11,14 @@ import (
 )
 
 type User struct {
-	ID            uuid.UUID
-	Name          string
-	Phone         string
-	PasswordHash  string
-	Role          string
-	WorkStartedAt *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     *time.Time
+	ID                   uuid.UUID
+	Name                 string
+	Phone                string
+	PasswordHash         string
+	Role                 string
+	WorkStartedAt        *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	DeletedAt            *time.Time
+	NotificationsEnabled bool
 }

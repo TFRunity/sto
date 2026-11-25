@@ -28,7 +28,7 @@
         <mxCell id="uc_photo_replace" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="Заменить фото ТС" vertex="1">
           <mxGeometry height="60" width="180" x="650" y="260" as="geometry" />
         </mxCell>
-        <mxCell id="uc_certificates" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="Скачивать справки" vertex="1">
+        <mxCell id="uc_certificates" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="Просматривать и скачивать справки" vertex="1">
           <mxGeometry height="60" width="180" x="570" y="55" as="geometry" />
         </mxCell>
         <mxCell id="uc_pay" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" value="Отметить заказ оплаченным" vertex="1">
@@ -137,7 +137,7 @@
         <mxCell id="e24" edge="1" parent="1" source="uc_create_order" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;endArrow=open;fontSize=10;strokeColor=#666666;" target="uc_photofix" value="«extend»">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="algo_create_order" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10;fontSize=11;size=14;" value="Создать заказ&#10;&#10;1. Инженер сканирует/вводит номер ТС&#10;2. Система ищет ТС в Vehicle; если нет — создаёт карточку&#10;3. Инженер указывает клиента (или создаёт нового); для новой карточки ТС он же — владелец (owner_id)&#10;4. Создаётся заказ со статусом &quot;active&quot;&#10;5. Заказ появляется в списке &quot;Мои заказы&quot; клиента" vertex="1">
+        <mxCell id="algo_create_order" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#f5f5f5;strokeColor=#82b366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10;fontSize=11;size=14;" value="Создать заказ&#10;&#10;1. Инженер выбирает зарегистрированного клиента&#10;2. Вводит госномер и ищет ТС в Vehicle&#10;3. Если ТС отсутствует, добавляет его с выбранным владельцем&#10;4. Orders проверяет владельца и создаёт активный заказ&#10;5. Заказ виден клиенту и ответственному инженеру" vertex="1">
           <mxGeometry height="170" width="260" x="840" y="300" as="geometry" />
         </mxCell>
         <mxCell id="note_e1" edge="1" parent="1" source="uc_create_order" style="edgeStyle=none;html=1;dashed=1;endArrow=none;strokeColor=#82b366;" target="algo_create_order">

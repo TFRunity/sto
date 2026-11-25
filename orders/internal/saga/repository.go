@@ -31,17 +31,16 @@ func New(pool *pgxpool.Pool) *Service {
 }
 
 // ConfirmPayment фиксирует оплату и команду списания в одной транзакции.
+// Если переход уже выполнился, возвращает сохранённое время оплаты владельцу.
 func (s *Service) ConfirmPayment(ctx context.Context, orderID, clientID uuid.UUID) (time.Time, error) {
 	var confirmedAt time.Time
 	err := postgres.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		paidAt, err := q.ConfirmOrderPayment(ctx, db.ConfirmOrderPaymentParams{ID: orderID, ClientID: clientID})
 		if errors.Is(err, pgx.ErrNoRows) {
-			paidAt, err = q.GetConfirmedPaymentTime(ctx, db.GetConfirmedPaymentTimeParams{ID: orderID, ClientID: clientID})
-			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrNotActive
-			}
-			confirmedAt = paidAt.Time
+			// UPDATE дожидается конкурирующего перехода. Следующий SELECT
+			// видит его зафиксированный результат и не создаёт новую попытку.
+			confirmedAt, err = readConfirmedPaymentTime(ctx, q, orderID, clientID)
 			return err
 		}
 		if err != nil {
@@ -54,25 +53,45 @@ func (s *Service) ConfirmPayment(ctx context.Context, orderID, clientID uuid.UUI
 	return confirmedAt, err
 }
 
+func readConfirmedPaymentTime(ctx context.Context, q *db.Queries, orderID, clientID uuid.UUID) (time.Time, error) {
+	paidAt, err := q.GetConfirmedPaymentTime(ctx, db.GetConfirmedPaymentTimeParams{ID: orderID, ClientID: clientID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, ErrNotActive
+	}
+	return paidAt.Time, err
+}
+
 // RetryStock сериализует повторы одного заказа блокировкой строки Orders.
-func (s *Service) RetryStock(ctx context.Context, orderID uuid.UUID) error {
+func (s *Service) RetryStock(ctx context.Context, orderID, engineerID uuid.UUID) error {
 	return postgres.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
-		if _, err := q.LockPaidOrderForStockRetry(ctx, orderID); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrStockRetryUnavailable
-			}
+		if err := checkStockRetry(ctx, q, orderID, engineerID); err != nil {
 			return err
-		}
-		allowed, err := q.CanRetryStockDeduction(ctx, orderID)
-		if err != nil {
-			return err
-		}
-		if allowed == nil || !*allowed {
-			return ErrStockRetryUnavailable
 		}
 		return enqueueDeduction(ctx, tx, q, stockmessage.Attempt{SagaID: uuid.New(), OrderID: orderID})
 	})
+}
+
+func checkStockRetry(ctx context.Context, q *db.Queries, orderID, engineerID uuid.UUID) error {
+	_, err := q.LockPaidOrderForStockRetry(ctx, db.LockPaidOrderForStockRetryParams{
+		OrderID: orderID, EngineerID: engineerID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrStockRetryUnavailable
+	}
+	if err != nil {
+		return err
+	}
+	// Проверяем отдельным запросом после блокировки, чтобы увидеть попытку,
+	// которую мог записать предыдущий повтор, пока этот ждал строку заказа.
+	allowed, err := q.CanRetryStockDeduction(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if allowed == nil || !*allowed {
+		return ErrStockRetryUnavailable
+	}
+	return nil
 }
 
 // enqueueDeduction создаёт попытку, группирует количества по товару

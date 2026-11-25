@@ -6,6 +6,7 @@ import (
 
 	"github.com/AlexeBabanov/sto/chassis/httpx"
 	"github.com/AlexeBabanov/sto/orders/internal/api"
+	"github.com/AlexeBabanov/sto/orders/internal/db"
 	"github.com/google/uuid"
 )
 
@@ -43,16 +44,20 @@ func (h handler) listClientOrderHistory(ctx context.Context, clientID uuid.UUID,
 	}
 	response := make(orderListResponse[api.OrderHistoryItem], 0, len(rows))
 	for _, row := range rows {
-		response = append(response, api.OrderHistoryItem{
-			Id:               row.ID,
-			VehicleId:        row.VehicleID,
-			Status:           api.OrderHistoryItemStatus(row.Status),
-			Stage:            api.OrderHistoryItemStage(row.Stage),
-			PaymentConfirmed: row.PaymentConfirmed != nil && *row.PaymentConfirmed,
-			CreatedAt:        row.CreatedAt.Time,
-		})
+		response = append(response, orderHistoryItem(row))
 	}
 	return response, nil
+}
+
+func orderHistoryItem(row db.ListClientOrderHistoryRow) api.OrderHistoryItem {
+	return api.OrderHistoryItem{
+		Id:               row.ID,
+		VehicleId:        row.VehicleID,
+		Status:           api.OrderHistoryItemStatus(row.Status),
+		Stage:            api.OrderHistoryItemStage(row.Stage),
+		PaymentConfirmed: row.PaymentConfirmed != nil && *row.PaymentConfirmed,
+		CreatedAt:        row.CreatedAt.Time,
+	}
 }
 
 // Оба варианта ответа OpenAPI сериализуются как массив, включая пустой список.

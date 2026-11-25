@@ -30,6 +30,13 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// Defines values for CertificateStatus.
+const (
+	Failed     CertificateStatus = "failed"
+	Processing CertificateStatus = "processing"
+	Ready      CertificateStatus = "ready"
+)
+
 // Defines values for ChangeOrderStageRequestStage.
 const (
 	ChangeOrderStageRequestStageВРаботе ChangeOrderStageRequestStage = "в_работе"
@@ -87,13 +94,19 @@ const (
 	ServiceBookingListItemStatusRequested ServiceBookingListItemStatus = "requested"
 )
 
+// Defines values for ListEngineerOrdersParamsScope.
+const (
+	ListEngineerOrdersParamsScopeActive    ListEngineerOrdersParamsScope = "active"
+	ListEngineerOrdersParamsScopeCompleted ListEngineerOrdersParamsScope = "completed"
+)
+
 // Defines values for ListOrdersForDirectorParamsStatus.
 const (
-	Active          ListOrdersForDirectorParamsStatus = "active"
-	AwaitingPayment ListOrdersForDirectorParamsStatus = "awaiting_payment"
-	Cancelled       ListOrdersForDirectorParamsStatus = "cancelled"
-	Paid            ListOrdersForDirectorParamsStatus = "paid"
-	Requested       ListOrdersForDirectorParamsStatus = "requested"
+	ListOrdersForDirectorParamsStatusActive          ListOrdersForDirectorParamsStatus = "active"
+	ListOrdersForDirectorParamsStatusAwaitingPayment ListOrdersForDirectorParamsStatus = "awaiting_payment"
+	ListOrdersForDirectorParamsStatusCancelled       ListOrdersForDirectorParamsStatus = "cancelled"
+	ListOrdersForDirectorParamsStatusPaid            ListOrdersForDirectorParamsStatus = "paid"
+	ListOrdersForDirectorParamsStatusRequested       ListOrdersForDirectorParamsStatus = "requested"
 )
 
 // Defines values for ListOrdersParamsStatus.
@@ -121,6 +134,9 @@ type AddOrderServiceRequest struct {
 // CatalogPrice Цена в рублях с двумя знаками после точки.
 type CatalogPrice = string
 
+// CertificateStatus Формируется, готова к скачиванию или исчерпаны попытки формирования.
+type CertificateStatus string
+
 // ChangeOrderStageRequest defines model for ChangeOrderStageRequest.
 type ChangeOrderStageRequest struct {
 	Stage ChangeOrderStageRequestStage `json:"stage"`
@@ -129,10 +145,23 @@ type ChangeOrderStageRequest struct {
 // ChangeOrderStageRequestStage defines model for ChangeOrderStageRequest.Stage.
 type ChangeOrderStageRequestStage string
 
+// ClientCertificate defines model for ClientCertificate.
+type ClientCertificate struct {
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+	OrderId   openapi_types.UUID `json:"order_id"`
+
+	// Status Формируется, готова к скачиванию или исчерпаны попытки формирования.
+	Status CertificateStatus `json:"status"`
+}
+
 // CreateEngineerOrderRequest Прямое создание активного заказа инженером.
 type CreateEngineerOrderRequest struct {
-	ClientId  openapi_types.UUID `json:"client_id"`
-	VehicleId openapi_types.UUID `json:"vehicle_id"`
+	ClientId openapi_types.UUID `json:"client_id"`
+
+	// RequestId Ключ попытки прямого приёма. Повтор с тем же ключом и данными возвращает ID созданного заказа.
+	RequestId *openapi_types.UUID `json:"request_id,omitempty"`
+	VehicleId openapi_types.UUID  `json:"vehicle_id"`
 }
 
 // CreateOrderRequest defines model for CreateOrderRequest.
@@ -218,12 +247,20 @@ type Money = decimal.Decimal
 
 // Order defines model for Order.
 type Order struct {
-	ClientId openapi_types.UUID `json:"client_id"`
+	// CanEdit Текущий инженер может менять карточку. В исторической карточке значение false.
+	CanEdit *bool `json:"can_edit,omitempty"`
+
+	// CertificateStatus Формируется, готова к скачиванию или исчерпаны попытки формирования.
+	CertificateStatus *CertificateStatus `json:"certificate_status,omitempty"`
+	ClientId          openapi_types.UUID `json:"client_id"`
 
 	// EngineerId Идентификатор назначенного инженера. У заявки может отсутствовать.
 	EngineerId *openapi_types.UUID `json:"engineer_id,omitempty"`
-	Id         openapi_types.UUID  `json:"id"`
-	Items      []OrderItem         `json:"items"`
+
+	// Engineers Исполнители заказа. Поле передаётся инженеру.
+	Engineers *[]OrderEngineer   `json:"engineers,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+	Items     []OrderItem        `json:"items"`
 
 	// PaymentConfirmed Факт оплаты подтверждён. Для отметки v3 не зависит от списания.
 	PaymentConfirmed bool           `json:"payment_confirmed"`
@@ -248,6 +285,14 @@ type OrderStatus string
 // OrderStockStatus Состояние списания по оплаченному заказу. Может отсутствовать в ответе v1.
 type OrderStockStatus string
 
+// OrderEngineer defines model for OrderEngineer.
+type OrderEngineer struct {
+	Id openapi_types.UUID `json:"id"`
+
+	// Name Имя из Users, когда оно доступно.
+	Name *string `json:"name,omitempty"`
+}
+
 // OrderHistoryItem defines model for OrderHistoryItem.
 type OrderHistoryItem struct {
 	CreatedAt time.Time          `json:"created_at"`
@@ -257,7 +302,13 @@ type OrderHistoryItem struct {
 	PaymentConfirmed bool                   `json:"payment_confirmed"`
 	Stage            OrderHistoryItemStage  `json:"stage"`
 	Status           OrderHistoryItemStatus `json:"status"`
-	VehicleId        openapi_types.UUID     `json:"vehicle_id"`
+
+	// VehicleBrand Марка ТС в списке инженера.
+	VehicleBrand *string            `json:"vehicle_brand,omitempty"`
+	VehicleId    openapi_types.UUID `json:"vehicle_id"`
+
+	// VehicleNumber Госномер ТС в списке инженера.
+	VehicleNumber *string `json:"vehicle_number,omitempty"`
 }
 
 // OrderHistoryItemStage defines model for OrderHistoryItem.Stage.
@@ -323,6 +374,9 @@ type ServiceBookingListItemStatus string
 // ResourceId defines model for ResourceId.
 type ResourceId = openapi_types.UUID
 
+// OrderHistory defines model for OrderHistory.
+type OrderHistory = []OrderHistoryItem
+
 // OrderNotFound Конверт ошибки (ADR-032)
 type OrderNotFound = Error
 
@@ -337,6 +391,14 @@ type ValidationFailed = Error
 
 // VehicleNotFound Конверт ошибки (ADR-032)
 type VehicleNotFound = Error
+
+// ListEngineerOrdersParams defines parameters for ListEngineerOrders.
+type ListEngineerOrdersParams struct {
+	Scope ListEngineerOrdersParamsScope `form:"scope" json:"scope"`
+}
+
+// ListEngineerOrdersParamsScope defines parameters for ListEngineerOrders.
+type ListEngineerOrdersParamsScope string
 
 // ListOrdersForDirectorParams defines parameters for ListOrdersForDirector.
 type ListOrdersForDirectorParams struct {
@@ -438,6 +500,12 @@ func (t *CreateOrderRequest) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Справки об оплате текущего клиента
+	// (GET /certificates)
+	ListClientCertificates(w http.ResponseWriter, r *http.Request)
+	// Заказы ответственного инженера
+	// (GET /engineer/orders)
+	ListEngineerOrders(w http.ResponseWriter, r *http.Request, params ListEngineerOrdersParams)
 	// Страница заказов для Gateway
 	// (GET /internal/orders)
 	ListOrdersForDirector(w http.ResponseWriter, r *http.Request, params ListOrdersForDirectorParams)
@@ -474,9 +542,15 @@ type ServerInterface interface {
 	// Изменить этап работ
 	// (PATCH /orders/{id}/stage)
 	ChangeOrderStage(w http.ResponseWriter, r *http.Request, id ResourceId)
-	// Повторить отклонённое списание по оплаченному заказу (инженер)
+	// Ответственный повторяет отклонённое списание по оплаченному заказу
 	// (POST /orders/{id}/stock/retry)
 	RetryOrderStock(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// История ТС из текущего заказа инженера
+	// (GET /orders/{id}/vehicle-history)
+	ListVehicleHistoryForEngineer(w http.ResponseWriter, r *http.Request, id ResourceId)
+	// Карточка заказа из истории ТС
+	// (GET /orders/{id}/vehicle-history/{historical_id})
+	GetHistoricalOrderForEngineer(w http.ResponseWriter, r *http.Request, id ResourceId, historicalId openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -487,6 +561,66 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListClientCertificates operation middleware
+func (siw *ServerInterfaceWrapper) ListClientCertificates(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListClientCertificates(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListEngineerOrders operation middleware
+func (siw *ServerInterfaceWrapper) ListEngineerOrders(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListEngineerOrdersParams
+
+	// ------------- Required query parameter "scope" -------------
+
+	if paramValue := r.URL.Query().Get("scope"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "scope"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "scope", r.URL.Query(), &params.Scope)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "scope", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListEngineerOrders(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListOrdersForDirector operation middleware
 func (siw *ServerInterfaceWrapper) ListOrdersForDirector(w http.ResponseWriter, r *http.Request) {
@@ -901,6 +1035,77 @@ func (siw *ServerInterfaceWrapper) RetryOrderStock(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// ListVehicleHistoryForEngineer operation middleware
+func (siw *ServerInterfaceWrapper) ListVehicleHistoryForEngineer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListVehicleHistoryForEngineer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetHistoricalOrderForEngineer operation middleware
+func (siw *ServerInterfaceWrapper) GetHistoricalOrderForEngineer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id ResourceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "historical_id" -------------
+	var historicalId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "historical_id", r.PathValue("historical_id"), &historicalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "historical_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetHistoricalOrderForEngineer(w, r, id, historicalId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -1021,6 +1226,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc("GET "+options.BaseURL+"/certificates", wrapper.ListClientCertificates)
+	m.HandleFunc("GET "+options.BaseURL+"/engineer/orders", wrapper.ListEngineerOrders)
 	m.HandleFunc("GET "+options.BaseURL+"/internal/orders", wrapper.ListOrdersForDirector)
 	m.HandleFunc("GET "+options.BaseURL+"/orders", wrapper.ListOrders)
 	m.HandleFunc("POST "+options.BaseURL+"/orders", wrapper.CreateOrder)
@@ -1034,9 +1241,13 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/orders/{id}/services", wrapper.AddOrderService)
 	m.HandleFunc("PATCH "+options.BaseURL+"/orders/{id}/stage", wrapper.ChangeOrderStage)
 	m.HandleFunc("POST "+options.BaseURL+"/orders/{id}/stock/retry", wrapper.RetryOrderStock)
+	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}/vehicle-history", wrapper.ListVehicleHistoryForEngineer)
+	m.HandleFunc("GET "+options.BaseURL+"/orders/{id}/vehicle-history/{historical_id}", wrapper.GetHistoricalOrderForEngineer)
 
 	return m
 }
+
+type OrderHistoryJSONResponse []OrderHistoryItem
 
 type OrderNotFoundJSONResponse Error
 
@@ -1047,6 +1258,81 @@ type UnexpectedErrorJSONResponse Error
 type ValidationFailedJSONResponse Error
 
 type VehicleNotFoundJSONResponse Error
+
+type ListClientCertificatesRequestObject struct {
+}
+
+type ListClientCertificatesResponseObject interface {
+	VisitListClientCertificatesResponse(w http.ResponseWriter) error
+}
+
+type ListClientCertificates200JSONResponse []ClientCertificate
+
+func (response ListClientCertificates200JSONResponse) VisitListClientCertificatesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListClientCertificates401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListClientCertificates401JSONResponse) VisitListClientCertificatesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListClientCertificatesdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListClientCertificatesdefaultJSONResponse) VisitListClientCertificatesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListEngineerOrdersRequestObject struct {
+	Params ListEngineerOrdersParams
+}
+
+type ListEngineerOrdersResponseObject interface {
+	VisitListEngineerOrdersResponse(w http.ResponseWriter) error
+}
+
+type ListEngineerOrders200JSONResponse struct{ OrderHistoryJSONResponse }
+
+func (response ListEngineerOrders200JSONResponse) VisitListEngineerOrdersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListEngineerOrders400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response ListEngineerOrders400JSONResponse) VisitListEngineerOrdersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListEngineerOrdersdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListEngineerOrdersdefaultJSONResponse) VisitListEngineerOrdersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
 
 type ListOrdersForDirectorRequestObject struct {
 	Params ListOrdersForDirectorParams
@@ -1193,6 +1479,15 @@ type CreateOrder404JSONResponse struct{ VehicleNotFoundJSONResponse }
 func (response CreateOrder404JSONResponse) VisitCreateOrderResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateOrder409JSONResponse Error
+
+func (response CreateOrder409JSONResponse) VisitCreateOrderResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1768,8 +2063,109 @@ func (response RetryOrderStockdefaultJSONResponse) VisitRetryOrderStockResponse(
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type ListVehicleHistoryForEngineerRequestObject struct {
+	Id ResourceId `json:"id"`
+}
+
+type ListVehicleHistoryForEngineerResponseObject interface {
+	VisitListVehicleHistoryForEngineerResponse(w http.ResponseWriter) error
+}
+
+type ListVehicleHistoryForEngineer200JSONResponse struct{ OrderHistoryJSONResponse }
+
+func (response ListVehicleHistoryForEngineer200JSONResponse) VisitListVehicleHistoryForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListVehicleHistoryForEngineer400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response ListVehicleHistoryForEngineer400JSONResponse) VisitListVehicleHistoryForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListVehicleHistoryForEngineer404JSONResponse struct{ OrderNotFoundJSONResponse }
+
+func (response ListVehicleHistoryForEngineer404JSONResponse) VisitListVehicleHistoryForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListVehicleHistoryForEngineerdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListVehicleHistoryForEngineerdefaultJSONResponse) VisitListVehicleHistoryForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetHistoricalOrderForEngineerRequestObject struct {
+	Id           ResourceId         `json:"id"`
+	HistoricalId openapi_types.UUID `json:"historical_id"`
+}
+
+type GetHistoricalOrderForEngineerResponseObject interface {
+	VisitGetHistoricalOrderForEngineerResponse(w http.ResponseWriter) error
+}
+
+type GetHistoricalOrderForEngineer200JSONResponse Order
+
+func (response GetHistoricalOrderForEngineer200JSONResponse) VisitGetHistoricalOrderForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetHistoricalOrderForEngineer400JSONResponse struct{ ValidationFailedJSONResponse }
+
+func (response GetHistoricalOrderForEngineer400JSONResponse) VisitGetHistoricalOrderForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetHistoricalOrderForEngineer404JSONResponse struct{ OrderNotFoundJSONResponse }
+
+func (response GetHistoricalOrderForEngineer404JSONResponse) VisitGetHistoricalOrderForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetHistoricalOrderForEngineerdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetHistoricalOrderForEngineerdefaultJSONResponse) VisitGetHistoricalOrderForEngineerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Справки об оплате текущего клиента
+	// (GET /certificates)
+	ListClientCertificates(ctx context.Context, request ListClientCertificatesRequestObject) (ListClientCertificatesResponseObject, error)
+	// Заказы ответственного инженера
+	// (GET /engineer/orders)
+	ListEngineerOrders(ctx context.Context, request ListEngineerOrdersRequestObject) (ListEngineerOrdersResponseObject, error)
 	// Страница заказов для Gateway
 	// (GET /internal/orders)
 	ListOrdersForDirector(ctx context.Context, request ListOrdersForDirectorRequestObject) (ListOrdersForDirectorResponseObject, error)
@@ -1806,9 +2202,15 @@ type StrictServerInterface interface {
 	// Изменить этап работ
 	// (PATCH /orders/{id}/stage)
 	ChangeOrderStage(ctx context.Context, request ChangeOrderStageRequestObject) (ChangeOrderStageResponseObject, error)
-	// Повторить отклонённое списание по оплаченному заказу (инженер)
+	// Ответственный повторяет отклонённое списание по оплаченному заказу
 	// (POST /orders/{id}/stock/retry)
 	RetryOrderStock(ctx context.Context, request RetryOrderStockRequestObject) (RetryOrderStockResponseObject, error)
+	// История ТС из текущего заказа инженера
+	// (GET /orders/{id}/vehicle-history)
+	ListVehicleHistoryForEngineer(ctx context.Context, request ListVehicleHistoryForEngineerRequestObject) (ListVehicleHistoryForEngineerResponseObject, error)
+	// Карточка заказа из истории ТС
+	// (GET /orders/{id}/vehicle-history/{historical_id})
+	GetHistoricalOrderForEngineer(ctx context.Context, request GetHistoricalOrderForEngineerRequestObject) (GetHistoricalOrderForEngineerResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -1838,6 +2240,56 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListClientCertificates operation middleware
+func (sh *strictHandler) ListClientCertificates(w http.ResponseWriter, r *http.Request) {
+	var request ListClientCertificatesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListClientCertificates(ctx, request.(ListClientCertificatesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListClientCertificates")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListClientCertificatesResponseObject); ok {
+		if err := validResponse.VisitListClientCertificatesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListEngineerOrders operation middleware
+func (sh *strictHandler) ListEngineerOrders(w http.ResponseWriter, r *http.Request, params ListEngineerOrdersParams) {
+	var request ListEngineerOrdersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListEngineerOrders(ctx, request.(ListEngineerOrdersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListEngineerOrders")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListEngineerOrdersResponseObject); ok {
+		if err := validResponse.VisitListEngineerOrdersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ListOrdersForDirector operation middleware
@@ -2202,94 +2654,168 @@ func (sh *strictHandler) RetryOrderStock(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// ListVehicleHistoryForEngineer operation middleware
+func (sh *strictHandler) ListVehicleHistoryForEngineer(w http.ResponseWriter, r *http.Request, id ResourceId) {
+	var request ListVehicleHistoryForEngineerRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListVehicleHistoryForEngineer(ctx, request.(ListVehicleHistoryForEngineerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListVehicleHistoryForEngineer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListVehicleHistoryForEngineerResponseObject); ok {
+		if err := validResponse.VisitListVehicleHistoryForEngineerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetHistoricalOrderForEngineer operation middleware
+func (sh *strictHandler) GetHistoricalOrderForEngineer(w http.ResponseWriter, r *http.Request, id ResourceId, historicalId openapi_types.UUID) {
+	var request GetHistoricalOrderForEngineerRequestObject
+
+	request.Id = id
+	request.HistoricalId = historicalId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetHistoricalOrderForEngineer(ctx, request.(GetHistoricalOrderForEngineerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetHistoricalOrderForEngineer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetHistoricalOrderForEngineerResponseObject); ok {
+		if err := validResponse.VisitGetHistoricalOrderForEngineerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"/w4A6V98n5R7AAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

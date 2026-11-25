@@ -14,7 +14,10 @@ const (
 	UserRoleHeader = "X-User-Role"
 )
 
-const RoleClient = "client"
+const (
+	RoleClient   = "client"
+	RoleEngineer = "engineer"
+)
 
 type Identity struct {
 	ID   uuid.UUID
@@ -31,6 +34,17 @@ func IdentityFromContext(ctx context.Context) (Identity, bool) {
 
 func Unauthorized() *Error {
 	return &Error{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "unauthorized"}
+}
+
+func EngineerIdentity(ctx context.Context) (Identity, error) {
+	user, ok := IdentityFromContext(ctx)
+	if !ok {
+		return Identity{}, Unauthorized()
+	}
+	if user.Role != RoleEngineer {
+		return Identity{}, &Error{Status: http.StatusForbidden, Code: "forbidden", Message: "forbidden"}
+	}
+	return user, nil
 }
 
 // RequireIdentity reads the trusted headers set by Gateway.

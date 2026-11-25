@@ -36,6 +36,7 @@ type personSummary struct {
 type vehicleSummary struct {
 	ID     uuid.UUID `json:"id"`
 	Number string    `json:"number"`
+	Brand  *string   `json:"brand"`
 }
 
 type orderStatsSource struct {
@@ -56,7 +57,11 @@ func NewDirector(orders, users, vehicle url.URL, logger *slog.Logger) (http.Hand
 		client: &http.Client{Timeout: directorTimeout + time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 		orders: orders, users: users, vehicle: vehicle, logger: logger,
 	}
-	strict := api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions(httpx.NewStrictErrors(logger)))
+	reads := struct {
+		director
+		engineerOrders
+	}{h, engineerOrders{client: h.client, orders: orders, vehicle: vehicle, logger: logger}}
+	strict := api.NewStrictHandlerWithOptions(reads, nil, api.StrictHTTPServerOptions(httpx.NewStrictErrors(logger)))
 	return httpx.Validator(spec, logger)(api.Handler(strict)), nil
 }
 

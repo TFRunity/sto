@@ -111,7 +111,14 @@ function ResultsTable({ orders }: { orders: Order[] }) {
               <TableCell>{formatRubles(order.total)}</TableCell>
               <TableCell>{label(statusOptions, order.status)}</TableCell>
               <TableCell>{label(orderStageLabels, order.stage)}</TableCell>
-              <TableCell><OrderSummary order={order} /></TableCell>
+              <TableCell>
+                <div className="flex flex-wrap items-center gap-2">
+                  <OrderSummary order={order} />
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/director/orders/${order.id}`} aria-label={`Открыть заказ ${order.id.slice(0, 8)}`}>Детали</Link>
+                  </Button>
+                </div>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

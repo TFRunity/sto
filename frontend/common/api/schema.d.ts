@@ -109,6 +109,50 @@ export interface paths {
         patch: operations["updateMyNotifications"];
         trace?: never;
     };
+    "/me/push-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Зарегистрировать Android-устройство инженера
+         * @description Привязывает Expo-токен к инженеру из текущей сессии. Повтор с тем же
+         *     токеном обновляет регистрацию. При входе под другим аккаунтом на том же
+         *     устройстве успешная регистрация переносит токен к новому владельцу.
+         *     Настройка notifications_enabled проверяется отдельно при отправке.
+         */
+        put: operations["registerMyPushDevice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/push-device/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Отвязать Android-устройство текущего инженера
+         * @description Удаляет только регистрацию текущего инженера. Повторный вызов или вызов
+         *     после передачи токена другому аккаунту возвращает 204.
+         */
+        post: operations["revokeMyPushDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/engineers-load": {
         parameters: {
             query?: never;
@@ -354,6 +398,28 @@ export interface paths {
          * @description Клиент читает свой заказ. Ответственный и исполнители читают свою карточку. Для инженера ответ содержит исполнителей и признак права изменения.
          */
         get: operations["getOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/orders/{id}/chat-participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Получить владельца и текущего ответственного по заказу
+         * @description Внутренний HTTP-вызов Chat → Orders. Маршрут доступен в сети сервисов и закрыт через Gateway и nginx.
+         */
+        get: operations["getOrderChatParticipants"];
         put?: never;
         post?: never;
         delete?: never;
@@ -863,10 +929,205 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chat/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Подписаться на события доступных диалогов
+         * @description Подключение WebSocket. В Sec-WebSocket-Protocol передаются два значения:
+         *     sto.chat.v1 и JWT текущей сессии. Gateway проверяет JWT, выбирает
+         *     sto.chat.v1 и завершает соединение по истечении срока токена.
+         *     Поток привязан к пользователю. Chat проверяет доступ к конкретному
+         *     диалогу перед каждым событием. После подключения клиент читает
+         *     список и открытую историю по HTTP. События содержат идентификатор
+         *     изменившегося диалога, состояние читается по HTTP.
+         */
+        get: operations["subscribeChatEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dialogs/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Открыть диалог по заказу с текущим ответственным
+         * @description Доступно владельцу заказа с ролью клиента. Chat получает владельца и
+         *     текущего ответственного из Orders. При повторном запросе с той же
+         *     тройкой (заказ, клиент, инженер) возвращается прежний идентификатор.
+         *     При смене ответственного клиент видит старый диалог только для чтения,
+         *     прежний инженер теряет доступ к нему, а текущий получает свой диалог.
+         *     Если Orders недоступен, Chat возвращает ошибку.
+         */
+        post: operations["openOrderDialog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dialogs/director-engineer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Открыть постоянный диалог директора с инженером
+         * @description Директор передаёт идентификатор действующего инженера. Повторное открытие возвращает существующий диалог.
+         */
+        post: operations["openDirectorEngineerDialog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dialogs/support": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Открыть диалог клиента с поддержкой
+         * @description Собеседник клиента — директор из конфигурации Chat. Повторное открытие возвращает существующий диалог.
+         */
+        post: operations["openSupportDialog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dialogs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Получить доступные диалоги и число непрочитанных сообщений */
+        get: operations["listChatDialogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dialogs/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /** Прочитать историю доступного диалога */
+        get: operations["listChatMessages"];
+        put?: never;
+        /** Отправить сообщение в доступный для записи диалог */
+        post: operations["sendChatMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chat/dialogs/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Отметить входящие сообщения прочитанными
+         * @description Отметка применяется по указанное сообщение включительно. Повторный запрос безопасен.
+         */
+        patch: operations["markChatRead"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        PushDeviceRegistration: {
+            token: string;
+        };
+        ChatEvent: {
+            /** @enum {string} */
+            type: "message" | "read";
+            /** Format: uuid */
+            dialog_id: string;
+        };
+        ChatDialog: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "order" | "director_engineer" | "support";
+            /** Format: uuid */
+            peer_id: string;
+            /** Format: uuid */
+            order_id: string | null;
+            /** Format: date-time */
+            last_activity_at: string;
+            /** Format: int64 */
+            unread_count: number;
+            can_write: boolean;
+        };
+        ChatMessage: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dialog_id: string;
+            /** Format: uuid */
+            sender_id: string;
+            body: string;
+            is_read: boolean;
+            /** Format: date-time */
+            created_at: string;
+        };
+        OrderChatParticipants: {
+            /** Format: uuid */
+            client_id: string;
+            /**
+             * Format: uuid
+             * @description Текущий ответственный. null, если ответственный пока не назначен.
+             */
+            engineer_id: string | null;
+        };
         VehiclePhotoLink: {
             /** Format: uuid */
             photo_id: string;
@@ -1254,6 +1515,18 @@ export interface components {
         };
     };
     responses: {
+        /** @description Идентификатор найденного или созданного диалога */
+        ChatDialogOpened: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    dialog_id: string;
+                };
+            };
+        };
         /** @description Изображение JPEG */
         VehiclePhotoJPEG: {
             headers: {
@@ -1339,7 +1612,13 @@ export interface components {
     parameters: {
         ResourceId: string;
     };
-    requestBodies: never;
+    requestBodies: {
+        PushDeviceRegistration: {
+            content: {
+                "application/json": components["schemas"]["PushDeviceRegistration"];
+            };
+        };
+    };
     headers: never;
     pathItems: never;
 }
@@ -1578,6 +1857,66 @@ export interface operations {
             };
             400: components["responses"]["ValidationFailed"];
             401: components["responses"]["Unauthorized"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    registerMyPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["PushDeviceRegistration"];
+        responses: {
+            /** @description Регистрация сохранена. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Регистрация доступна инженеру. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    revokeMyPushDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["PushDeviceRegistration"];
+        responses: {
+            /** @description У текущего инженера нет регистрации с этим токеном. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            /** @description Операция доступна инженеру. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             default: components["responses"]["UnexpectedError"];
         };
     };
@@ -1987,6 +2326,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Order"];
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            404: components["responses"]["OrderNotFound"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    getOrderChatParticipants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Владелец и текущий ответственный из одного чтения заказа */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderChatParticipants"];
                 };
             };
             400: components["responses"]["ValidationFailed"];
@@ -3041,6 +3405,231 @@ export interface operations {
             };
             400: components["responses"]["ValidationFailed"];
             404: components["responses"]["VehicleNotFound"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    subscribeChatEvents: {
+        parameters: {
+            query?: never;
+            header: {
+                "Sec-WebSocket-Protocol": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Подключение установлено, выбран протокол sto.chat.v1 */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    openOrderDialog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    order_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Идентификатор найденного или созданного диалога */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        dialog_id: string;
+                    };
+                };
+            };
+            400: components["responses"]["ValidationFailed"];
+            401: components["responses"]["Unauthorized"];
+            /** @description `forbidden` — маршрут доступен роли клиента */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `order_not_found` — заказ отсутствует или принадлежит другому клиенту */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `order_engineer_not_assigned` — у заказа пока нет ответственного */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `upstream_error` — Chat не получил авторитетные данные заказа */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    openDirectorEngineerDialog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    engineer_id: string;
+                };
+            };
+        };
+        responses: {
+            200: components["responses"]["ChatDialogOpened"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    openSupportDialog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["ChatDialogOpened"];
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    listChatDialogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Диалоги в порядке последней активности, новые первыми */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatDialog"][];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    listChatMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Сообщения диалога, старые первыми */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessage"][];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    sendChatMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    body: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Сообщение сохранено */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessage"];
+                };
+            };
+            default: components["responses"]["UnexpectedError"];
+        };
+    };
+    markChatRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    through_message_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Прочитанность обновлена */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             default: components["responses"]["UnexpectedError"];
         };
     };

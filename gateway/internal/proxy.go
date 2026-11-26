@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -60,8 +61,13 @@ func newTransport() *http.Transport {
 func rewriteRequest(target *url.URL) func(*httputil.ProxyRequest) {
 	return func(pr *httputil.ProxyRequest) {
 		pr.SetURL(target)
+		// ReverseProxy проверяет Upgrade и восстанавливает его до Rewrite.
+		chatUpgrade := pr.In.URL.Path == chatEventsPath && strings.EqualFold(pr.Out.Header.Get("Upgrade"), "websocket")
 		pr.Out.Header = make(http.Header)
 		copyAllowedHeaders(pr)
+		if chatUpgrade {
+			copyChatUpgrade(pr)
+		}
 		setIdentityHeaders(pr)
 		setRequestID(pr)
 	}

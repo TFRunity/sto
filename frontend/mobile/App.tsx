@@ -3,14 +3,18 @@ import { BackHandler, StatusBar, View } from "react-native";
 import { styles } from "./common/styles";
 import { AssignedOrders } from "./features/assigned-orders/view";
 import { EngineerLogin } from "./features/auth/view";
+import { ChatConversation, ChatList } from "./features/chat/view";
 import { IntakeScreen } from "./features/intake/view";
 import { OrderScreen } from "./features/orders/view";
 import { BookingPool } from "./features/pool/view";
+import { loadProfile } from "./features/profile/controller";
 import { EngineerProfile } from "./features/profile/view";
+import { type PushTarget, usePushDevice, usePushTarget } from "./features/push/controller";
 import { VehicleScreen } from "./features/vehicles/view";
 
 type Screen =
-  | { kind: "assigned" | "intake" | "profile" }
+  | { kind: "assigned" | "intake" | "profile" | "chat" }
+  | PushTarget
   | { kind: "order"; id: string; historyAnchorId?: string }
   | { kind: "vehicle"; id: string; orderId?: string; historyOrderId?: string };
 
@@ -19,11 +23,19 @@ export default function App() {
   const [screens, setScreens] = useState<Screen[]>([]);
   const screen = screens.at(-1);
   const [sessionMessage, setSessionMessage] = useState("");
+  const [preferenceRevision, setPreferenceRevision] = useState(0);
+  const revokePushDevice = usePushDevice(session?.token, preferenceRevision, notificationsEnabled);
   const endSession = useCallback((message = "") => {
+    revokePushDevice();
     setScreens([]);
     setSession(null);
     setSessionMessage(message);
+  }, [revokePushDevice]);
+
+  const openPushTarget = useCallback((target: PushTarget) => {
+    setScreens(target.kind === "conversation" ? [{ kind: "chat" }, target] : [target]);
   }, []);
+  usePushTarget(Boolean(session), openPushTarget);
 
   const goBack = useCallback(() => setScreens((history) => history.slice(0, -1)), []);
 
@@ -71,12 +83,19 @@ export default function App() {
         return <IntakeScreen token={token} engineerPhone={session.phone} onBack={goBack}
           onOrderOpened={openAcceptedOrder} onSessionEnd={endSession} />;
       case "profile":
-        return <EngineerProfile token={token} onBack={goBack} onSessionEnd={endSession} />;
+        return <EngineerProfile token={token} onBack={goBack} onSessionEnd={endSession}
+          onNotificationsChanged={() => setPreferenceRevision((revision) => revision + 1)} />;
+      case "chat":
+        return <ChatList token={token} onBack={goBack} onSessionEnd={endSession}
+          onOpen={(id) => open({ kind: "conversation", id })} />;
+      case "conversation":
+        return <ChatConversation key={screen.id} token={token} id={screen.id} onBack={goBack} onSessionEnd={endSession} />;
       default:
-        return <BookingPool token={token} onOrderOpened={openAcceptedOrder} onSessionEnd={endSession}
+        return <BookingPool key={screen?.id ?? "pool"} token={token} onOrderOpened={openAcceptedOrder}
+          selection={screen && { id: screen.id, onBack: goBack }} onSessionEnd={endSession}
           onVehicleOpened={(id) => open({ kind: "vehicle", id })}
           onAssignedOpened={() => open({ kind: "assigned" })} onIntakeOpened={() => open({ kind: "intake" })}
-          onProfileOpened={() => open({ kind: "profile" })} />;
+          onProfileOpened={() => open({ kind: "profile" })} onChatOpened={() => open({ kind: "chat" })} />;
     }
   }
 
@@ -86,4 +105,8 @@ export default function App() {
       {renderScreen()}
     </View>
   );
+}
+
+async function notificationsEnabled(token: string, signal: AbortSignal) {
+  return (await loadProfile(token, signal)).notifications_enabled;
 }

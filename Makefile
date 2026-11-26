@@ -21,7 +21,7 @@
 #   make run SVC=users            go run с переменными из .env и хостовыми адресами
 #   make dev SVC=users            то же, но LOG_LEVEL=debug и логи через jq
 
-MODULES  := chassis gateway users orders vehicle inventory services
+MODULES  := chassis gateway users orders vehicle inventory services chat
 MODULE   ?=
 TARGETS  := $(if $(MODULE),$(MODULE),$(MODULES))
 

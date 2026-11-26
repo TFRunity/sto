@@ -1,4 +1,4 @@
-const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2/api").replace(/\/+$/, "");
+export const gatewayBaseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2/api").replace(/\/+$/, "");
 
 export class EngineerApiError extends Error {
   constructor(readonly status: number) {
@@ -7,7 +7,7 @@ export class EngineerApiError extends Error {
 }
 
 export function gatewayRequest(path: string, init?: RequestInit) {
-  return fetch(`${baseUrl}${path}`, init).then((response) => {
+  return fetch(`${gatewayBaseUrl}${path}`, init).then((response) => {
     if (!response.ok) throw new EngineerApiError(response.status);
     return response;
   });

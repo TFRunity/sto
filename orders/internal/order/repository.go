@@ -27,6 +27,17 @@ type repository struct {
 	queries *db.Queries
 }
 
+func (r repository) chatParticipants(ctx context.Context, id uuid.UUID) (db.GetOrderChatParticipantsRow, error) {
+	participants, err := r.queries.GetOrderChatParticipants(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return participants, errOrderNotFound
+	}
+	if err != nil {
+		return participants, fmt.Errorf("read order chat participants: %w", err)
+	}
+	return participants, nil
+}
+
 func (r repository) addItem(ctx context.Context, orderID, engineerID uuid.UUID, item orderItem) (uuid.UUID, error) {
 	id, err := r.queries.AddOrderItem(ctx, db.AddOrderItemParams{
 		OrderID: orderID, EngineerID: engineerID, ItemID: item.itemID, Name: item.name, Quantity: item.quantity, Price: item.price,

@@ -4,9 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 suite=${1:-all}
 case "$suite" in
-    all|engineer-orders|certificates|director-order|profiles) ;;
+    all|engineer-orders|certificates|director-order|profiles|chat-http|chat-ws) ;;
     *)
-        printf 'Usage: %s [all|engineer-orders|certificates|director-order|profiles]\n' "$0" >&2
+        printf 'Usage: %s [all|engineer-orders|certificates|director-order|profiles|chat-http|chat-ws]\n' "$0" >&2
         exit 2
         ;;
 esac
@@ -62,9 +62,10 @@ register_client() {
 prepare_second_engineer() {
     local phone
     phone=$(printf '+78%09d' "$(( (RANDOM * 32768 + RANDOM) % 1000000000 ))")
-    sql users-db "INSERT INTO users (name, phone, password_hash, role, work_started_at)
+    second_engineer_id=$(sql users-db "INSERT INTO users (name, phone, password_hash, role, work_started_at)
         SELECT 'Инженер для проверки прав', '$phone', password_hash, 'engineer', CURRENT_DATE
-        FROM users WHERE phone = '+70000000001' AND deleted_at IS NULL;" >/dev/null
+        FROM users WHERE phone = '+70000000001' AND deleted_at IS NULL
+        RETURNING id;")
     post_json 200 /login "$(jq -cn --arg phone "$phone" '{phone:$phone,password:"engineer-example"}')"
     second_engineer=$(jq -er '.token' "$tmp/body")
 }
@@ -413,6 +414,107 @@ check_profiles() {
     printf 'Profiles and notification setting persistence checked\n'
 }
 
+check_chat_http() {
+    request 401 /chat/dialogs
+    login_director
+    prepare_second_engineer
+    register_client
+    other_client=$client
+    register_client
+    create_client_vehicle
+    check_order_chat
+    check_support_and_staff_chat
+    printf 'Chat HTTP checked for all three dialog types\n'
+}
+
+check_chat_websocket() {
+    request 401 /chat/events
+    request 401 /chat/events -H 'Sec-WebSocket-Protocol: sto.chat.v1, invalid'
+    prepare_second_engineer
+    register_client
+    other_client=$client
+    register_client
+    create_client_vehicle
+
+    API_URL="$api" CHAT_CLIENT="$client" CHAT_OUTSIDER="$other_client" CHAT_ENGINEER="$engineer" \
+        CHAT_SECOND_ENGINEER="$second_engineer" CHAT_VEHICLE_ID="$vehicle_id" node scripts/e2e-chat-ws.mjs
+}
+
+check_order_chat() {
+    local tomorrow booking open dialog messages first read_body
+    tomorrow=$(date -u -d tomorrow +%F)
+    post_json 201 /orders "$(jq -cn --arg vehicle "$vehicle_id" --arg date "$tomorrow" \
+        '{vehicle_id:$vehicle,service:"Проверка чата",date:$date}')" -H "Authorization: Bearer $client"
+    booking=$(jq -er '.order_id' "$tmp/body")
+    open=$(jq -cn --arg id "$booking" '{order_id:$id}')
+    request 403 "/internal/orders/$booking/chat-participants" -H "Authorization: Bearer $client"
+    post_json 409 /chat/dialogs/order "$open" -H "Authorization: Bearer $client"
+    jq -e '.error.code == "order_engineer_not_assigned"' "$tmp/body" >/dev/null
+    request 200 "/orders/$booking/claim" -X PATCH -H "Authorization: Bearer $engineer"
+    post_json 200 /chat/dialogs/order "$open" -H "Authorization: Bearer $client"
+    dialog=$(jq -er '.dialog_id' "$tmp/body")
+    messages="/chat/dialogs/$dialog/messages"
+    post_json 200 /chat/dialogs/order "$open" -H "Authorization: Bearer $client"
+    jq -e --arg dialog "$dialog" '.dialog_id == $dialog' "$tmp/body" >/dev/null
+    post_json 404 /chat/dialogs/order "$open" -H "Authorization: Bearer $other_client"
+    request 404 "$messages" -H "Authorization: Bearer $other_client"
+    request 200 /chat/dialogs -H "Authorization: Bearer $other_client"
+    jq -e --arg dialog "$dialog" 'all(.[]; .id != $dialog)' "$tmp/body" >/dev/null
+
+    post_json 201 "$messages" '{"body":"первое"}' -H "Authorization: Bearer $client"
+    first=$(jq -er 'select(.is_read == false).id' "$tmp/body")
+    post_json 201 "$messages" '{"body":"второе"}' -H "Authorization: Bearer $client"
+    read_body=$(jq -cn --arg id "$first" '{through_message_id:$id}')
+    post_json 204 "/chat/dialogs/$dialog/read" "$read_body" -X PATCH -H "Authorization: Bearer $engineer"
+    post_json 204 "/chat/dialogs/$dialog/read" "$read_body" -X PATCH -H "Authorization: Bearer $engineer"
+    request 200 "$messages" -H "Authorization: Bearer $client"
+    jq -e 'map(.is_read) == [true,false]' "$tmp/body" >/dev/null
+    request 200 /chat/dialogs -H "Authorization: Bearer $engineer"
+    jq -e --arg dialog "$dialog" 'any(.[]; .id == $dialog and .can_write and .unread_count == 1)' "$tmp/body" >/dev/null
+
+    request 200 "/orders/$booking/claim" -X PATCH -H "Authorization: Bearer $second_engineer"
+    request 404 "$messages" -H "Authorization: Bearer $engineer"
+    post_json 404 "$messages" '{"body":"поздний ответ"}' -H "Authorization: Bearer $engineer"
+    request 200 /chat/dialogs -H "Authorization: Bearer $engineer"
+    jq -e --arg dialog "$dialog" 'all(.[]; .id != $dialog)' "$tmp/body" >/dev/null
+    request 200 "$messages" -H "Authorization: Bearer $client"
+    jq -e 'length == 2' "$tmp/body" >/dev/null
+    post_json 403 "$messages" '{"body":"архив"}' -H "Authorization: Bearer $client"
+    jq -e '.error.code == "dialog_read_only"' "$tmp/body" >/dev/null
+    post_json 403 "/chat/dialogs/$dialog/read" "$read_body" -X PATCH -H "Authorization: Bearer $client"
+    request 200 /chat/dialogs -H "Authorization: Bearer $client"
+    jq -e --arg dialog "$dialog" 'any(.[]; .id == $dialog and (.can_write | not))' "$tmp/body" >/dev/null
+
+    post_json 200 /chat/dialogs/order "$open" -H "Authorization: Bearer $client"
+    jq -e --arg old "$dialog" '.dialog_id != $old' "$tmp/body" >/dev/null
+    dialog=$(jq -er '.dialog_id' "$tmp/body")
+    request 200 "/chat/dialogs/$dialog/messages" -H "Authorization: Bearer $second_engineer"
+    jq -e 'length == 0' "$tmp/body" >/dev/null
+}
+
+check_support_and_staff_chat() {
+    local support staff body
+    request 200 /chat/dialogs/support -X POST -H "Authorization: Bearer $client"
+    support=$(jq -er '.dialog_id' "$tmp/body")
+    request 200 /chat/dialogs/support -X POST -H "Authorization: Bearer $client"
+    jq -e --arg id "$support" '.dialog_id == $id' "$tmp/body" >/dev/null
+    post_json 201 "/chat/dialogs/$support/messages" '{"body":"нужна помощь"}' -H "Authorization: Bearer $client"
+    request 200 "/chat/dialogs/$support/messages" -H "Authorization: Bearer $director"
+    jq -e 'any(.[]; .body == "нужна помощь")' "$tmp/body" >/dev/null
+    request 404 "/chat/dialogs/$support/messages" -H "Authorization: Bearer $engineer"
+
+    body=$(jq -cn --arg id "$second_engineer_id" '{engineer_id:$id}')
+    post_json 403 /chat/dialogs/director-engineer "$body" -H "Authorization: Bearer $client"
+    post_json 200 /chat/dialogs/director-engineer "$body" -H "Authorization: Bearer $director"
+    staff=$(jq -er '.dialog_id' "$tmp/body")
+    post_json 200 /chat/dialogs/director-engineer "$body" -H "Authorization: Bearer $director"
+    jq -e --arg id "$staff" '.dialog_id == $id' "$tmp/body" >/dev/null
+    post_json 201 "/chat/dialogs/$staff/messages" '{"body":"сообщение директору"}' -H "Authorization: Bearer $second_engineer"
+    request 200 "/chat/dialogs/$staff/messages" -H "Authorization: Bearer $director"
+    jq -e 'any(.[]; .body == "сообщение директору")' "$tmp/body" >/dev/null
+    request 404 "/chat/dialogs/$staff/messages" -H "Authorization: Bearer $client"
+}
+
 check_v1_payment_backfill() {
     # Временные таблицы повторяют нужные поля схемы v1 и скрывают рабочие таблицы
     # в этом сеансе psql. Применяем тот же SQL, который выполняет goose при переходе.
@@ -509,6 +611,8 @@ case "$suite" in
     certificates) check_client_certificates; exit ;;
     director-order) check_director_order; exit ;;
     profiles) check_profiles; exit ;;
+    chat-http) check_chat_http; exit ;;
+    chat-ws) check_chat_websocket; exit ;;
 esac
 prepare_second_engineer
 if [[ $suite == all ]]; then

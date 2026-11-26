@@ -72,4 +72,7 @@ adr/
 
 ## Решения v3
 
+- [ADR-045. Push-уведомления в приложении инженера](architecture/ADR-045-android-push.md)
+
 - [ADR-043. Отметка оплаты и отдельное списание](architecture/ADR-043-manual-payment-stock-gate.md)
+- [ADR-044. Доступ к чату по заказу](architecture/ADR-044-order-chat-access.md)

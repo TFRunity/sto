@@ -4,6 +4,9 @@
 
 ## 1. Chat
 
+Для диалога клиента по заказу в v3 действуют [ADR-044](../adr/architecture/ADR-044-order-chat-access.md)
+и [обновлённая sequence](../v3/uml/sequence-chat-client.drawio).
+
 Решения (08.10.2026), действуют для v2:
 - Протокол — ADR-018: отправка `POST`, доставка `WebSocket` через Gateway; RabbitMQ не участвует.
 - Модель: `Диалог(тип, участник1, участник2, order_id?)` + `Сообщение(…, прочитано bool)`,

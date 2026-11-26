@@ -62,5 +62,8 @@ func newApp(cfg Config, logger *slog.Logger) (http.Handler, error) {
 	if cfg.ServicesURL.Host != "" {
 		proxies["services"] = internal.NewProxy(&cfg.ServicesURL, logger)
 	}
+	if cfg.ChatURL.Host != "" {
+		proxies["chat"] = internal.NewProxy(&cfg.ChatURL, logger)
+	}
 	return internal.NewRouter([]byte(cfg.JWTSecret), proxies, logger), nil
 }

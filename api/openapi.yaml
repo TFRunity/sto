@@ -1,4 +1,4 @@
-# Публичный контракт API v1 (ADR-028). Одна спецификация на все сервисы:
+# Контракт API (ADR-028). Одна спецификация на все сервисы:
 # каждый сервис генерирует strict-сервер из своей части по тегу (oapi-codegen.yaml).
 openapi: 3.0.3
 
@@ -28,6 +28,10 @@ tags:
     description: Чтение цены товара (сервис Inventory)
   - name: vehicle
     description: Добавление ТС и чтение карточки (сервис Vehicle)
+  - name: chat
+    description: Диалоги и сообщения (сервис Chat)
+  - name: chat-websocket
+    description: Поток событий Chat (ADR-018, ADR-044)
 
 # По умолчанию эндпоинт закрыт JWT; публичные явно ставят `security: []`.
 security:
@@ -257,6 +261,60 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /me/push-device:
+    put:
+      tags: [users]
+      operationId: registerMyPushDevice
+      summary: Зарегистрировать Android-устройство инженера
+      description: |
+        Привязывает Expo-токен к инженеру из текущей сессии. Повтор с тем же
+        токеном обновляет регистрацию. При входе под другим аккаунтом на том же
+        устройстве успешная регистрация переносит токен к новому владельцу.
+        Настройка notifications_enabled проверяется отдельно при отправке.
+      requestBody:
+        $ref: '#/components/requestBodies/PushDeviceRegistration'
+      responses:
+        '204':
+          description: Регистрация сохранена.
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Регистрация доступна инженеру.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /me/push-device/revoke:
+    post:
+      tags: [users]
+      operationId: revokeMyPushDevice
+      summary: Отвязать Android-устройство текущего инженера
+      description: |
+        Удаляет только регистрацию текущего инженера. Повторный вызов или вызов
+        после передачи токена другому аккаунту возвращает 204.
+      requestBody:
+        $ref: '#/components/requestBodies/PushDeviceRegistration'
+      responses:
+        '204':
+          description: У текущего инженера нет регистрации с этим токеном.
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Операция доступна инженеру.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
 
@@ -703,6 +761,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /internal/orders/{id}/chat-participants:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [orders]
+      operationId: getOrderChatParticipants
+      summary: Получить владельца и текущего ответственного по заказу
+      description: Внутренний HTTP-вызов Chat → Orders. Маршрут доступен в сети сервисов и закрыт через Gateway и nginx.
+      servers:
+        - url: /
+      security: []
+      responses:
+        '200':
+          description: Владелец и текущий ответственный из одного чтения заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderChatParticipants'
         '400':
           $ref: '#/components/responses/ValidationFailed'
         '404':
@@ -1597,7 +1680,236 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
 
+  /chat/events:
+    get:
+      tags: [chat-websocket]
+      operationId: subscribeChatEvents
+      summary: Подписаться на события доступных диалогов
+      description: |
+        Подключение WebSocket. В Sec-WebSocket-Protocol передаются два значения:
+        sto.chat.v1 и JWT текущей сессии. Gateway проверяет JWT, выбирает
+        sto.chat.v1 и завершает соединение по истечении срока токена.
+        Поток привязан к пользователю. Chat проверяет доступ к конкретному
+        диалогу перед каждым событием. После подключения клиент читает
+        список и открытую историю по HTTP. События содержат идентификатор
+        изменившегося диалога, состояние читается по HTTP.
+      security: []
+      parameters:
+        - in: header
+          name: Sec-WebSocket-Protocol
+          required: true
+          schema:
+            type: string
+      x-websocket-event:
+        $ref: '#/components/schemas/ChatEvent'
+      responses:
+        '101':
+          description: Подключение установлено, выбран протокол sto.chat.v1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /chat/dialogs/order:
+    post:
+      tags: [chat]
+      operationId: openOrderDialog
+      summary: Открыть диалог по заказу с текущим ответственным
+      description: |
+        Доступно владельцу заказа с ролью клиента. Chat получает владельца и
+        текущего ответственного из Orders. При повторном запросе с той же
+        тройкой (заказ, клиент, инженер) возвращается прежний идентификатор.
+        При смене ответственного клиент видит старый диалог только для чтения,
+        прежний инженер теряет доступ к нему, а текущий получает свой диалог.
+        Если Orders недоступен, Chat возвращает ошибку.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [order_id]
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Идентификатор найденного или созданного диалога
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dialog_id]
+                properties:
+                  dialog_id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` — маршрут доступен роли клиента'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`order_not_found` — заказ отсутствует или принадлежит другому клиенту'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`order_engineer_not_assigned` — у заказа пока нет ответственного'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: '`upstream_error` — Chat не получил авторитетные данные заказа'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /chat/dialogs/director-engineer:
+    post:
+      tags: [chat]
+      operationId: openDirectorEngineerDialog
+      summary: Открыть постоянный диалог директора с инженером
+      description: Директор передаёт идентификатор действующего инженера. Повторное открытие возвращает существующий диалог.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [engineer_id]
+              properties:
+                engineer_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          $ref: '#/components/responses/ChatDialogOpened'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /chat/dialogs/support:
+    post:
+      tags: [chat]
+      operationId: openSupportDialog
+      summary: Открыть диалог клиента с поддержкой
+      description: Собеседник клиента — директор из конфигурации Chat. Повторное открытие возвращает существующий диалог.
+      responses:
+        '200':
+          $ref: '#/components/responses/ChatDialogOpened'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /chat/dialogs:
+    get:
+      tags: [chat]
+      operationId: listChatDialogs
+      summary: Получить доступные диалоги и число непрочитанных сообщений
+      responses:
+        '200':
+          description: Диалоги в порядке последней активности, новые первыми
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatDialog'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /chat/dialogs/{id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      tags: [chat]
+      operationId: listChatMessages
+      summary: Прочитать историю доступного диалога
+      responses:
+        '200':
+          description: Сообщения диалога, старые первыми
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatMessage'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    post:
+      tags: [chat]
+      operationId: sendChatMessage
+      summary: Отправить сообщение в доступный для записи диалог
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+      responses:
+        '201':
+          description: Сообщение сохранено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /chat/dialogs/{id}/read:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    patch:
+      tags: [chat]
+      operationId: markChatRead
+      summary: Отметить входящие сообщения прочитанными
+      description: Отметка применяется по указанное сообщение включительно. Повторный запрос безопасен.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [through_message_id]
+              properties:
+                through_message_id:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Прочитанность обновлена
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
 components:
+  requestBodies:
+    PushDeviceRegistration:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PushDeviceRegistration'
+
   parameters:
     ResourceId:
       name: id
@@ -1615,6 +1927,17 @@ components:
       description: Проверяется только в Gateway (ADR-010, ADR-023).
 
   responses:
+    ChatDialogOpened:
+      description: Идентификатор найденного или созданного диалога
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [dialog_id]
+            properties:
+              dialog_id:
+                type: string
+                format: uuid
     VehiclePhotoJPEG:
       description: Изображение JPEG
       content:
@@ -1674,6 +1997,87 @@ components:
             $ref: '#/components/schemas/Error'
 
   schemas:
+    PushDeviceRegistration:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          maxLength: 255
+          pattern: '^(ExpoPushToken|ExponentPushToken)\[[A-Za-z0-9_-]+\]$'
+
+    ChatEvent:
+      type: object
+      required: [type, dialog_id]
+      properties:
+        type:
+          type: string
+          enum: [message, read]
+        dialog_id:
+          type: string
+          format: uuid
+    ChatDialog:
+      type: object
+      required: [id, kind, peer_id, order_id, last_activity_at, unread_count, can_write]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [order, director_engineer, support]
+        peer_id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+          nullable: true
+        last_activity_at:
+          type: string
+          format: date-time
+        unread_count:
+          type: integer
+          format: int64
+          minimum: 0
+        can_write:
+          type: boolean
+
+    ChatMessage:
+      type: object
+      required: [id, dialog_id, sender_id, body, is_read, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dialog_id:
+          type: string
+          format: uuid
+        sender_id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    OrderChatParticipants:
+      type: object
+      required: [client_id, engineer_id]
+      properties:
+        client_id:
+          type: string
+          format: uuid
+        engineer_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Текущий ответственный. null, если ответственный пока не назначен.
+
     VehiclePhotoLink:
       type: object
       required: [photo_id, url]

@@ -42,6 +42,9 @@ export function Cabinet({ role, children }: { role: WebRole; children: ReactNode
               </Link>
             </>
           )}
+          <Link className="font-medium underline-offset-4 hover:underline" href={`${cabinetPath[role]}/chat`}>
+            Чат
+          </Link>
           <Link className="font-medium underline-offset-4 hover:underline" href={`${cabinetPath[role]}/profile`}>
             Профиль
           </Link>

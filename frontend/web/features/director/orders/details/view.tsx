@@ -6,6 +6,7 @@ import { formatRubles } from "@shared/money/utils";
 import { certificateStatusLabels } from "@shared/orders/certificate";
 import { orderStageLabels, orderStatusLabels } from "@shared/orders/labels";
 import { CertificateDownload } from "@/common/certificates/view";
+import { ChatStartButton } from "@/common/chat/view";
 import { useSession } from "@/common/session/view";
 import { Button } from "@/components/ui/button";
 import { GatewayError } from "@/lib/api/client";
@@ -65,8 +66,9 @@ function OrderDetails({ details: { order, client, vehicle } }: { details: Direct
         {order.engineers?.length ? (
           <ul className="space-y-1">
             {order.engineers.map((engineer) => (
-              <li key={engineer.id}>
+              <li key={engineer.id} className="flex flex-wrap items-center justify-between gap-2">
                 {engineer.name || engineer.id}{engineer.id === order.engineer_id ? " · Ответственный" : ""}
+                <ChatStartButton target={{ kind: "director_engineer", id: engineer.id }}>Написать инженеру</ChatStartButton>
               </li>
             ))}
           </ul>

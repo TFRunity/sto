@@ -5,16 +5,22 @@ import { useLoad } from "../../common/hooks/use-load";
 import { styles } from "../../common/styles";
 import { claimBooking, loadBookingPool } from "./controller";
 
-export function BookingPool({ token, onOrderOpened, onSessionEnd, onVehicleOpened, onAssignedOpened, onIntakeOpened, onProfileOpened }: {
+export function BookingPool({ token, selection, onOrderOpened, onSessionEnd, onVehicleOpened, onAssignedOpened, onIntakeOpened, onProfileOpened, onChatOpened }: {
   token: string;
+  selection?: { id: string; onBack: () => void };
   onOrderOpened: (id: string) => void;
   onVehicleOpened: (vehicleId: string) => void;
   onSessionEnd: (message?: string) => void;
   onAssignedOpened: () => void;
   onIntakeOpened: () => void;
   onProfileOpened: () => void;
+  onChatOpened: () => void;
 }) {
-  const load = useCallback((signal: AbortSignal) => loadBookingPool(token, signal), [token]);
+  const bookingId = selection?.id;
+  const load = useCallback(async (signal: AbortSignal) => {
+    const bookings = await loadBookingPool(token, signal);
+    return bookingId ? bookings.filter((booking) => booking.id === bookingId) : bookings;
+  }, [bookingId, token]);
   const { state, reload } = useLoad(load, onSessionEnd);
   const [claimingId, setClaimingId] = useState<string>();
   const [message, setMessage] = useState("");
@@ -52,12 +58,17 @@ export function BookingPool({ token, onOrderOpened, onSessionEnd, onVehicleOpene
   return (
     <>
       <View style={styles.header}>
-        <Text accessibilityRole="header" style={styles.heading}>Пул заявок</Text>
-        <Button title="Выйти" onPress={() => onSessionEnd()} />
+        <Text accessibilityRole="header" style={styles.heading}>{selection ? "Заявка из пула" : "Пул заявок"}</Text>
+        {selection
+          ? <Button title="К пулу" onPress={selection.onBack} disabled={Boolean(claimingId)} />
+          : <Button title="Выйти" onPress={() => onSessionEnd()} />}
       </View>
-      <Button title="Мои заказы" onPress={onAssignedOpened} disabled={Boolean(claimingId)} />
-      <Button title="Прямой приём" onPress={onIntakeOpened} disabled={Boolean(claimingId)} />
-      <Button title="Профиль" onPress={onProfileOpened} disabled={Boolean(claimingId)} />
+      {!selection && <>
+        <Button title="Мои заказы" onPress={onAssignedOpened} disabled={Boolean(claimingId)} />
+        <Button title="Прямой приём" onPress={onIntakeOpened} disabled={Boolean(claimingId)} />
+        <Button title="Профиль" onPress={onProfileOpened} disabled={Boolean(claimingId)} />
+        <Button title="Чат" onPress={onChatOpened} disabled={Boolean(claimingId)} />
+      </>}
       {message ? <Text accessibilityRole="alert" style={styles.error}>{message}</Text> : null}
       {state.status === "loading" && <Text accessibilityLiveRegion="polite">Загружаем заявки…</Text>}
       {state.status === "error" && (
@@ -80,7 +91,7 @@ export function BookingPool({ token, onOrderOpened, onSessionEnd, onVehicleOpene
                 disabled={Boolean(claimingId)} onPress={() => takeBooking(item.id)} />
             </View>
           )}
-          ListEmptyComponent={<Text>Открытых заявок пока нет.</Text>}
+          ListEmptyComponent={<Text>{selection ? "Заявка больше недоступна." : "Открытых заявок пока нет."}</Text>}
         />
       )}
     </>

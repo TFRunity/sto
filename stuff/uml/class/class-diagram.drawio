@@ -518,4 +518,33 @@
       </root>
     </mxGraphModel>
   </diagram>
+  <diagram name="Диалоги и сообщения — v3" id="cls-order-chat">
+    <mxGraphModel grid="1" page="1" pageWidth="1110" pageHeight="420">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="order" parent="1" vertex="1" value="&lt;b&gt;Заказ (Orders)&lt;/b&gt;&lt;hr&gt;id: UUID&lt;br&gt;client_id: UUID&lt;br&gt;engineer_id: UUID [0..1]" style="html=1;whiteSpace=wrap;align=left;spacing=10;fillColor=#d5e8d4;strokeColor=#82b366;">
+          <mxGeometry x="35" y="45" width="215" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="dialog" parent="1" vertex="1" value="&lt;b&gt;Диалог (Chat)&lt;/b&gt;&lt;hr&gt;id: UUID&lt;br&gt;kind: order / director_engineer / support&lt;br&gt;participant_1_id: UUID&lt;br&gt;participant_2_id: UUID&lt;br&gt;order_id: UUID [0..1]&lt;br&gt;created_at: timestamptz" style="html=1;whiteSpace=wrap;align=left;spacing=10;fillColor=#f8cecc;strokeColor=#b85450;">
+          <mxGeometry x="415" y="45" width="270" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="order-dialog" parent="1" edge="1" source="dialog" target="order" value="order_id · только order" style="endArrow=open;html=1;dashed=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="message" parent="1" vertex="1" value="&lt;b&gt;Сообщение (Chat)&lt;/b&gt;&lt;hr&gt;id: UUID&lt;br&gt;dialog_id: UUID&lt;br&gt;sender_id: UUID&lt;br&gt;body: text&lt;br&gt;is_read: boolean&lt;br&gt;created_at: timestamptz" style="html=1;whiteSpace=wrap;align=left;spacing=10;fillColor=#f8cecc;strokeColor=#b85450;">
+          <mxGeometry x="850" y="45" width="220" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="dialog-messages" parent="1" edge="1" source="message" target="dialog" value="dialog_id · 0..* сообщений" style="endArrow=open;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="access" parent="1" vertex="1" value="Диалог уникален по типу, паре участников и order_id.&lt;br&gt;Для заказа участники — владелец и инженер, назначенный при открытии диалога.&lt;br&gt;Текущее назначение проверяется через Orders перед доступом к данным и доставкой события." style="shape=note;html=1;whiteSpace=wrap;align=left;spacingLeft=10;fillColor=#fff2cc;strokeColor=#d6b656;">
+          <mxGeometry x="35" y="260" width="505" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="event" parent="1" vertex="1" value="&lt;b&gt;Событие WebSocket&lt;/b&gt;&lt;hr&gt;type: message / read&lt;br&gt;dialog_id: UUID&lt;br&gt;Изменение сохранено в сообщениях, клиенты читают состояние по HTTP." style="html=1;whiteSpace=wrap;align=left;spacing=10;fillColor=#dae8fc;strokeColor=#6c8ebf;">
+          <mxGeometry x="645" y="255" width="360" height="105" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>

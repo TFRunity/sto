@@ -1,0 +1,91 @@
+<mxfile host="Electron">
+  <diagram name="Чат клиента по заказу" id="seq-order-chat">
+    <mxGraphModel grid="1" page="1" pageWidth="1000" pageHeight="690">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="client" parent="1" vertex="1" value="Клиент (веб)" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;">
+          <mxGeometry x="35" y="30" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway" parent="1" vertex="1" value="Gateway" style="rounded=1;html=1;fillColor=#f5f5f5;strokeColor=#666666;">
+          <mxGeometry x="285" y="30" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="chat" parent="1" vertex="1" value="Chat" style="rounded=1;html=1;fillColor=#f8cecc;strokeColor=#b85450;">
+          <mxGeometry x="535" y="30" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="orders" parent="1" vertex="1" value="Orders" style="rounded=1;html=1;fillColor=#d5e8d4;strokeColor=#82b366;">
+          <mxGeometry x="785" y="30" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="line-client" parent="1" edge="1" style="endArrow=none;dashed=1;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="95" y="70" as="sourcePoint" /><mxPoint x="95" y="640" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="line-gateway" parent="1" edge="1" style="endArrow=none;dashed=1;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="345" y="70" as="sourcePoint" /><mxPoint x="345" y="640" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="line-chat" parent="1" edge="1" style="endArrow=none;dashed=1;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="595" y="70" as="sourcePoint" /><mxPoint x="595" y="640" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="line-orders" parent="1" edge="1" style="endArrow=none;dashed=1;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="845" y="70" as="sourcePoint" /><mxPoint x="845" y="640" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="open" parent="1" edge="1" value="POST /api/chat/dialogs/order&lt;br&gt;{order_id}" style="endArrow=block;html=1;verticalAlign=bottom;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="95" y="135" as="sourcePoint" /><mxPoint x="345" y="135" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="forward" parent="1" edge="1" value="POST /chat/dialogs/order&lt;br&gt;Доверенные ID и роль" style="endArrow=block;html=1;verticalAlign=bottom;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="345" y="190" as="sourcePoint" /><mxPoint x="595" y="190" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="lookup" parent="1" edge="1" value="GET /internal/orders/{id}/&lt;br&gt;chat-participants" style="endArrow=block;html=1;verticalAlign=bottom;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="595" y="245" as="sourcePoint" /><mxPoint x="845" y="245" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="participants" parent="1" edge="1" value="client_id, engineer_id (или null)" style="endArrow=open;dashed=1;html=1;verticalAlign=bottom;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="845" y="290" as="sourcePoint" /><mxPoint x="595" y="290" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="verify" parent="1" vertex="1" value="Chat сверяет роль и владельца.&lt;br&gt;Без ответственного возвращает 409.&lt;br&gt;При успехе находит или создаёт диалог&lt;br&gt;по (order_id, client_id, engineer_id)." style="shape=note;html=1;whiteSpace=wrap;align=left;spacingLeft=10;fillColor=#fff2cc;strokeColor=#d6b656;">
+          <mxGeometry x="610" y="310" width="325" height="83" as="geometry" />
+        </mxCell>
+        <mxCell id="result" parent="1" edge="1" value="200 {dialog_id} или ошибка" style="endArrow=open;dashed=1;html=1;verticalAlign=bottom;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="595" y="430" as="sourcePoint" /><mxPoint x="345" y="430" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="response" parent="1" edge="1" value="200 {dialog_id} или ошибка" style="endArrow=open;dashed=1;html=1;verticalAlign=bottom;">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="345" y="470" as="sourcePoint" /><mxPoint x="95" y="470" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="reassignment" parent="1" vertex="1" value="При чтении, записи и доставке события Chat сверяет текущее назначение в Orders.&lt;br&gt;После смены ответственного клиент может читать старый диалог, а прежний инженер теряет доступ.&lt;br&gt;При открытии чата по заказу клиент получает диалог с текущим инженером." style="shape=note;html=1;whiteSpace=wrap;align=left;spacingLeft=12;fillColor=#fff2cc;strokeColor=#d6b656;">
+          <mxGeometry x="140" y="540" width="690" height="84" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Чат — WebSocket и восстановление" id="seq-chat-events">
+    <mxGraphModel grid="1" page="1" pageWidth="1110" pageHeight="850">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="recipient" parent="1" vertex="1" value="Получатель&lt;br&gt;веб / Android" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;"><mxGeometry x="25" y="30" width="130" height="45" as="geometry" /></mxCell>
+        <mxCell id="sender" parent="1" vertex="1" value="Собеседник&lt;br&gt;веб / Android" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;"><mxGeometry x="205" y="30" width="130" height="45" as="geometry" /></mxCell>
+        <mxCell id="edge" parent="1" vertex="1" value="nginx" style="rounded=1;html=1;fillColor=#f5f5f5;strokeColor=#666666;"><mxGeometry x="390" y="30" width="110" height="45" as="geometry" /></mxCell>
+        <mxCell id="api" parent="1" vertex="1" value="Gateway" style="rounded=1;html=1;fillColor=#f5f5f5;strokeColor=#666666;"><mxGeometry x="570" y="30" width="110" height="45" as="geometry" /></mxCell>
+        <mxCell id="service" parent="1" vertex="1" value="Chat" style="rounded=1;html=1;fillColor=#f8cecc;strokeColor=#b85450;"><mxGeometry x="750" y="30" width="110" height="45" as="geometry" /></mxCell>
+        <mxCell id="orders" parent="1" vertex="1" value="Orders" style="rounded=1;html=1;fillColor=#d5e8d4;strokeColor=#82b366;"><mxGeometry x="940" y="30" width="110" height="45" as="geometry" /></mxCell>
+        <mxCell id="line-recipient" parent="1" edge="1" style="endArrow=none;dashed=1;"><mxGeometry relative="1" as="geometry"><mxPoint x="90" y="75" as="sourcePoint" /><mxPoint x="90" y="800" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="line-sender" parent="1" edge="1" style="endArrow=none;dashed=1;"><mxGeometry relative="1" as="geometry"><mxPoint x="270" y="75" as="sourcePoint" /><mxPoint x="270" y="630" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="line-edge" parent="1" edge="1" style="endArrow=none;dashed=1;"><mxGeometry relative="1" as="geometry"><mxPoint x="445" y="75" as="sourcePoint" /><mxPoint x="445" y="800" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="line-api" parent="1" edge="1" style="endArrow=none;dashed=1;"><mxGeometry relative="1" as="geometry"><mxPoint x="625" y="75" as="sourcePoint" /><mxPoint x="625" y="800" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="line-service" parent="1" edge="1" style="endArrow=none;dashed=1;"><mxGeometry relative="1" as="geometry"><mxPoint x="805" y="75" as="sourcePoint" /><mxPoint x="805" y="800" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="line-orders" parent="1" edge="1" style="endArrow=none;dashed=1;"><mxGeometry relative="1" as="geometry"><mxPoint x="995" y="75" as="sourcePoint" /><mxPoint x="995" y="660" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="request" parent="1" edge="1" value="GET /api/chat/events&lt;br&gt;Upgrade · sto.chat.v1, JWT" style="endArrow=block;html=1;verticalAlign=bottom;labelBackgroundColor=#ffffff;"><mxGeometry relative="1" as="geometry"><mxPoint x="90" y="140" as="sourcePoint" /><mxPoint x="445" y="140" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="pass" parent="1" edge="1" value="Upgrade" style="endArrow=block;html=1;verticalAlign=bottom;"><mxGeometry relative="1" as="geometry"><mxPoint x="445" y="170" as="sourcePoint" /><mxPoint x="625" y="170" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="trusted" parent="1" edge="1" value="Проверка JWT и роли&lt;br&gt;В Chat: ID, роль, sto.chat.v1" style="endArrow=block;html=1;verticalAlign=bottom;"><mxGeometry relative="1" as="geometry"><mxPoint x="625" y="230" as="sourcePoint" /><mxPoint x="805" y="230" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="accept" parent="1" edge="1" value="101 через Gateway и nginx · соединение привязано к пользователю" style="endArrow=open;dashed=1;html=1;verticalAlign=bottom;labelBackgroundColor=#ffffff;"><mxGeometry relative="1" as="geometry"><mxPoint x="805" y="285" as="sourcePoint" /><mxPoint x="90" y="285" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="history-init" parent="1" edge="1" value="HTTP через nginx и Gateway · список, открытая история и непрочитанное" style="endArrow=block;html=1;verticalAlign=bottom;labelBackgroundColor=#ffffff;"><mxGeometry relative="1" as="geometry"><mxPoint x="90" y="335" as="sourcePoint" /><mxPoint x="805" y="335" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="write" parent="1" edge="1" value="HTTP через nginx и Gateway · POST сообщения или PATCH прочтения" style="endArrow=block;html=1;verticalAlign=bottom;labelBackgroundColor=#ffffff;"><mxGeometry relative="1" as="geometry"><mxPoint x="270" y="400" as="sourcePoint" /><mxPoint x="805" y="400" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="persist" parent="1" vertex="1" value="Chat проверяет право записи,&lt;br&gt;сохраняет изменение и ставит&lt;br&gt;событие в очередь участников." style="shape=note;html=1;whiteSpace=wrap;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;"><mxGeometry x="815" y="414" width="190" height="62" as="geometry" /></mxCell>
+        <mxCell id="check" parent="1" edge="1" value="Для заказа: проверить&lt;br&gt;текущее назначение" style="endArrow=block;html=1;verticalAlign=bottom;"><mxGeometry relative="1" as="geometry"><mxPoint x="805" y="520" as="sourcePoint" /><mxPoint x="995" y="520" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="payload" parent="1" edge="1" value="Доступ есть · WS {type: message/read, dialog_id} через Gateway и nginx" style="endArrow=open;dashed=1;html=1;verticalAlign=bottom;labelBackgroundColor=#ffffff;"><mxGeometry relative="1" as="geometry"><mxPoint x="805" y="580" as="sourcePoint" /><mxPoint x="90" y="580" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="deny" parent="1" vertex="1" value="Прежнему ответственному и клиенту в архивном диалоге событие не отправляется." style="shape=note;html=1;whiteSpace=wrap;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;"><mxGeometry x="815" y="548" width="170" height="64" as="geometry" /></mxCell>
+        <mxCell id="refresh" parent="1" edge="1" value="Событие · обновить список и открытую историю по HTTP" style="endArrow=block;html=1;verticalAlign=bottom;labelBackgroundColor=#ffffff;"><mxGeometry relative="1" as="geometry"><mxPoint x="90" y="638" as="sourcePoint" /><mxPoint x="805" y="638" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="reconnect" parent="1" edge="1" value="Обрыв · повторить Upgrade, затем перечитать состояние по HTTP" style="endArrow=block;html=1;verticalAlign=bottom;labelBackgroundColor=#ffffff;"><mxGeometry relative="1" as="geometry"><mxPoint x="90" y="730" as="sourcePoint" /><mxPoint x="805" y="730" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="expiry" parent="1" vertex="1" value="Gateway завершает туннель по истечении JWT." style="shape=note;html=1;whiteSpace=wrap;align=left;spacingLeft=8;fillColor=#fff2cc;strokeColor=#d6b656;"><mxGeometry x="465" y="749" width="330" height="36" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -63,6 +63,7 @@ services:
       INVENTORY_URL: http://inventory:8080
       SERVICES_URL: http://services:8080
       VEHICLE_URL: http://vehicle:8080
+      CHAT_URL: http://chat:8080
     networks: [edge, backend]
     depends_on:
       users:
@@ -74,6 +75,8 @@ services:
       services:
         condition: service_started
       vehicle:
+        condition: service_started
+      chat:
         condition: service_started
     # ports:
     #   - "8080:8080"   # прямой доступ к Gateway в разработке (ADR-038)
@@ -177,6 +180,27 @@ services:
       services-db:
         condition: service_healthy
 
+  chat:
+    <<: *service
+    build:
+      context: .
+      dockerfile: chat/Dockerfile
+    environment:
+      HTTP_ADDR: ":8080"
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: postgres://${CHAT_DB_USER:-chat}:${CHAT_DB_PASSWORD:-}@chat-db:5432/chat?sslmode=disable
+      ORDERS_URL: http://orders:8080
+      USERS_URL: http://users:8080
+      CHAT_SUPPORT_DIRECTOR_ID: ${CHAT_SUPPORT_DIRECTOR_ID:-00000000-0000-4000-8000-000000000002}
+    networks: [backend, chat-db]
+    depends_on:
+      chat-db:
+        condition: service_healthy
+      orders:
+        condition: service_started
+      users:
+        condition: service_started
+
   # ── базы данных (ADR-001, I-03) ─────────────────────────────────────
   # Postgres 18+: том монтируется в /var/lib/postgresql, НЕ в …/data.
   users-db:
@@ -235,6 +259,16 @@ services:
       - services-db:/var/lib/postgresql
     networks: [services-db]
 
+  chat-db:
+    <<: *postgres
+    environment:
+      POSTGRES_DB: chat
+      POSTGRES_USER: ${CHAT_DB_USER:-chat}
+      POSTGRES_PASSWORD: ${CHAT_DB_PASSWORD:-}
+    volumes:
+      - chat-db:/var/lib/postgresql
+    networks: [chat-db]
+
   # ── инфраструктура ──────────────────────────────────────────────────
   rabbitmq:
     image: rabbitmq:4.3-management
@@ -287,19 +321,33 @@ configs:
         ],
         "exchanges": [
           {"name": "saga_commands", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {}},
-          {"name": "saga_replies",  "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {}}
+          {"name": "saga_replies",  "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {}},
+          {"name": "reports_commands", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {}},
+          {"name": "reports_replies", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {}}
         ],
         "queues": [
           {"name": "inventory.saga_commands", "vhost": "/", "durable": true, "auto_delete": false,
            "arguments": {"x-queue-type": "quorum", "x-delivery-limit": 10}},
           {"name": "orders.saga_replies", "vhost": "/", "durable": true, "auto_delete": false,
+           "arguments": {"x-queue-type": "quorum", "x-delivery-limit": 10}},
+          {"name": "orders.reports_commands", "vhost": "/", "durable": true, "auto_delete": false,
+           "arguments": {"x-queue-type": "quorum", "x-delivery-limit": 10}},
+          {"name": "users.reports_commands", "vhost": "/", "durable": true, "auto_delete": false,
+           "arguments": {"x-queue-type": "quorum", "x-delivery-limit": 10}},
+          {"name": "reports.data", "vhost": "/", "durable": true, "auto_delete": false,
            "arguments": {"x-queue-type": "quorum", "x-delivery-limit": 10}}
         ],
         "bindings": [
           {"source": "saga_commands", "vhost": "/", "destination": "inventory.saga_commands",
            "destination_type": "queue", "routing_key": "inventory.saga_commands", "arguments": {}},
           {"source": "saga_replies", "vhost": "/", "destination": "orders.saga_replies",
-           "destination_type": "queue", "routing_key": "orders.saga_replies", "arguments": {}}
+           "destination_type": "queue", "routing_key": "orders.saga_replies", "arguments": {}},
+          {"source": "reports_commands", "vhost": "/", "destination": "orders.reports_commands",
+           "destination_type": "queue", "routing_key": "orders.reports_commands", "arguments": {}},
+          {"source": "reports_commands", "vhost": "/", "destination": "users.reports_commands",
+           "destination_type": "queue", "routing_key": "users.reports_commands", "arguments": {}},
+          {"source": "reports_replies", "vhost": "/", "destination": "reports.data",
+           "destination_type": "queue", "routing_key": "reports.data", "arguments": {}}
         ]
       }
 
@@ -311,6 +359,7 @@ networks:
   inventory-db:
   vehicle-db:
   services-db:
+  chat-db:
 
 volumes:
   users-db:
@@ -319,3 +368,4 @@ volumes:
   vehicle-db:
   vehicle-photos:
   services-db:
+  chat-db:

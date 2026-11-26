@@ -56,8 +56,23 @@ func strictHTTPHandler(h handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /orders/stats", routes)
 	mux.Handle("GET /internal/orders", routes)
+	mux.Handle("GET /internal/orders/{id}/chat-participants", routes)
 	mux.Handle("/", httpx.RequireIdentity(routes, h.logger))
 	return mux
+}
+
+// GetOrderChatParticipants читает владельца и ответственного одним запросом.
+func (h handler) GetOrderChatParticipants(ctx context.Context, req api.GetOrderChatParticipantsRequestObject) (api.GetOrderChatParticipantsResponseObject, error) {
+	participants, err := h.repo.chatParticipants(ctx, req.Id)
+	if errors.Is(err, errOrderNotFound) {
+		return nil, orderNotFound()
+	}
+	if err != nil {
+		return nil, err
+	}
+	return api.GetOrderChatParticipants200JSONResponse{
+		ClientId: participants.ClientID, EngineerId: participants.EngineerID,
+	}, nil
 }
 
 // CreateOrder выбирает форму заявки по доверенной роли из Gateway.

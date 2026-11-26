@@ -11,6 +11,7 @@ import type { components } from "@shared/api/schema";
 import { ReadState, link, panel } from "../shared/view";
 
 import { CertificateDownload } from "@/common/certificates/view";
+import { ChatStartButton } from "@/common/chat/view";
 import { vehiclePath } from "../shared/routes";
 import { vehicleQuery } from "../shared/vehicles/controller";
 import { vehicleLabel } from "../shared/utils";
@@ -52,6 +53,8 @@ function OrderCard({ order, canPay, refresh }: {
         {vehicle ? vehicleLabel(vehicle) : "Карточка ТС"}
       </Link>
       {order.status !== "requested" && <p>Этап: {orderStageLabels[order.stage]}</p>}
+      {order.engineer_id && <ChatStartButton target={{ kind: "order", id: order.id }}>Написать инженеру</ChatStartButton>}
+      {order.certificate_status === "failed" && <ChatStartButton target={{ kind: "support" }}>Написать в поддержку</ChatStartButton>}
       {(order.items.length > 0 || order.services.length > 0) && (
         <ul className="divide-y">
           {order.items.map((item) => (

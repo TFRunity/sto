@@ -6,10 +6,11 @@ import { useLoad } from "../../common/hooks/use-load";
 import { styles } from "../../common/styles";
 import { loadProfile, updateNotifications } from "./controller";
 
-export function EngineerProfile({ token, onBack, onSessionEnd }: {
+export function EngineerProfile({ token, onBack, onSessionEnd, onNotificationsChanged }: {
   token: string;
   onBack: () => void;
   onSessionEnd: (message?: string) => void;
+  onNotificationsChanged: () => void;
 }) {
   const load = useCallback((signal: AbortSignal) => loadProfile(token, signal), [token]);
   const { state, reload } = useLoad(load, onSessionEnd);
@@ -40,6 +41,7 @@ export function EngineerProfile({ token, onBack, onSessionEnd }: {
       if (!controller.signal.aborted) {
         // Даже после потери ответа сервер мог сохранить настройку. Перечитываем профиль.
         reload();
+        onNotificationsChanged();
         setSaving(false);
       }
     }

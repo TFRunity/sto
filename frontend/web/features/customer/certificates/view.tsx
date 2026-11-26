@@ -5,6 +5,7 @@ import Link from "next/link";
 import { certificateStatusLabels } from "@shared/orders/certificate";
 import { useSession } from "@/common/session/view";
 import { CertificateDownload } from "@/common/certificates/view";
+import { ChatStartButton } from "@/common/chat/view";
 import { orderPath } from "../shared/routes";
 import { ReadState, link, panel } from "../shared/view";
 import { certificatesQuery, type Certificate } from "./controller";
@@ -40,6 +41,7 @@ function CertificateRow({ certificate }: { certificate: Certificate }) {
       </div>
       <p>{certificateStatusLabels[certificate.status]}</p>
       {certificate.status === "ready" && <CertificateDownload id={certificate.order_id} />}
+      {certificate.status === "failed" && <ChatStartButton target={{ kind: "support" }}>Написать в поддержку</ChatStartButton>}
     </li>
   );
 }

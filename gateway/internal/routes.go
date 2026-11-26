@@ -32,6 +32,7 @@ var routes = []route{
 	{prefix: "/vehicles", upstream: "vehicle"},
 	{prefix: "/inventory", upstream: "inventory"},
 	{prefix: "/services", upstream: "services"},
+	{prefix: "/chat", upstream: "chat", roles: []string{roleClient, roleEngineer, roleDirector}},
 	{prefix: "/dashboard", upstream: "director", roles: []string{roleDirector}},
 	{prefix: "/director/orders", upstream: "director", roles: []string{roleDirector}},
 	{prefix: "/engineer/orders", upstream: "director", roles: []string{roleEngineer}},
@@ -75,27 +76,31 @@ func handleRequest(w http.ResponseWriter, r *http.Request, secret []byte, proxie
 		return
 	}
 
-	request, err := authorizeRequest(r, route, secret)
+	request, cancel, err := authorizeRequest(r, route, secret)
 	if err != nil {
 		httpx.WriteError(w, logger, err)
 		return
 	}
+	defer cancel()
 	forwardRequest(w, request, proxies[route.upstream], logger)
 }
 
-func authorizeRequest(r *http.Request, route route, secret []byte) (*http.Request, error) {
+func authorizeRequest(r *http.Request, route route, secret []byte) (*http.Request, func(), error) {
+	if r.URL.Path == chatEventsPath && r.Method == http.MethodGet {
+		return authorizeChatEvents(r, route, secret)
+	}
 	if route.public {
-		return r, nil
+		return r, func() {}, nil
 	}
 
 	identity, err := Authenticate(r.Header.Get("Authorization"), secret)
 	if err != nil {
-		return nil, ErrUnauthorized
+		return nil, nil, ErrUnauthorized
 	}
 	if err := decideRequest(r, route, identity); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return r.WithContext(WithIdentity(r.Context(), identity)), nil
+	return r.WithContext(WithIdentity(r.Context(), identity)), func() {}, nil
 }
 
 func decideRequest(r *http.Request, route route, identity Identity) error {
@@ -122,6 +127,8 @@ func decideRequest(r *http.Request, route route, identity Identity) error {
 		}
 	case "/vehicles":
 		roles = vehicleRoles(r)
+	case "/chat":
+		roles = chatRoles(r, roles)
 	case "/inventory", "/services":
 		roles = catalogRoles(r, route.prefix)
 	}
@@ -133,6 +140,34 @@ func decideRequest(r *http.Request, route route, identity Identity) error {
 		Code:    "forbidden",
 		Message: "forbidden",
 	}
+}
+
+func chatRoles(r *http.Request, participants []string) []string {
+	switch r.URL.Path {
+	case "/chat/dialogs", chatEventsPath:
+		if r.Method == http.MethodGet {
+			return participants
+		}
+	case "/chat/dialogs/order", "/chat/dialogs/support":
+		if r.Method == http.MethodPost {
+			return []string{roleClient}
+		}
+	case "/chat/dialogs/director-engineer":
+		if r.Method == http.MethodPost {
+			return []string{roleDirector}
+		}
+	default:
+		path, found := strings.CutPrefix(r.URL.Path, "/chat/dialogs/")
+		id, action, hasAction := strings.Cut(path, "/")
+		if !found || id == "" || !hasAction {
+			return nil
+		}
+		if action == "messages" && (r.Method == http.MethodGet || r.Method == http.MethodPost) ||
+			action == "read" && r.Method == http.MethodPatch {
+			return participants
+		}
+	}
+	return nil
 }
 
 func vehicleRoles(r *http.Request) []string {

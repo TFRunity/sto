@@ -15,6 +15,10 @@
         {
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-notifications",
+        { "defaultChannel": "sto" }
       ]
     ]
   }

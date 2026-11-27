@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Reports data exchange",
+  "oneOf": [
+    { "$ref": "#/$defs/command" },
+    { "$ref": "#/$defs/reply" }
+  ],
+  "$defs": {
+    "requestId": { "type": "string", "format": "uuid" },
+    "attempt": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "money": { "type": "string", "pattern": "^[0-9]+[.][0-9]{2}$" },
+    "orderStatus": { "enum": ["requested", "active", "paid", "cancelled"] },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "attempt", "report_type", "period_from", "period_to", "expires_at"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/requestId" },
+        "attempt": { "$ref": "#/$defs/attempt" },
+        "report_type": { "enum": ["revenue", "engineers", "certificates_orders"] },
+        "period_from": { "$ref": "#/$defs/timestamp" },
+        "period_to": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "reply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "attempt", "report_type", "source", "rows"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/requestId" },
+        "attempt": { "$ref": "#/$defs/attempt" },
+        "report_type": { "enum": ["revenue", "engineers", "certificates_orders"] },
+        "source": { "enum": ["orders", "users"] },
+        "rows": { "type": "array" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "report_type": { "const": "revenue" },
+            "source": { "const": "orders" },
+            "rows": { "items": { "$ref": "#/$defs/revenueRow" } }
+          }
+        },
+        {
+          "properties": {
+            "report_type": { "const": "engineers" },
+            "source": { "const": "orders" },
+            "rows": { "items": { "$ref": "#/$defs/engineerOrderRow" } }
+          }
+        },
+        {
+          "properties": {
+            "report_type": { "const": "engineers" },
+            "source": { "const": "users" },
+            "rows": { "items": { "$ref": "#/$defs/engineerRow" } }
+          }
+        },
+        {
+          "properties": {
+            "report_type": { "const": "certificates_orders" },
+            "source": { "const": "orders" },
+            "rows": { "items": { "$ref": "#/$defs/certificateRow" } }
+          }
+        }
+      ]
+    },
+    "revenueRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order_id", "paid_at", "total_amount"],
+      "properties": {
+        "order_id": { "$ref": "#/$defs/requestId" },
+        "paid_at": { "$ref": "#/$defs/timestamp" },
+        "total_amount": { "$ref": "#/$defs/money" }
+      }
+    },
+    "engineerOrderRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order_id", "engineer_ids", "created_at", "paid_at", "status", "total_amount"],
+      "properties": {
+        "order_id": { "$ref": "#/$defs/requestId" },
+        "engineer_ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/requestId" } },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "paid_at": { "type": ["string", "null"], "format": "date-time" },
+        "status": { "$ref": "#/$defs/orderStatus" },
+        "total_amount": { "$ref": "#/$defs/money" }
+      }
+    },
+    "engineerRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engineer_id", "role", "work_started_at"],
+      "properties": {
+        "engineer_id": { "$ref": "#/$defs/requestId" },
+        "role": { "const": "engineer" },
+        "work_started_at": { "type": ["string", "null"], "format": "date" }
+      }
+    },
+    "certificateRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order_id", "created_at", "status", "stage", "certificate_id", "certificate_status", "certificate_created_at"],
+      "properties": {
+        "order_id": { "$ref": "#/$defs/requestId" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "status": { "$ref": "#/$defs/orderStatus" },
+        "stage": { "enum": ["принят", "в_работе", "готов", "выдан"] },
+        "certificate_id": { "type": ["string", "null"], "format": "uuid" },
+        "certificate_status": { "enum": ["pending", "completed", "failed", null] },
+        "certificate_created_at": { "type": ["string", "null"], "format": "date-time" }
+      },
+      "if": { "properties": { "certificate_id": { "type": "null" } } },
+      "then": { "properties": { "certificate_status": { "type": "null" }, "certificate_created_at": { "type": "null" } } },
+      "else": { "properties": { "certificate_status": { "type": "string" }, "certificate_created_at": { "type": "string" } } }
+    }
+  }
+}

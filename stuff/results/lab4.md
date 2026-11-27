@@ -8,43 +8,29 @@
 
 ## Подготовка
 
-- Если стенд ещё выключен, запустите из корня проекта `make up`. Команда собирает образы и запускает контейнеры, а сервисы применяют миграции к локальным БД. Веб откроется на [Главной](http://sto.localhost/). Для первого запуска пригодится [инструкция проекта](../stuff/RUNNING.md#2-первая-настройка-один-раз).
+- Если стенд ещё выключен, запустите из корня проекта `make up`. Команда собирает образы и запускает контейнеры, а сервисы применяют миграции к локальным БД. Веб откроется на [Главной](http://sto.localhost/). Для первого запуска пригодится [инструкция проекта](../RUNNING.md#2-первая-настройка-один-раз).
 - Откройте веб клиента и директора в двух профилях браузера или в обычном и приватном окнах. Начните с новой учётной записи клиента и свободных госномера и VIN.
 - Для всей демонстрации используйте одну заявку. Запишите полный UUID заказа из адреса клиентской карточки, UUID автомобиля и госномер. Придумайте короткий отличительный комментарий для заявки, например «ЛР4–6, демонстрация», чтобы найти её в пуле инженера.
 - Если параллельно снимаете результаты для [лабы 5](lab5.md), выполните SQL для пула до нажатия «Взять в работу».
 
-## Android по USB
+## Android Studio и эмулятор на Ubuntu
 
-Если речь об USB-переходнике, нужен переходник и кабель с передачей данных. На компьютере нужны `adb` из Android SDK Platform-Tools и зависимости проекта в `frontend/mobile`. На телефоне нужен Expo Go, совместимый с Expo SDK 56. [Документация ADB](https://developer.android.com/tools/adb), [запуск проекта в Expo](https://docs.expo.dev/get-started/start-developing/).
-
-Если зависимости ещё не установлены, выполните из корня `npm ci --prefix frontend/mobile`. Команда установит версии из lock-файла в `frontend/mobile/node_modules`.
-
-1. Включите «Отладка по USB» в параметрах разработчика телефона, подключите его и подтвердите окно разрешения. В выводе `adb devices` у телефона должен быть статус `device`.
-2. Пробросьте два порта. Первый соединяет телефон с Metro, второй — с nginx на компьютере.
+1. Откройте **App Center** в Ubuntu, найдите **Android Studio** и установите пакет `android-studio` из Snap Store. Если Android Studio уже установлена, откройте её из меню приложений. [Android Studio в Snap Store](https://snapcraft.io/android-studio).
+2. Завершите мастер первого запуска. В **SDK Manager → SDK Tools** проверьте наличие **Android Emulator** и **Android SDK Platform-Tools**. Запомните путь из поля **Android SDK Location**. [Настройка SDK и эмулятора](https://docs.expo.dev/workflow/android-studio-emulator/).
+3. На стартовом экране Android Studio откройте **More Actions → Virtual Device Manager**. Создайте виртуальный телефон, например Pixel, скачайте образ Android для архитектуры компьютера и запустите устройство кнопкой ▶. Дождитесь домашнего экрана Android. [Создание виртуального устройства](https://developer.android.com/studio/run/managing-avds).
+4. В терминале задайте путь к SDK. Если в **Android SDK Location** указан другой каталог, подставьте его вместо `$HOME/Android/Sdk`.
 
    ```sh
-   adb reverse tcp:8081 tcp:8081
-   adb reverse tcp:8080 tcp:80
-   adb reverse --list
+   export ANDROID_HOME="$HOME/Android/Sdk"
+   export PATH="$ANDROID_HOME/platform-tools:$PATH"
+   adb devices
    ```
 
-   Если одновременно подключён эмулятор, укажите серийный номер телефона через `adb -s СЕРИЙНЫЙ_НОМЕР reverse …`. После переподключения проверьте пробросы снова. [Обратный проброс ADB](https://developer.android.com/develop/ui/views/layout/webapps/access-local-server#set-up-reverse-port-forwarding-with-adb).
+   В списке должно появиться устройство вида `emulator-5554` со статусом `device`. Если эмулятор сообщает об ошибке KVM, проверьте виртуализацию и доступ к `/dev/kvm`. [Аппаратное ускорение на Linux](https://developer.android.com/studio/run/emulator-acceleration#vm-linux).
+5. Если зависимости ещё не установлены, выполните из корня репозитория `npm ci --prefix frontend/mobile`. Команда установит версии из lock-файла в `frontend/mobile/node_modules`. Если в `frontend/mobile/.env.local` задан `EXPO_PUBLIC_API_URL`, укажите `http://10.0.2.2/api`. По умолчанию приложение уже использует этот адрес. В эмуляторе `10.0.2.2` указывает на локальный интерфейс Ubuntu, где работает nginx. [Настройки приложения](../../frontend/mobile/README.md), [сеть эмулятора](https://developer.android.com/studio/run/emulator-networking-address).
+6. В том же терминале из корня репозитория выполните `make mobile`. Команда запустит Metro и откроет приложение в эмуляторе через Expo Go. Для проекта нужен Expo Go версии, совместимой с SDK 56. Если после смены адреса API Metro уже запущен, перезапустите его. [Скрипт проекта](../../frontend/mobile/package.json), [версии Expo Go](https://expo.dev/go).
 
-3. Добавьте или замените эту строку в `frontend/mobile/.env.local`, сохранив остальные переменные.
-
-   ```dotenv
-   EXPO_PUBLIC_API_URL=http://127.0.0.1:8080/api
-   ```
-
-4. Из корня репозитория запустите Metro и откройте приложение на подключённом Android.
-
-   ```sh
-   npm --prefix frontend/mobile run android -- --localhost
-   ```
-
-   В этом проекте скрипт `android` вызывает `expo start --android`. Если Metro уже работал, перезапустите его после смены адреса API. [Скрипт проекта](../frontend/mobile/package.json), [Expo CLI](https://docs.expo.dev/more/expo-cli/).
-
-Если телефон отображается как `unauthorized`, разблокируйте его и подтвердите отладку. Если открылась форма входа, но она выдаёт сетевую ошибку, проверьте на телефоне `http://127.0.0.1:8080/`. При рабочем пробросе в браузере открывается веб СТО через тот же nginx.
+Если приложение открылось, но вход выдаёт сетевую ошибку, проверьте `http://10.0.2.2/` в браузере эмулятора. При работающем nginx должна открыться главная страница СТО.
 
 ## Клиент
 
